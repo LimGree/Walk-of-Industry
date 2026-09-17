@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 904fa399cb28cce4fa75cad21e07efbf, type: 3}
+  m_Name: crude_oil
+  m_EditorClassIdentifier: 
+  id: crude_oil
+  displayName: "\u041D\u0435\u0444\u0442\u044C"
+  description: "\u0421\u044B\u0440\u0430\u044F \u043D\u0435\u0444\u0442\u044C. \u0422\u043E\u043B\u044C\u043A\u043E
+    \u043F\u043E \u0442\u0440\u0443\u0431\u0430\u043C."
+  icon: {fileID: -2072383700, guid: 711ff684d8f40be44ad57cc22824e4e0, type: 3}
+  worldPrefab: {fileID: 919132149155446097, guid: bb474668c1bc17b4384cd2aebc67460e, type: 3}
+  maxStack: 500
+  isFuel: 1
+  fuelValue: 0
+  isFluid: 1
+  sellValue: 2

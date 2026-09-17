@@ -1,0 +1,47 @@
+/* Walk of Industry — design tokens. Apply on .root so children inherit. */
+
+.root {
+    --bg-0: rgb(7, 9, 12);
+    --bg-1: rgb(11, 14, 18);
+    --bg-2: rgb(16, 20, 26);
+    --surface-0: rgb(14, 18, 23);
+    --surface-1: rgb(18, 23, 29);
+    --surface-2: rgb(24, 30, 38);
+    --surface-overlay: rgba(10, 13, 17, 0.94);
+    --surface-elevated: rgb(22, 28, 35);
+    --surface-interactive: rgb(28, 36, 44);
+
+    --border-subtle: rgb(36, 44, 52);
+    --border-normal: rgb(48, 58, 68);
+    --border-strong: rgb(72, 86, 98);
+
+    --text-primary: rgb(228, 232, 234);
+    --text-secondary: rgb(168, 178, 184);
+    --text-muted: rgb(118, 130, 138);
+    --text-disabled: rgb(82, 92, 98);
+
+    --accent: rgb(214, 148, 62);
+    --accent-hover: rgb(232, 168, 78);
+    --accent-active: rgb(186, 122, 42);
+    --accent-muted: rgba(214, 148, 62, 0.16);
+
+    --success: rgb(92, 176, 118);
+    --warning: rgb(214, 164, 64);
+    --danger: rgb(186, 72, 68);
+    --info: rgb(78, 156, 176);
+    --research: rgb(138, 118, 186);
+
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 20px;
+    --space-6: 24px;
+    --space-8: 32px;
+    --space-10: 40px;
+    --space-12: 48px;
+    --space-16: 64px;
+
+    --radius: 2px;
+    --hud-inset: 24px;
+}

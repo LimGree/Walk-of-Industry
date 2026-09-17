@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 943e43c1941a13b46bc200ba529369b4, type: 3}
+  m_Name: research_silicon
+  m_EditorClassIdentifier: 
+  id: research_silicon
+  displayName: "Кремний"
+  description: "Кремний из песка в печи."
+  icon: {fileID: 327171040, guid: 7368af3831c11e847a25a2ad61cb4495, type: 3}
+  requiredItems:
+  - item: {fileID: 11400000, guid: 9bb6b85117cb79e4f94d5ff91ad70187, type: 2}
+    amount: 480
+  requiredResearches:
+  - {fileID: 11400000, guid: 36f000e1c18e499981637e4cd62b8198, type: 2}
+  unlockedBuildings: []
+  unlockedRecipes:
+  - {fileID: 11400000, guid: 8ae7ac3ad4adca6499c962d3ffe5097f, type: 2}
+  rubyReward: 0

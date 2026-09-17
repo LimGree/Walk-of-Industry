@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9d24a77eadee1144d9eb73d31dc37649, type: 3}
+  m_Name: recipe_sulfuric_acid
+  m_EditorClassIdentifier: 
+  id: recipe_sulfuric_acid
+  displayName: "\u0421\u0435\u0440\u043D\u0430\u044F \u043A\u0438\u0441\u043B\u043E\u0442\u0430"
+  inputs:
+  - item: {fileID: 11400000, guid: b2c3d4e5f60718293a4b5c6d7e8f9012, type: 2}
+    amount: 5
+  outputs:
+  - item: {fileID: 11400000, guid: c4d5e6f708193a4b5c6d7e8f901a2b4d, type: 2}
+    amount: 1
+  craftTime: 4
+  requiredBuilding: {fileID: 11400000, guid: 0112233445566778899aabbccddeef00, type: 2}
+  allowedBuildingIds:
+  - refinery

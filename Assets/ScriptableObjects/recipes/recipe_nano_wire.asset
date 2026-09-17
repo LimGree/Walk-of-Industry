@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9d24a77eadee1144d9eb73d31dc37649, type: 3}
+  m_Name: recipe_nano_wire
+  m_EditorClassIdentifier: 
+  id: recipe_nano_wire
+  displayName: "\u041D\u0430\u043D\u043E\u043F\u0440\u043E\u0432\u043E\u0434"
+  inputs:
+  - item: {fileID: 11400000, guid: aa15263748596a7b8c9d0e1f20314202, type: 2}
+    amount: 2
+  - item: {fileID: 11400000, guid: aa15263748596a7b8c9d0e1f20314201, type: 2}
+    amount: 1
+  outputs:
+  - item: {fileID: 11400000, guid: aa15263748596a7b8c9d0e1f20314205, type: 2}
+    amount: 1
+  craftTime: 4
+  requiredBuilding: {fileID: 11400000, guid: aa77969c1caec2b4b9322b591842ed57, type: 2}
+  allowedBuildingIds:
+  - constructor

@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 943e43c1941a13b46bc200ba529369b4, type: 3}
+  m_Name: research_gear
+  m_EditorClassIdentifier: 
+  id: research_gear
+  displayName: "Шестерня"
+  description: "Шестерни из стержней."
+  icon: {fileID: -1288273025, guid: 27bd8abadcd8cc046b3c0b2b80cda06b, type: 3}
+  requiredItems:
+  - item: {fileID: 11400000, guid: cb75865d8806d3241bface48dad202fd, type: 2}
+    amount: 400
+  requiredResearches:
+  - {fileID: 11400000, guid: c9a82ed38f0a4cce881c406d8737097c, type: 2}
+  unlockedBuildings: []
+  unlockedRecipes:
+  - {fileID: 11400000, guid: 839733da1fcbd8743b529f300933743c, type: 2}
+  rubyReward: 0

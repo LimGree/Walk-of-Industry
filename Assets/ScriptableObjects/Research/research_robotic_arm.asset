@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 943e43c1941a13b46bc200ba529369b4, type: 3}
+  m_Name: research_robotic_arm
+  m_EditorClassIdentifier: 
+  id: research_robotic_arm
+  displayName: "Роборука"
+  description: "Автозагрузка зданий."
+  icon: {fileID: 2037161120, guid: c2dac12b7315e8d4cbc004d035294401, type: 3}
+  requiredItems:
+  - item: {fileID: 11400000, guid: 7071727374757677787970a1b2c3d4eb, type: 2}
+    amount: 200
+  - item: {fileID: 11400000, guid: 61b810ccecfea014ebb50eda1ac4dcf9, type: 2}
+    amount: 600
+  requiredResearches:
+  - {fileID: 11400000, guid: 90243480eaf3481b8cb579a7a2c66f03, type: 2}
+  - {fileID: 11400000, guid: ad1524a5bc6d4e8ba7728543c8ca539a, type: 2}
+  unlockedBuildings:
+  - {fileID: 11400000, guid: 9a1b2c3d4e5f60718293a4b5c6d7e8f0, type: 2}
+  unlockedRecipes: []
+  rubyReward: 0

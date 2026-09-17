@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5e80bec2d6738574d9e628019f2441e3, type: 3}
+  m_Name: StorageContainer
+  m_EditorClassIdentifier: 
+  id: storage_container
+  displayName: "\u0421\u043A\u043B\u0430\u0434"
+  description: "\u0421\u043A\u043B\u0430\u0434 1x1. \u041E\u0434\u0438\u043D \u0442\u0438\u043F
+    \u043F\u0440\u0435\u0434\u043C\u0435\u0442\u0430, \u0434\u0432\u0430 \u0441\u0442\u0435\u043A\u0430.
+    \u0420\u0435\u0446\u0435\u043F\u0442\u0430 \u043D\u0435\u0442."
+  prefab: {fileID: 8100000001, guid: b2c8d4e6f1a7493c8b0e5d7a2c4f6189, type: 3}
+  ghostPrefab: {fileID: 1181322796942568649, guid: e61e5e4e95a99564bb8da0ec03f38300, type: 3}
+  cornerPrefab: {fileID: 0}
+  cornerGhostPrefab: {fileID: 0}
+  isPipe: 0
+  icon: {fileID: 1818225706, guid: 596b420f5547bbe448be86e376cc3ec5, type: 3}
+  size: {x: 1, y: 1}
+  canRotate: 1
+  buildCost: 70
+  requiresResourceNode: 0
+  allowOnWater: 0
+  requiresWater: 0

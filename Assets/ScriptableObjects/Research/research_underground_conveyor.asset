@@ -1,0 +1,32 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 943e43c1941a13b46bc200ba529369b4, type: 3}
+  m_Name: research_underground_conveyor
+  m_EditorClassIdentifier: 
+  id: research_underground_conveyor
+  displayName: "\u041F\u043E\u0434\u0437\u0435\u043C\u043D\u044B\u0439 \u043A\u043E\u043D\u0432\u0435\u0439\u0435\u0440"
+  description: "\u0412\u0445\u043E\u0434 \u0438 \u0432\u044B\u0445\u043E\u0434 \u043F\u043E
+    \u043F\u0440\u044F\u043C\u043E\u0439, \u0434\u043E 5 \u043A\u043B\u0435\u0442\u043E\u043A
+    \u043C\u0435\u0436\u0434\u0443 \u043D\u0438\u043C\u0438."
+  icon: {fileID: 21300000, guid: ff51556fed59a0944b6a0d632f66fe27, type: 3}
+  requiredItems:
+  - item: {fileID: 11400000, guid: 9d495ae5fdb87d6479f40cd1e73fed53, type: 2}
+    amount: 200
+  - item: {fileID: 11400000, guid: 69846796d4fa8ff47bc3d0a2f65ab91a, type: 2}
+    amount: 80
+  requiredResearches:
+  - {fileID: 11400000, guid: 7cd407ca38cd45708dad3df5bd252587, type: 2}
+  - {fileID: 11400000, guid: af6e4f12a2e446168c2cc29b79f70dd9, type: 2}
+  unlockedBuildings:
+  - {fileID: 11400000, guid: c8d1e2f3a4b5061728394a5b6c7d8e90, type: 2}
+  unlockedRecipes: []
+  rubyReward: 0

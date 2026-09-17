@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 943e43c1941a13b46bc200ba529369b4, type: 3}
+  m_Name: research_assembler
+  m_EditorClassIdentifier: 
+  id: research_assembler
+  displayName: "Сборщик"
+  description: "Открывает сборщик."
+  icon: {fileID: 1772087756, guid: 639a2c7a617c9ab4e9eefc73938318e8, type: 3}
+  requiredItems:
+  - item: {fileID: 11400000, guid: 725d7895721123d41a73f359454d1d9c, type: 2}
+    amount: 350
+  requiredResearches:
+  - {fileID: 11400000, guid: 657b68c631014ee686428b919844b4ab, type: 2}
+  unlockedBuildings:
+  - {fileID: 11400000, guid: a6f6efc8d7ff3de4d88c3e747f9532ef, type: 2}
+  unlockedRecipes: []
+  rubyReward: 0

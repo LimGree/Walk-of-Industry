@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 943e43c1941a13b46bc200ba529369b4, type: 3}
+  m_Name: research_smelter
+  m_EditorClassIdentifier: 
+  id: research_smelter
+  displayName: "Печь"
+  description: "Открывает плавильню."
+  icon: {fileID: 921189587, guid: afb6d635905e5b146bb278982b78d174, type: 3}
+  requiredItems:
+  - item: {fileID: 11400000, guid: 21443c75f9e56ce45becb60f505bf5b9, type: 2}
+    amount: 140
+  - item: {fileID: 11400000, guid: 43ec0e9396945c64bbd4da95fb1e7f16, type: 2}
+    amount: 140
+  requiredResearches: []
+  unlockedBuildings:
+  - {fileID: 11400000, guid: fb3560e85bd56c349aa3d7327bd69798, type: 2}
+  unlockedRecipes: []
+  rubyReward: 0

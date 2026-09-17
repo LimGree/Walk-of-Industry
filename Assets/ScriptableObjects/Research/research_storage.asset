@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 943e43c1941a13b46bc200ba529369b4, type: 3}
+  m_Name: research_storage
+  m_EditorClassIdentifier: 
+  id: research_storage
+  displayName: "Склад"
+  description: "Хранение предметов."
+  icon: {fileID: 1818225706, guid: 596b420f5547bbe448be86e376cc3ec5, type: 3}
+  requiredItems:
+  - item: {fileID: 11400000, guid: 02edf08369bf87047ac1ac3d815c2513, type: 2}
+    amount: 400
+  - item: {fileID: 11400000, guid: 61b810ccecfea014ebb50eda1ac4dcf9, type: 2}
+    amount: 250
+  requiredResearches:
+  - {fileID: 11400000, guid: 63c4f9723138470f8e69f803bc21132b, type: 2}
+  - {fileID: 11400000, guid: 0331235024c64137806a07b3dccfcf56, type: 2}
+  unlockedBuildings:
+  - {fileID: 11400000, guid: 7e4d8c2b91a64f0e9c3b5a7d1e8f2406, type: 2}
+  unlockedRecipes: []
+  rubyReward: 0

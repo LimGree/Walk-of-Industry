@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 943e43c1941a13b46bc200ba529369b4, type: 3}
+  m_Name: research_mechanical_engineering
+  m_EditorClassIdentifier: 
+  id: research_mechanical_engineering
+  displayName: Mechanical Engineering
+  description: Unlocks basic components
+  icon: {fileID: 21300000, guid: 25092a47e21a635409f58d0990b65914, type: 3}
+  requiredItems:
+  - item: {fileID: 11400000, guid: 725d7895721123d41a73f359454d1d9c, type: 2}
+    amount: 125
+  - item: {fileID: 11400000, guid: d94633f2ce269a444bcaf41dd83cc631, type: 2}
+    amount: 125
+  requiredResearches:
+  - {fileID: 11400000, guid: 246ed4fc676b61b4eb3e9df45a3e7e71, type: 2}
+  unlockedBuildings:
+  - {fileID: 11400000, guid: aa77969c1caec2b4b9322b591842ed57, type: 2}
+  unlockedRecipes:
+  - {fileID: 11400000, guid: a716257a16aa6bd44bfc46e306bf49f4, type: 2}
+  - {fileID: 11400000, guid: 90a0fa676baa44040816a68a59580085, type: 2}
+  - {fileID: 11400000, guid: 839733da1fcbd8743b529f300933743c, type: 2}
+  - {fileID: 11400000, guid: 987c1eb2a3bb41b4da0c3ccddb9b22c7, type: 2}
+  - {fileID: 11400000, guid: e6f35c7cda8eb8f41a7b97b1bec7536d, type: 2}
+  rubyReward: 15

@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 943e43c1941a13b46bc200ba529369b4, type: 3}
+  m_Name: research_chemical_plant
+  m_EditorClassIdentifier: 
+  id: research_chemical_plant
+  displayName: "Химзавод"
+  description: "Жидкость и твёрдое."
+  icon: {fileID: 1135645421, guid: 6dccd2373c25c8c449890c6d0994e76b, type: 3}
+  requiredItems:
+  - item: {fileID: 11400000, guid: c4d5e6f708193a4b5c6d7e8f901a2b4d, type: 2}
+    amount: 400
+  - item: {fileID: 11400000, guid: 1011121314151617181920a1b2c3d4e5, type: 2}
+    amount: 400
+  requiredResearches:
+  - {fileID: 11400000, guid: fbd03714653a4f228b1678998ab438d6, type: 2}
+  - {fileID: 11400000, guid: 5394c62a58434d198d58ffb44f61d965, type: 2}
+  unlockedBuildings:
+  - {fileID: 11400000, guid: f30415263748596a7b8c9d0e1f203142, type: 2}
+  unlockedRecipes: []
+  rubyReward: 0

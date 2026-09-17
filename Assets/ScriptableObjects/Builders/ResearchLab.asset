@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5e80bec2d6738574d9e628019f2441e3, type: 3}
+  m_Name: ResearchLab
+  m_EditorClassIdentifier: 
+  id: research_lab
+  displayName: Research Lab
+  description: Used to research new technologies
+  prefab: {fileID: 8125453562236294625, guid: cc9c51e3bf186cd4ca039425a7f58b52, type: 3}
+  ghostPrefab: {fileID: 5869630441170601528, guid: 0bc42d03d838ed544bb9ad2afc5183ca, type: 3}
+  cornerPrefab: {fileID: 0}
+  icon: {fileID: -1953551450, guid: a6d007f140a32014c9248942a233e39b, type: 3}
+  size: {x: 1, y: 1}
+  canRotate: 1
+  buildCost: 280

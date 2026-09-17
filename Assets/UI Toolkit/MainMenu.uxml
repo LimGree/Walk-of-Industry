@@ -1,0 +1,10 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <ui:Style src="Industry.uss" />
+    <ui:VisualElement name="Bg" class="bg-menu">
+        <ui:VisualElement name="Home" class="panel panel-menu" />
+        <ui:VisualElement name="Worlds" class="panel panel-menu" />
+        <ui:VisualElement name="Create" class="panel panel-menu" />
+        <ui:VisualElement name="Settings" class="panel panel-menu" />
+        <ui:VisualElement name="Keys" class="panel panel-menu" />
+    </ui:VisualElement>
+</ui:UXML>

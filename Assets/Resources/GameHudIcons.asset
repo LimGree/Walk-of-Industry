@@ -1,0 +1,16 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a1b2c3d4e5f60718293a4b5c6d7e8f10, type: 3}
+  m_Name: GameHudIcons
+  m_EditorClassIdentifier: 
+  coin: {fileID: -1494868326, guid: 857369547f9d02d458a97af010a63c5f, type: 3}
+  ruby: {fileID: 1991045032, guid: 9b0db878ec9f22242a5460f24b6c037c, type: 3}

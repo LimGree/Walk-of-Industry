@@ -1,0 +1,13 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <ui:Style src="Industry.uss" />
+    <ui:VisualElement name="Mini" class="mini-map map-frame">
+        <ui:Image name="MiniImage" />
+    </ui:VisualElement>
+    <ui:VisualElement name="FullMap" class="screen" picking-mode="Position">
+        <ui:VisualElement name="Dim" class="dim" picking-mode="Position" />
+        <ui:VisualElement name="FullWrap" class="map-frame map-full-wrap">
+            <ui:Image name="FullImage" class="map-full" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+    <ui:Label name="Tip" text="" class="tooltip" picking-mode="Ignore" />
+</ui:UXML>

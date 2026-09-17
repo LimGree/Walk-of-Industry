@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 943e43c1941a13b46bc200ba529369b4, type: 3}
+  m_Name: research_refinery
+  m_EditorClassIdentifier: 
+  id: research_refinery
+  displayName: "Нефтезавод"
+  description: "Переработка нефти."
+  icon: {fileID: 562620772, guid: db713e42bfd711146aa7ba9533eb3583, type: 3}
+  requiredItems:
+  - item: {fileID: 11400000, guid: 3031323334353637383930a1b2c3d4e7, type: 2}
+    amount: 400
+  - item: {fileID: 11400000, guid: 61b810ccecfea014ebb50eda1ac4dcf9, type: 2}
+    amount: 300
+  requiredResearches:
+  - {fileID: 11400000, guid: 5c7490ffac324a509cfc70ed3360fee5, type: 2}
+  - {fileID: 11400000, guid: 2a4962a0ba9c4e7bb792bc326a6c757f, type: 2}
+  unlockedBuildings:
+  - {fileID: 11400000, guid: 0112233445566778899aabbccddeef00, type: 2}
+  unlockedRecipes: []
+  rubyReward: 0

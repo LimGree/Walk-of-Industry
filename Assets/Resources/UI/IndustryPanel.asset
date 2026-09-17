@@ -1,0 +1,38 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 19101, guid: 0000000000000000e000000000000000, type: 0}
+  m_Name: IndustryPanel
+  m_EditorClassIdentifier: UnityEngine.dll::UnityEngine.UIElements.PanelSettings
+  themeUss: {fileID: 11400000, guid: 3c4d5e6f708192a3b4c5d6e7f8091123, type: 3}
+  m_TargetTexture: {fileID: 0}
+  m_RenderMode: 0
+  m_ColliderUpdateMode: 0
+  m_ColliderIsTrigger: 1
+  scaleMode: 1
+  referenceResolution: {x: 1920, y: 1080}
+  screenMatchMode: 0
+  match: 0.5
+  referenceDpi: 96
+  fallbackDpi: 96
+  defaultSpriteDpi: 128
+  dynamicAtlasSettings:
+    m_MinAtlasSize: 64
+    m_MaxAtlasSize: 4096
+    m_MaxSubTextureSize: 64
+    m_ActiveFilters: -1
+  textSettings: {fileID: 0}
+  targetDisplay: 0
+  clearSettings:
+    clearColorValue: {r: 0, g: 0, b: 0, a: 0}
+    clearDepthStencil: 1
+    clearColor: 0
+  vertexBudget: 0

@@ -1,0 +1,17 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <ui:Style src="Industry.uss" />
+    <ui:VisualElement name="Overlay" class="screen" picking-mode="Position">
+        <ui:VisualElement name="Dim" class="dim" picking-mode="Position" />
+        <ui:VisualElement name="Panel" class="panel panel-wide">
+            <ui:VisualElement name="Header" class="header">
+                <ui:Label name="Title" text="Строительство" class="title" />
+                <ui:Button name="Close" class="btn close">
+                    <ui:Label text="✕" class="btn-label" />
+                </ui:Button>
+            </ui:VisualElement>
+            <ui:ScrollView name="BuildGrid" class="scroll">
+                <ui:VisualElement name="Cards" class="grid" />
+            </ui:ScrollView>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5e80bec2d6738574d9e628019f2441e3, type: 3}
+  m_Name: Constructor
+  m_EditorClassIdentifier: 
+  id: constructor
+  displayName: Constructor
+  description: 2x2 constructor. Two inputs, one output. Select a recipe in the machine UI.
+  prefab: {fileID: 8355325514519471134, guid: a8cbb2b60694e584ab12722b1bb2a641, type: 3}
+  ghostPrefab: {fileID: 4070584201672440629, guid: 07a677b75905f394d8cfbbc68fa82f7a, type: 3}
+  cornerPrefab: {fileID: 0}
+  icon: {fileID: -431311597, guid: 122abf928cb191048b8300d27f4a2d21, type: 3}
+  size: {x: 2, y: 2}
+  canRotate: 1
+  buildCost: 120

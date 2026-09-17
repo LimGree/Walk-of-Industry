@@ -1,0 +1,21 @@
+Walk of Industry — weather SFX credits
+======================================
+
+amb_rain.wav
+  Title:   Light rain loop (Mixkit #2393)
+  Source:  https://assets.mixkit.co/active_storage/sfx/2393/2393.wav
+  Page:    https://mixkit.co/free-sound-effects/rain/
+  License: Mixkit License (free for commercial use)
+           https://mixkit.co/license/#sfxFree
+
+world_thunder.wav
+  Title:   Thunder strike in storm (Mixkit #2405)
+  Source:  https://assets.mixkit.co/active_storage/sfx/2405/2405.wav
+  Page:    https://mixkit.co/free-sound-effects/rain/
+  License: Mixkit License (free for commercial use)
+           https://mixkit.co/license/#sfxFree
+
+Note: The older Mixkit preview/download paths (assets.mixkit.co/sfx/preview/...)
+returned HTTP 403. Current Mixkit CDN uses /active_storage/sfx/{id}/{id}.wav.
+Wikimedia Rain.ogg (commons/0/07/) and Thunder_crack.ogg (commons/7/79/) 404'd.
+Freesound preview URLs 404'd.

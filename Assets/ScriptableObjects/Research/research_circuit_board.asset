@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 943e43c1941a13b46bc200ba529369b4, type: 3}
+  m_Name: research_circuit_board
+  m_EditorClassIdentifier: 
+  id: research_circuit_board
+  displayName: "Плата"
+  description: "Плата в конструкторе."
+  icon: {fileID: 1694447370, guid: 746d3d9d4cb0f90448a502b696e280cc, type: 3}
+  requiredItems:
+  - item: {fileID: 11400000, guid: 8c467a15348d1394f9881d7282605663, type: 2}
+    amount: 250
+  - item: {fileID: 11400000, guid: 217f28faff3699148aee942274ec50ec, type: 2}
+    amount: 250
+  requiredResearches:
+  - {fileID: 11400000, guid: 71effd72167c404eaa4d90fdb276274d, type: 2}
+  - {fileID: 11400000, guid: 36f000e1c18e499981637e4cd62b8198, type: 2}
+  - {fileID: 11400000, guid: 073bcb93316e4470b9fc4aec97ba1b99, type: 2}
+  unlockedBuildings: []
+  unlockedRecipes:
+  - {fileID: 11400000, guid: 93409f2ff3751df48b3e14c4044b4617, type: 2}
+  rubyReward: 0

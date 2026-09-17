@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 943e43c1941a13b46bc200ba529369b4, type: 3}
+  m_Name: research_cooper_ingot
+  m_EditorClassIdentifier: 
+  id: research_cooper_ingot
+  displayName: "Медный слиток"
+  description: "Плавка медной руды."
+  icon: {fileID: 1262354842, guid: 06bf46db109490846a323e57037fb042, type: 3}
+  requiredItems:
+  - item: {fileID: 11400000, guid: 43ec0e9396945c64bbd4da95fb1e7f16, type: 2}
+    amount: 200
+  requiredResearches:
+  - {fileID: 11400000, guid: c76fc1e111d54ed6bba3d6ec739c5f32, type: 2}
+  unlockedBuildings: []
+  unlockedRecipes:
+  - {fileID: 11400000, guid: 381105f3eae4e0d4ea85f7ad6a9c4f6b, type: 2}
+  rubyReward: 0

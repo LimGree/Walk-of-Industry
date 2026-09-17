@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 943e43c1941a13b46bc200ba529369b4, type: 3}
+  m_Name: research_plastic
+  m_EditorClassIdentifier: 
+  id: research_plastic
+  displayName: "Пластик"
+  description: "Пластик из нефти."
+  icon: {fileID: 1579123116, guid: 0d347c5e5ca30ec4e978d17b201d45b9, type: 3}
+  requiredItems:
+  - item: {fileID: 11400000, guid: e55a66778899aabbccddeef001122334, type: 2}
+    amount: 800
+  requiredResearches:
+  - {fileID: 11400000, guid: 05ebe19147b046d4ac8bfc78f701398f, type: 2}
+  unlockedBuildings: []
+  unlockedRecipes:
+  - {fileID: 11400000, guid: c3d4e5f60718293a4b5c6d7e8f901a2b, type: 2}
+  rubyReward: 0

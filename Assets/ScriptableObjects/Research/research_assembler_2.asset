@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 943e43c1941a13b46bc200ba529369b4, type: 3}
+  m_Name: research_assembler_2
+  m_EditorClassIdentifier: 
+  id: research_assembler_2
+  displayName: "Сборщик II"
+  description: "Апгрейд сборщика (тот же id)."
+  icon: {fileID: 1772087756, guid: 639a2c7a617c9ab4e9eefc73938318e8, type: 3}
+  requiredItems:
+  - item: {fileID: 11400000, guid: 61b810ccecfea014ebb50eda1ac4dcf9, type: 2}
+    amount: 500
+  - item: {fileID: 11400000, guid: b1aca432dc13c5543bb902c515721848, type: 2}
+    amount: 600
+  requiredResearches:
+  - {fileID: 11400000, guid: 66a5fef8bdb442f79a54060ba6efd7f5, type: 2}
+  - {fileID: 11400000, guid: 88e20895b0344b47b39ca8ec4f33159c, type: 2}
+  unlockedBuildings: []
+  unlockedRecipes: []
+  rubyReward: 0

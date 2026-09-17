@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5e80bec2d6738574d9e628019f2441e3, type: 3}
+  m_Name: FluidStorageTank
+  m_EditorClassIdentifier: 
+  id: fluid_storage_tank
+  displayName: "\u0420\u0435\u0437\u0435\u0440\u0432\u0443\u0430\u0440"
+  description: "\u0425\u0440\u0430\u043D\u0438\u043B\u0438\u0449\u0435 \u0436\u0438\u0434\u043A\u043E\u0441\u0442\u0435\u0439
+    1x1. \u041E\u0434\u0438\u043D \u0442\u0438\u043F, \u0442\u043E\u043B\u044C\u043A\u043E
+    \u0442\u0440\u0443\u0431\u044B."
+  prefab: {fileID: 8200000001, guid: e3f405162738495a6b7c8d9e0f1a2b3c, type: 3}
+  ghostPrefab: {fileID: 919132149155446097, guid: 86dad54bdb3ef114bbcb152b8820ec53, type: 3}
+  cornerPrefab: {fileID: 0}
+  cornerGhostPrefab: {fileID: 0}
+  isPipe: 0
+  icon: {fileID: -1152173622, guid: d394b77c6dc91db4b988c9ebb562db08, type: 3}
+  size: {x: 1, y: 1}
+  canRotate: 1
+  buildCost: 70
+  requiresResourceNode: 0
+  allowOnWater: 0
+  requiresWater: 0

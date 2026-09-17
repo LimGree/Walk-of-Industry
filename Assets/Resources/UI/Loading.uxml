@@ -1,0 +1,12 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <ui:Style src="Industry.uss" />
+    <ui:VisualElement name="Bg" class="bg-menu">
+        <ui:VisualElement name="Panel" class="panel panel-menu">
+            <ui:Label name="Title" text="WALK OF INDUSTRY" class="title-hero" />
+            <ui:Label name="Status" text="Загрузка..." class="muted" />
+            <ui:VisualElement name="Progress" class="progress-track">
+                <ui:VisualElement name="Fill" class="progress-fill" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

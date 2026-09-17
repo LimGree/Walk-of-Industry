@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 943e43c1941a13b46bc200ba529369b4, type: 3}
+  m_Name: research_wire
+  m_EditorClassIdentifier: 
+  id: research_wire
+  displayName: "Провод"
+  description: "Провод из медного слитка."
+  icon: {fileID: 1555884532, guid: 30ee4090c2285f2418a3b2053e90d2c2, type: 3}
+  requiredItems:
+  - item: {fileID: 11400000, guid: d94633f2ce269a444bcaf41dd83cc631, type: 2}
+    amount: 300
+  requiredResearches:
+  - {fileID: 11400000, guid: 30b30a210e1b4538afb4eab773d4170e, type: 2}
+  - {fileID: 11400000, guid: d6a29259111e4d4cb5433deec828ab42, type: 2}
+  unlockedBuildings: []
+  unlockedRecipes:
+  - {fileID: 11400000, guid: 987c1eb2a3bb41b4da0c3ccddb9b22c7, type: 2}
+  rubyReward: 0

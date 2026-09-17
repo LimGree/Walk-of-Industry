@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 943e43c1941a13b46bc200ba529369b4, type: 3}
+  m_Name: research_electronics
+  m_EditorClassIdentifier: 
+  id: research_electronics
+  displayName: "\u042D\u043B\u0435\u043A\u0442\u0440\u043E\u043D\u0438\u043A\u0430 "
+  description: "\u043F\u043E\u0434\u0433\u043E\u0442\u043E\u0432\u043A\u0430 \u043A
+    \u044D\u043B\u0435\u043A\u0442\u0440\u043E\u043D\u0438\u043A\u0435"
+  icon: {fileID: 21300000, guid: 9a08b5848936ba54287bc06b81fb8dea, type: 3}
+  requiredItems:
+  - item: {fileID: 11400000, guid: 9d495ae5fdb87d6479f40cd1e73fed53, type: 2}
+    amount: 75
+  - item: {fileID: 11400000, guid: 217f28faff3699148aee942274ec50ec, type: 2}
+    amount: 75
+  requiredResearches:
+  - {fileID: 11400000, guid: 48c17754ce4d9a549adea9119d631c5a, type: 2}
+  unlockedBuildings:
+  - {fileID: 11400000, guid: 8f4c2a91d6e74b3a9c1e05f28a7d4b60, type: 2}
+  - {fileID: 11400000, guid: 7e4d8c2b91a64f0e9c3b5a7d1e8f2406, type: 2}
+  unlockedRecipes:
+  - {fileID: 11400000, guid: 93409f2ff3751df48b3e14c4044b4617, type: 2}
+  - {fileID: 11400000, guid: 3ac3b4cddfa000240af325013c8e7343, type: 2}
+  rubyReward: 15

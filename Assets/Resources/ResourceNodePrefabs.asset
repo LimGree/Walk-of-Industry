@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b8e2c4a61f7349d0a5c7e9b1d3f40628, type: 3}
+  m_Name: ResourceNodePrefabs
+  m_EditorClassIdentifier: 
+  sand: {fileID: 816964031438553366, guid: c33db3da845c76a47be40ed5a4039b54, type: 3}
+  stone: {fileID: 3141189145875943030, guid: f276cd36c0323d840812dc96a7e6ebc5, type: 3}
+  coal: {fileID: 6490988887556266412, guid: eda4f94b2e7e28c4ab6674bd9f010e6a, type: 3}
+  copper: {fileID: 100563569661839148, guid: cc46cae347e1d7b41801e3381ec4b90a, type: 3}
+  iron: {fileID: 8408806272572006989, guid: 96852c27febf3144a94e1980180177cd, type: 3}
+  sulfur: {fileID: 2757034899572001001, guid: 271be1c58c2c25e46a4ea8e45c3f51dd, type: 3}
+  tree: {fileID: 6619384940760932355, guid: dba4c6fec26a09d43bb9ac9e26b68ce3, type: 3}

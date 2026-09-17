@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9d24a77eadee1144d9eb73d31dc37649, type: 3}
+  m_Name: recipe_iron_rod
+  m_EditorClassIdentifier: 
+  id: recipe_iron_rod
+  displayName: "\u0416\u0435\u043B\u0435\u0437\u043D\u044B\u0439 \u0441\u0442\u0435\u0440\u0436\u0435\u043D\u044C "
+  inputs:
+  - item: {fileID: 11400000, guid: 725d7895721123d41a73f359454d1d9c, type: 2}
+    amount: 1
+  outputs:
+  - item: {fileID: 11400000, guid: cb75865d8806d3241bface48dad202fd, type: 2}
+    amount: 1
+  craftTime: 1
+  requiredBuilding: {fileID: 11400000, guid: a6f6efc8d7ff3de4d88c3e747f9532ef, type: 2}

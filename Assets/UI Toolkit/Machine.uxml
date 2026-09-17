@@ -1,0 +1,21 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <ui:Style src="Industry.uss" />
+    <ui:VisualElement name="Overlay" class="screen" picking-mode="Position">
+        <ui:VisualElement name="Dim" class="dim" picking-mode="Position" />
+        <ui:VisualElement name="Panel" class="panel panel-wide">
+            <ui:VisualElement name="Header" class="header">
+                <ui:Image name="HeaderIcon" class="header-icon" />
+                <ui:Label name="Title" text="Building" class="title" />
+                <ui:Button name="Close" class="btn close">
+                    <ui:Label text="✕" class="btn-label" />
+                </ui:Button>
+            </ui:VisualElement>
+            <ui:Label name="Status" text="" class="muted" />
+            <ui:VisualElement name="Progress" class="progress-track">
+                <ui:VisualElement name="Fill" class="progress-fill" />
+            </ui:VisualElement>
+            <ui:VisualElement name="Tabs" class="tab-row" />
+            <ui:VisualElement name="Body" class="col grow" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

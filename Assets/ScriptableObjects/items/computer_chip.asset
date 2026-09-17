@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 904fa399cb28cce4fa75cad21e07efbf, type: 3}
+  m_Name: computer_chip
+  m_EditorClassIdentifier: 
+  id: computer_chip
+  displayName: "Компьютерный чип"
+  description: "Продвинутый компонент."
+  icon: {fileID: 1101001001, guid: fc1b15f3771ad9243b987a29e9ea4717, type: 3}
+  worldPrefab: {fileID: 919132149155446097, guid: 8a9878a2b3e3c3145bad6db89415b2e7, type: 3}
+  maxStack: 100
+  isFuel: 0
+  fuelValue: 0
+  isFluid: 0
+  sellValue: 16

@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 943e43c1941a13b46bc200ba529369b4, type: 3}
+  m_Name: research_pipe
+  m_EditorClassIdentifier: 
+  id: research_pipe
+  displayName: "Труба"
+  description: "Логистика жидкостей."
+  icon: {fileID: 776869070, guid: 5f2712f7424a7d949a1cac57b9677150, type: 3}
+  requiredItems:
+  - item: {fileID: 11400000, guid: 3031323334353637383930a1b2c3d4e7, type: 2}
+    amount: 300
+  requiredResearches:
+  - {fileID: 11400000, guid: 4b30179e820845c9b9670c5629df3d74, type: 2}
+  - {fileID: 11400000, guid: 63c4f9723138470f8e69f803bc21132b, type: 2}
+  unlockedBuildings:
+  - {fileID: 11400000, guid: d44f5566778899aabbccddeef0011222, type: 2}
+  unlockedRecipes: []
+  rubyReward: 0

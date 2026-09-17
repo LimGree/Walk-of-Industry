@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5e80bec2d6738574d9e628019f2441e3, type: 3}
+  m_Name: Assembler
+  m_EditorClassIdentifier: 
+  id: assembler
+  displayName: Assembler
+  description: Crafts items from resources
+  prefab: {fileID: 8355325514519471134, guid: 735fe68b4ba56b84ba6b36c448cb7b69, type: 3}
+  ghostPrefab: {fileID: 2647882281371017679, guid: 5f987cf987c548242b4044c57ef21111, type: 3}
+  cornerPrefab: {fileID: 0}
+  icon: {fileID: 1772087756, guid: 639a2c7a617c9ab4e9eefc73938318e8, type: 3}
+  size: {x: 1, y: 1}
+  canRotate: 1
+  buildCost: 210

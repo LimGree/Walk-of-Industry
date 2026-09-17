@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 904fa399cb28cce4fa75cad21e07efbf, type: 3}
+  m_Name: plastic
+  m_EditorClassIdentifier: 
+  id: plastic
+  displayName: "\u041F\u043B\u0430\u0441\u0442\u0438\u043A"
+  description: "\u041F\u0435\u0440\u0435\u0440\u0430\u0431\u043E\u0442\u0430\u043D\u043D\u0430\u044F \u043D\u0435\u0444\u0442\u044C."
+  icon: {fileID: 1579123116, guid: 0d347c5e5ca30ec4e978d17b201d45b9, type: 3}
+  worldPrefab: {fileID: 919132149155446097, guid: 7d9611002e8db9d46a82e0fed7e1cd4a, type: 3}
+  maxStack: 100
+  isFuel: 0
+  fuelValue: 0
+  isFluid: 0
+  sellValue: 4

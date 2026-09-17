@@ -1,0 +1,32 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5e80bec2d6738574d9e628019f2441e3, type: 3}
+  m_Name: ChemicalPlant
+  m_EditorClassIdentifier: 
+  id: chemical_plant
+  displayName: "\u0425\u0438\u043C. \u0437\u0430\u0432\u043E\u0434"
+  description: "\u0421\u043B\u043E\u0436\u043D\u0430\u044F \u0445\u0438\u043C\u0438\u044F:
+    \u0436\u0438\u0434\u043A\u043E\u0441\u0442\u0438 \u0438 \u0442\u0432\u0451\u0440\u0434\u044B\u0435
+    \u043F\u0440\u0435\u0434\u043C\u0435\u0442\u044B. \u041D\u0443\u0436\u0435\u043D
+    \u0434\u043B\u044F \u0431\u0430\u0442\u0430\u0440\u0435\u0438."
+  prefab: {fileID: 1918881702691272596, guid: 3a6036b7b5cdcc44f9a81bcc1957b878, type: 3}
+  ghostPrefab: {fileID: 8956078780195151295, guid: f5c2a9e0e40d95f4da0d60d3d2092e9c, type: 3}
+  cornerPrefab: {fileID: 0}
+  cornerGhostPrefab: {fileID: 0}
+  isPipe: 0
+  icon: {fileID: 1135645421, guid: 6dccd2373c25c8c449890c6d0994e76b, type: 3}
+  size: {x: 3, y: 3}
+  canRotate: 1
+  buildCost: 350
+  requiresResourceNode: 0
+  allowOnWater: 0
+  requiresWater: 0

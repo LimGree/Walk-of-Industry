@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5e80bec2d6738574d9e628019f2441e3, type: 3}
+  m_Name: Conveyor
+  m_EditorClassIdentifier: 
+  id: conveyor
+  displayName: Conveyor Belt
+  description: Auto straight / corner / T / sides / triple belt
+  prefab: {fileID: 2231626150087735378, guid: acd66be220377a34299666b51d5a9028, type: 3}
+  ghostPrefab: {fileID: 3990423543645863618, guid: 5a4479ae761e1de4cba4c055cf89b480, type: 3}
+  cornerPrefab: {fileID: 8100000000, guid: b7e4c9a12f3d4e8a9c0b1d2e3f4a5b6c, type: 3}
+  cornerGhostPrefab: {fileID: 5027249887306243875, guid: c033a1f0eaf51214a8cc8cd361acd5e6, type: 3}
+  teePrefab: {fileID: 9100000000, guid: 7c4e91a2b8d34f6a9e1c5d0f3a2b8c47, type: 3}
+  teeGhostPrefab: {fileID: 4705616461083741694, guid: 824241efa1369604286674bed6814a59, type: 3}
+  sidesPrefab: {fileID: 9110000000, guid: 2f9d6b1e4a8c4703b5e7d9c1a3f0e826, type: 3}
+  sidesGhostPrefab: {fileID: 4306973700708927126, guid: e4e848496bf9f3b41baef2b7eecc8796, type: 3}
+  triplePrefab: {fileID: 9120000000, guid: 9a3e5c7b1d4f4826ae90c2b4d6f8e135, type: 3}
+  tripleGhostPrefab: {fileID: 1604077222176068018, guid: 0f154a113c5821a4f9d1f9b0efa4ecfa, type: 3}
+  isPipe: 0
+  icon: {fileID: -1563140367, guid: fae6f2d00d236144b8941c0159b60513, type: 3}
+  size: {x: 1, y: 1}
+  canRotate: 1
+  buildCost: 7
+  requiresResourceNode: 0
+  allowOnWater: 0
+  requiresWater: 0

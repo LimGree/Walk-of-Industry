@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 943e43c1941a13b46bc200ba529369b4, type: 3}
+  m_Name: research_iron_rod
+  m_EditorClassIdentifier: 
+  id: research_iron_rod
+  displayName: "Железный стержень"
+  description: "Стержень из слитка."
+  icon: {fileID: -339226913, guid: e8ecf8dd759667e4fb2e2dd65a7e28e1, type: 3}
+  requiredItems:
+  - item: {fileID: 11400000, guid: 725d7895721123d41a73f359454d1d9c, type: 2}
+    amount: 500
+  requiredResearches:
+  - {fileID: 11400000, guid: 30b30a210e1b4538afb4eab773d4170e, type: 2}
+  - {fileID: 11400000, guid: 657b68c631014ee686428b919844b4ab, type: 2}
+  unlockedBuildings: []
+  unlockedRecipes:
+  - {fileID: 11400000, guid: 90a0fa676baa44040816a68a59580085, type: 2}
+  rubyReward: 0

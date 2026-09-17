@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 943e43c1941a13b46bc200ba529369b4, type: 3}
+  m_Name: research_fluid_tank
+  m_EditorClassIdentifier: 
+  id: research_fluid_tank
+  displayName: "Резервуар"
+  description: "Склад жидкостей."
+  icon: {fileID: -1152173622, guid: d394b77c6dc91db4b988c9ebb562db08, type: 3}
+  requiredItems:
+  - item: {fileID: 11400000, guid: 3031323334353637383930a1b2c3d4e7, type: 2}
+    amount: 200
+  - item: {fileID: 11400000, guid: 02edf08369bf87047ac1ac3d815c2513, type: 2}
+    amount: 2000
+  requiredResearches:
+  - {fileID: 11400000, guid: b7b4445bdfea47269a84c316dc35fde1, type: 2}
+  - {fileID: 11400000, guid: ad1524a5bc6d4e8ba7728543c8ca539a, type: 2}
+  unlockedBuildings:
+  - {fileID: 11400000, guid: a1b2c3d4e5f60718293a4b5c6d7e8f91, type: 2}
+  unlockedRecipes: []
+  rubyReward: 0

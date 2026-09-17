@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 943e43c1941a13b46bc200ba529369b4, type: 3}
+  m_Name: research_battery
+  m_EditorClassIdentifier: 
+  id: research_battery
+  displayName: "Батарея"
+  description: "Батарея на химзаводе."
+  icon: {fileID: 1101001003, guid: 77ab8cf357f7e834d8d8d4633fe7e642, type: 3}
+  requiredItems:
+  - item: {fileID: 11400000, guid: c4d5e6f708193a4b5c6d7e8f901a2b4d, type: 2}
+    amount: 400
+  - item: {fileID: 11400000, guid: 1011121314151617181920a1b2c3d4e5, type: 2}
+    amount: 200
+  requiredResearches:
+  - {fileID: 11400000, guid: 992e8576437b430d834d4fff67f6b384, type: 2}
+  - {fileID: 11400000, guid: fbd03714653a4f228b1678998ab438d6, type: 2}
+  - {fileID: 11400000, guid: 5394c62a58434d198d58ffb44f61d965, type: 2}
+  unlockedBuildings: []
+  unlockedRecipes:
+  - {fileID: 11400000, guid: bb15263748596a7b8c9d0e1f20314203, type: 2}
+  rubyReward: 0

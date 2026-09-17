@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 943e43c1941a13b46bc200ba529369b4, type: 3}
+  m_Name: research_water_extractor
+  m_EditorClassIdentifier: 
+  id: research_water_extractor
+  displayName: "Водокачка"
+  description: "Добыча воды."
+  icon: {fileID: 918274653, guid: 293e319f4abb35a419e4a1145deb62a2, type: 3}
+  requiredItems:
+  - item: {fileID: 11400000, guid: 3031323334353637383930a1b2c3d4e7, type: 2}
+    amount: 200
+  - item: {fileID: 11400000, guid: 9e2b3f8fe9e45ad45b3cc57ced5b0110, type: 2}
+    amount: 400
+  requiredResearches:
+  - {fileID: 11400000, guid: 2a4962a0ba9c4e7bb792bc326a6c757f, type: 2}
+  - {fileID: 11400000, guid: 205564eef0984e59b13b3d7de7101745, type: 2}
+  unlockedBuildings:
+  - {fileID: 11400000, guid: 9091929394959697989990a1b2c3d4ed, type: 2}
+  unlockedRecipes: []
+  rubyReward: 0

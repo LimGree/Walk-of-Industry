@@ -1,0 +1,16 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <ui:Style src="Industry.uss" />
+    <ui:VisualElement name="HotbarRoot" class="hotbar-root" picking-mode="Ignore">
+        <ui:VisualElement name="Hotbar" class="hotbar" />
+    </ui:VisualElement>
+    <ui:VisualElement name="Bag" class="bag" picking-mode="Ignore">
+        <ui:VisualElement name="BagPanel" class="panel bag-panel">
+            <ui:Label name="T" text="ИНВЕНТАРЬ ЗДАНИЙ" class="bag-title" />
+            <ui:Label name="H" text="" class="bag-hint" />
+            <ui:ScrollView name="BagScroll" class="scroll">
+                <ui:VisualElement name="Grid" class="bag-grid" />
+            </ui:ScrollView>
+        </ui:VisualElement>
+    </ui:VisualElement>
+    <ui:VisualElement name="Ghost" class="drag-ghost" picking-mode="Ignore" />
+</ui:UXML>

@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 943e43c1941a13b46bc200ba529369b4, type: 3}
+  m_Name: research_sulfuric_acid
+  m_EditorClassIdentifier: 
+  id: research_sulfuric_acid
+  displayName: "Серная кислота"
+  description: "Кислота из серы, без воды."
+  icon: {fileID: 1959191853, guid: 145942397e14038409e00561a0944e50, type: 3}
+  requiredItems:
+  - item: {fileID: 11400000, guid: b2c3d4e5f60718293a4b5c6d7e8f9012, type: 2}
+    amount: 800
+  requiredResearches:
+  - {fileID: 11400000, guid: 05ebe19147b046d4ac8bfc78f701398f, type: 2}
+  unlockedBuildings: []
+  unlockedRecipes:
+  - {fileID: 11400000, guid: d5e6f708193a4b5c6d7e8f901a2b3c4e, type: 2}
+  rubyReward: 0

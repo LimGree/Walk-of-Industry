@@ -1,0 +1,9 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <ui:Style src="Industry.uss" />
+    <ui:VisualElement name="Pause" class="screen" picking-mode="Position">
+        <ui:VisualElement name="Dim" class="dim" picking-mode="Position" />
+        <ui:VisualElement name="Home" class="panel panel-menu" />
+        <ui:VisualElement name="Settings" class="panel panel-menu" />
+        <ui:VisualElement name="Keys" class="panel panel-menu" />
+    </ui:VisualElement>
+</ui:UXML>

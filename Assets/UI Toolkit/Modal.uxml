@@ -1,0 +1,18 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <ui:VisualElement name="Modal" class="modal-host screen" picking-mode="Position">
+        <ui:VisualElement name="Dim" class="dim" picking-mode="Position" />
+        <ui:VisualElement name="Box" class="modal-box">
+            <ui:Label name="T" class="heading-3" />
+            <ui:Label name="B" class="muted" />
+            <ui:TextField name="Field" class="field" />
+            <ui:VisualElement name="A" class="modal-actions row">
+                <ui:Button name="Cancel" class="btn btn-small btn-ghost">
+                    <ui:Label name="CancelLabel" text="Отмена" class="btn-label" />
+                </ui:Button>
+                <ui:Button name="Confirm" class="btn btn-small btn-primary">
+                    <ui:Label name="ConfirmLabel" text="ОК" class="btn-label" />
+                </ui:Button>
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

@@ -1,0 +1,16 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <ui:Style src="Industry.uss" />
+    <ui:VisualElement name="Chip" class="hud-chip" />
+    <ui:VisualElement name="Overlay" class="screen" picking-mode="Position">
+        <ui:VisualElement name="Dim" class="dim" picking-mode="Position" />
+        <ui:VisualElement name="Panel" class="panel panel-wide">
+            <ui:VisualElement name="Header" class="header">
+                <ui:Image name="HeaderIcon" class="header-icon" />
+                <ui:Label name="Title" text="Магазин" class="title" />
+                <ui:Button name="Close" class="btn close">
+                    <ui:Label text="✕" class="btn-label" />
+                </ui:Button>
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>
