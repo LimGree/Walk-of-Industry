@@ -50,6 +50,9 @@ public class PlayerBuilder : MonoBehaviour
         public Vector3 pos;
         public bool valid;
         public float yaw;
+        public BuildingData building;
+        public bool pairExit;
+        public int pairId;
     }
 
     bool strokeActive;
@@ -787,6 +790,12 @@ public class PlayerBuilder : MonoBehaviour
         }
 
         Quaternion rot = Quaternion.Euler(0f, strokeYaw, 0f);
+        if (CanAutoTunnelLine())
+        {
+            RebuildTunneledLine(extra, dir, step, rot);
+            return;
+        }
+
         bool isLab = IsResearchLabData(strokeBuilding);
         int labCapacity = GetLabCapacity();
         int labUsed = 0;
@@ -818,7 +827,7 @@ public class PlayerBuilder : MonoBehaviour
                     paid++;
             }
 
-            strokeSlots.Add(new LineSlot { min = min, pos = pos, valid = valid, yaw = strokeYaw });
+            strokeSlots.Add(MakeSlot(min, pos, valid, strokeYaw, strokeBuilding, false, 0));
         }
 
         ApplySmartYawToLastSlot();
@@ -836,6 +845,106 @@ public class PlayerBuilder : MonoBehaviour
             return MaxLineBuildings;
         return Mathf.Max(0, ResearchSystem.Instance.GetMaxResearchLabs()
             - ResearchSystem.Instance.CountPlacedLabs());
+    }
+
+    static LineSlot MakeSlot(
+        Vector2Int min,
+        Vector3 pos,
+        bool valid,
+        float yaw,
+        BuildingData building,
+        bool pairExit,
+        int pairId)
+    {
+        return new LineSlot
+        {
+            min = min,
+            pos = pos,
+            valid = valid,
+            yaw = yaw,
+            building = building,
+            pairExit = pairExit,
+            pairId = pairId
+        };
+    }
+
+    static BuildingData UndergroundBuilding()
+    {
+        return GameDatabase.FindBuilding("underground_conveyor");
+    }
+
+    bool CanAutoTunnelLine()
+    {
+        if (strokeBuilding == null || !strokeBuilding.IsConveyor || strokeBuilding.isPipe)
+            return false;
+        BuildingData ug = UndergroundBuilding();
+        if (ug == null || ug.pairExitPrefab == null)
+            return false;
+        return ResearchSystem.Instance != null && ResearchSystem.Instance.IsBuildingUnlocked(ug);
+    }
+
+    void RebuildTunneledLine(int extra, int dir, int step, Quaternion rot)
+    {
+        BuildingData ug = UndergroundBuilding();
+        int maxGap = ug != null ? Mathf.Max(1, ug.pairMaxGap) : 5;
+        int ugCost = Economy.BuildCost(ug);
+        int beltCost = Economy.BuildCost(strokeBuilding);
+        int coins = PlayerWallet.Instance != null ? PlayerWallet.Instance.Coins : int.MaxValue;
+        int spent = 0;
+        int nextPair = 1;
+        float yaw = strokeYaw;
+
+        int n = extra + 1;
+        var open = new bool[n];
+        var mins = new Vector2Int[n];
+        var poss = new Vector3[n];
+        for (int i = 0; i < n; i++)
+        {
+            mins[i] = strokeAxis.HasValue ? LineMinAt(i, dir, step) : strokeStartMin;
+            poss[i] = GridFootprint.MinCellToCenter(mins[i], strokeSize, CurrentPlacementPosition.y);
+            open[i] = IsPlacementValid(poss[i], rot, checkLabLimit: false);
+        }
+
+        int index = 0;
+        while (index < n)
+        {
+            if (open[index] && index + 1 < n && !open[index + 1])
+            {
+                int exitIndex = index + 1;
+                while (exitIndex < n && !open[exitIndex])
+                    exitIndex++;
+                int gap = exitIndex - index - 1;
+                if (exitIndex < n && open[exitIndex] && gap >= 1 && gap <= maxGap)
+                {
+                    bool canPay = ugCost <= 0 || spent + ugCost <= coins;
+                    strokeSlots.Add(MakeSlot(mins[index], poss[index], canPay, yaw, ug, false, nextPair));
+                    strokeSlots.Add(MakeSlot(mins[exitIndex], poss[exitIndex], canPay, yaw, ug, true, nextPair));
+                    nextPair++;
+                    if (canPay)
+                        spent += ugCost;
+                    index = exitIndex + 1;
+                    continue;
+                }
+            }
+
+            if (open[index])
+            {
+                bool canPay = beltCost <= 0 || spent + beltCost <= coins;
+                strokeSlots.Add(MakeSlot(mins[index], poss[index], canPay, yaw, strokeBuilding, false, 0));
+                if (canPay)
+                    spent += beltCost;
+            }
+            else
+                strokeSlots.Add(MakeSlot(mins[index], poss[index], false, yaw, strokeBuilding, false, 0));
+            index++;
+        }
+
+        ApplySmartYawToLastSlot();
+        if (strokeSlots.Count > 0)
+        {
+            CurrentPlacementPosition = strokeSlots[strokeSlots.Count - 1].pos;
+            CurrentFootprintSize = strokeSize;
+        }
     }
 
     void RebuildPairedSlots()
@@ -909,6 +1018,8 @@ public class PlayerBuilder : MonoBehaviour
 
         int last = strokeSlots.Count - 1;
         LineSlot slot = strokeSlots[last];
+        if (slot.pairId > 0)
+            return;
         var strokeCells = new HashSet<Vector2Int>(strokeSlots.Count);
         for (int i = 0; i < strokeSlots.Count; i++)
             strokeCells.Add(BuildingLinker.WorldToCell(strokeSlots[i].pos));
@@ -951,12 +1062,23 @@ public class PlayerBuilder : MonoBehaviour
         if (strokeBuilding != null && strokeBuilding.IsConveyor)
         {
             for (int i = 0; i < strokeSlots.Count; i++)
+            {
+                if (strokeSlots[i].pairId > 0)
+                    continue;
                 Conveyor.RegisterPreviewExit(strokeSlots[i].pos, strokeSlots[i].yaw);
+            }
         }
 
         for (int i = 0; i < strokeSlots.Count; i++)
         {
             GameObject ghost = lineGhosts[i];
+            string key = GhostKey(strokeSlots[i], i);
+            if (ghost != null && ghost.name != key)
+            {
+                Destroy(ghost);
+                ghost = null;
+                lineGhosts[i] = null;
+            }
             if (ghost == null)
             {
                 ghost = CreateLineGhost(i);
@@ -989,26 +1111,47 @@ public class PlayerBuilder : MonoBehaviour
 
     GameObject CreateLineGhost(int slotIndex = 0)
     {
-        if (strokeBuilding == null)
+        BuildingData data = strokeBuilding;
+        bool pairExit = false;
+        if (slotIndex >= 0 && slotIndex < strokeSlots.Count)
+        {
+            if (strokeSlots[slotIndex].building != null)
+                data = strokeSlots[slotIndex].building;
+            pairExit = strokeSlots[slotIndex].pairExit;
+        }
+
+        if (data == null)
             return null;
 
-        bool exit = strokeBuilding.IsPairedStraight && slotIndex > 0;
-        GameObject source = exit && strokeBuilding.pairExitPrefab != null
-            ? strokeBuilding.pairExitPrefab
-            : BuildingVisuals.SourceForGhost(strokeBuilding);
+        bool exit = pairExit || (data.IsPairedStraight && slotIndex > 0 && strokeSlots[slotIndex].pairId == 0);
+        GameObject source = exit && data.pairExitPrefab != null
+            ? data.pairExitPrefab
+            : BuildingVisuals.SourceForGhost(data);
         if (source == null)
             return null;
 
         GameObject ghost = Instantiate(source);
+        ghost.name = GhostKey(
+            slotIndex >= 0 && slotIndex < strokeSlots.Count ? strokeSlots[slotIndex] : default,
+            slotIndex);
         BuildingVisuals.PrepareGhostInstance(ghost);
 
         Conveyor belt = ghost.GetComponent<Conveyor>();
-        if (belt == null && strokeBuilding.IsConveyor)
+        if (belt == null && data.IsConveyor)
             belt = ghost.AddComponent<Conveyor>();
         if (belt != null)
-            belt.PreparePreview(strokeBuilding);
+            belt.PreparePreview(data);
 
         return ghost;
+    }
+
+    string GhostKey(LineSlot slot, int index)
+    {
+        if (slot.pairId > 0)
+            return slot.pairExit ? "ug-out" : "ug-in";
+        if (strokeBuilding != null && strokeBuilding.IsPairedStraight)
+            return index > 0 ? "ug-out" : "ug-in";
+        return "belt";
     }
 
     void CommitStroke()
@@ -1034,8 +1177,7 @@ public class PlayerBuilder : MonoBehaviour
             return;
         }
 
-        int pieces = strokeBuilding.IsPairedStraight ? 1 : strokeSlots.Count;
-        int lineCost = Economy.BuildCost(currentBuildingData) * pieces;
+        int lineCost = LineStrokeCost();
         if (PlayerWallet.Instance != null && !PlayerWallet.Instance.CanAfford(lineCost))
         {
             EndStroke();
@@ -1044,15 +1186,9 @@ public class PlayerBuilder : MonoBehaviour
 
         Vector3 soundPos = strokeSlots[strokeSlots.Count - 1].pos;
         if (strokeBuilding.IsPairedStraight)
-            SpawnPaired(strokeSlots[0], strokeSlots[1]);
+            SpawnPaired(strokeSlots[0], strokeSlots[1], strokeBuilding);
         else
-        {
-            for (int i = 0; i < strokeSlots.Count; i++)
-            {
-                Quaternion rot = Quaternion.Euler(0f, strokeSlots[i].yaw, 0f);
-                SpawnAt(strokeSlots[i].pos, rot);
-            }
-        }
+            SpawnStrokeSlots();
 
         if (currentBuildingData != null)
         {
@@ -1065,12 +1201,64 @@ public class PlayerBuilder : MonoBehaviour
         EndStroke();
     }
 
-    void SpawnPaired(LineSlot entrance, LineSlot exit)
+    int LineStrokeCost()
     {
-        if (currentBuildingData == null || currentBuildingData.prefab == null || currentBuildingData.pairExitPrefab == null)
+        int cost = 0;
+        var paidPairs = new HashSet<int>();
+        for (int i = 0; i < strokeSlots.Count; i++)
+        {
+            LineSlot slot = strokeSlots[i];
+            BuildingData data = slot.building != null ? slot.building : strokeBuilding;
+            if (slot.pairId > 0)
+            {
+                if (!paidPairs.Add(slot.pairId))
+                    continue;
+            }
+
+            cost += Economy.BuildCost(data);
+        }
+
+        return cost;
+    }
+
+    void SpawnStrokeSlots()
+    {
+        var spawnedPairs = new HashSet<int>();
+        for (int i = 0; i < strokeSlots.Count; i++)
+        {
+            LineSlot slot = strokeSlots[i];
+            if (slot.pairId > 0)
+            {
+                if (!spawnedPairs.Add(slot.pairId))
+                    continue;
+                int other = -1;
+                for (int j = 0; j < strokeSlots.Count; j++)
+                {
+                    if (j != i && strokeSlots[j].pairId == slot.pairId)
+                    {
+                        other = j;
+                        break;
+                    }
+                }
+                if (other < 0)
+                    continue;
+                LineSlot entrance = slot.pairExit ? strokeSlots[other] : slot;
+                LineSlot exit = slot.pairExit ? slot : strokeSlots[other];
+                SpawnPaired(entrance, exit, entrance.building != null ? entrance.building : UndergroundBuilding());
+                continue;
+            }
+
+            Quaternion rot = Quaternion.Euler(0f, slot.yaw, 0f);
+            SpawnAt(slot.pos, rot, slot.building != null ? slot.building : strokeBuilding);
+        }
+    }
+
+    void SpawnPaired(LineSlot entrance, LineSlot exit, BuildingData data)
+    {
+        if (data == null || data.prefab == null || data.pairExitPrefab == null)
             return;
 
-        int cost = Economy.BuildCost(currentBuildingData);
+        int cost = Economy.BuildCost(data);
         if (PlayerWallet.Instance != null && !PlayerWallet.Instance.TrySpendCoins(cost))
         {
             GameAudio.World("world_invalid", entrance.pos);
@@ -1078,8 +1266,8 @@ public class PlayerBuilder : MonoBehaviour
         }
 
         Quaternion rot = Quaternion.Euler(0f, entrance.yaw, 0f);
-        GameObject inGo = Instantiate(currentBuildingData.prefab, entrance.pos, rot);
-        GameObject outGo = Instantiate(currentBuildingData.pairExitPrefab, exit.pos, rot);
+        GameObject inGo = Instantiate(data.prefab, entrance.pos, rot);
+        GameObject outGo = Instantiate(data.pairExitPrefab, exit.pos, rot);
         inGo.name = inGo.name + indexBuilding;
         indexBuilding += 1;
         outGo.name = outGo.name + indexBuilding;
@@ -1092,8 +1280,8 @@ public class PlayerBuilder : MonoBehaviour
         if (exitBelt == null)
             exitBelt = outGo.AddComponent<UndergroundConveyor>();
 
-        entranceBelt.data = currentBuildingData;
-        exitBelt.data = currentBuildingData;
+        entranceBelt.data = data;
+        exitBelt.data = data;
         UndergroundConveyor.BindPair(entranceBelt, exitBelt);
         entranceBelt.OnPlaced();
         exitBelt.OnPlaced();
@@ -1101,24 +1289,29 @@ public class PlayerBuilder : MonoBehaviour
 
     void SpawnAt(Vector3 placePos, Quaternion placeRot)
     {
-        if (currentBuildingData == null || currentBuildingData.prefab == null)
+        SpawnAt(placePos, placeRot, currentBuildingData);
+    }
+
+    void SpawnAt(Vector3 placePos, Quaternion placeRot, BuildingData data)
+    {
+        if (data == null || data.prefab == null)
             return;
 
-        int cost = Economy.BuildCost(currentBuildingData);
+        int cost = Economy.BuildCost(data);
         if (PlayerWallet.Instance != null && !PlayerWallet.Instance.TrySpendCoins(cost))
         {
             GameAudio.World("world_invalid", placePos);
             return;
         }
 
-        GameObject go = Instantiate(currentBuildingData.prefab, placePos, placeRot);
+        GameObject go = Instantiate(data.prefab, placePos, placeRot);
         go.name = go.name + $"{indexBuilding}";
         indexBuilding += 1;
 
         BuildingBase buildingBase = go.GetComponent<BuildingBase>();
         if (buildingBase != null)
         {
-            buildingBase.data = currentBuildingData;
+            buildingBase.data = data;
             buildingBase.OnPlaced();
         }
         else

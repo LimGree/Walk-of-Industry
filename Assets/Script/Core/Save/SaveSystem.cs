@@ -231,6 +231,7 @@ public class SaveSystem : MonoBehaviour
                 yield return null;
         }
 
+        UndergroundConveyor.FinishLoad();
         Report(0.92f);
         if (ResearchSystem.Instance != null)
             ResearchSystem.Instance.ApplySave(data.research);

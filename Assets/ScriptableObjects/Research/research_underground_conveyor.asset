@@ -28,5 +28,6 @@ MonoBehaviour:
   - {fileID: 11400000, guid: af6e4f12a2e446168c2cc29b79f70dd9, type: 2}
   unlockedBuildings:
   - {fileID: 11400000, guid: c8d1e2f3a4b5061728394a5b6c7d8e90, type: 2}
+  - {fileID: 11400000, guid: 8f4c2a91d6e74b3a9c1e05f28a7d4b60, type: 2}
   unlockedRecipes: []
   rubyReward: 0

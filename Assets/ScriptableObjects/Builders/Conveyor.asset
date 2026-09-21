@@ -21,6 +21,7 @@ MonoBehaviour:
   cornerGhostPrefab: {fileID: 5027249887306243875, guid: c033a1f0eaf51214a8cc8cd361acd5e6, type: 3}
   teePrefab: {fileID: 9100000000, guid: 7c4e91a2b8d34f6a9e1c5d0f3a2b8c47, type: 3}
   teeGhostPrefab: {fileID: 4705616461083741694, guid: 824241efa1369604286674bed6814a59, type: 3}
+  teeMirrorMaterial: {fileID: 2100000, guid: b0ed31dd0216f9f429ea89723938202a, type: 2}
   sidesPrefab: {fileID: 9110000000, guid: 2f9d6b1e4a8c4703b5e7d9c1a3f0e826, type: 3}
   sidesGhostPrefab: {fileID: 4306973700708927126, guid: e4e848496bf9f3b41baef2b7eecc8796, type: 3}
   triplePrefab: {fileID: 9120000000, guid: 9a3e5c7b1d4f4826ae90c2b4d6f8e135, type: 3}

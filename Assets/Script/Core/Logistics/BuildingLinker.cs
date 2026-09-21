@@ -92,6 +92,14 @@ public static class BuildingLinker
         if (belt != null)
             return OccupiesCell(candidate, targetCell - belt.ExitDir);
 
+        UndergroundConveyor tunnel = candidate as UndergroundConveyor;
+        if (tunnel != null)
+        {
+            if (!tunnel.isExit || tunnel.Paired == null)
+                return false;
+            return OccupiesCell(candidate, targetCell - tunnel.ForwardCell);
+        }
+
         if (candidate.outputSockets == null)
             return false;
 
@@ -127,10 +135,10 @@ public static class BuildingLinker
             BuildingSocket input = target.inputSockets[i];
             if (input == null)
                 continue;
-            Vector2Int inward = SocketWorldCardinal(input);
-            if (inward.x == 0 && inward.y == 0)
+            Vector2Int outward = SocketWorldCardinal(input);
+            if (outward.x == 0 && outward.y == 0)
                 continue;
-            if (OccupiesCell(target, fromCell + inward))
+            if (OccupiesCell(target, fromCell - outward))
                 return true;
         }
 
@@ -411,10 +419,10 @@ public static class BuildingLinker
                 continue;
             if (input.connectedSocket != null && input.connectedSocket != fromOutput)
                 continue;
-            Vector2Int inward = SocketWorldCardinal(input);
-            if (inward.x == 0 && inward.y == 0)
+            Vector2Int outward = SocketWorldCardinal(input);
+            if (outward.x == 0 && outward.y == 0)
                 continue;
-            if (OccupiesCell(target, fromCell + inward))
+            if (OccupiesCell(target, fromCell - outward))
                 return input;
         }
 

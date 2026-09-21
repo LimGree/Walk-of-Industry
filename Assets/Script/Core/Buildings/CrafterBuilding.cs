@@ -53,6 +53,7 @@ public abstract class CrafterBuilding : BuildingBase, IInteractable
 
     public override void OnPlaced()
     {
+        BuildingPrefabLayout.ApplyPrimarySockets(this);
         base.OnPlaced();
         craftProgress = 0f;
         inputBuffer.Clear();

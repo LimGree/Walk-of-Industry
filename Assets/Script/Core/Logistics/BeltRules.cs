@@ -59,7 +59,8 @@ public static class BeltRules
     /// <summary>
     /// Доворот и зеркало меша, чтобы выход модели совпал с +Z.
     /// Бока / тройник в ассетах смотрят выходом на −X (extraYaw 90).
-    /// T (Conveyor_Tee / conveer_4_5) смотрит наоборот — extraYaw 270.
+    /// T (Conveyor_Tee / conveer_4_5): правый рукав extraYaw 270, левый 90.
+    /// Меш не зеркалим — второй рукав берёт teeMirrorMaterial (Рисунок4_5 Mirror).
     /// </summary>
     public static void GetVisual(BeltShape shape, BeltInMask mask, out float extraYaw, out bool mirrorX)
     {
@@ -71,8 +72,7 @@ public static class BeltRules
                 mirrorX = Has(mask, BeltInMask.Left) && !Has(mask, BeltInMask.Right);
                 break;
             case BeltShape.Tee:
-                extraYaw = 270f;
-                mirrorX = Has(mask, BeltInMask.Left) && !Has(mask, BeltInMask.Right);
+                extraYaw = Has(mask, BeltInMask.Left) && !Has(mask, BeltInMask.Right) ? 90f : 270f;
                 break;
             case BeltShape.Sides:
             case BeltShape.Triple:

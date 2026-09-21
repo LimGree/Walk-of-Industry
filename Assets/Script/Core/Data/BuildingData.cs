@@ -21,6 +21,8 @@ public class BuildingData : ScriptableObject
     public GameObject teePrefab;
     [Tooltip("Гост T. Если пусто — берётся teePrefab.")]
     public GameObject teeGhostPrefab;
+    [Tooltip("Рисунок стрелок для второго рукава T (без зеркала меша).")]
+    public Material teeMirrorMaterial;
     [Tooltip("Два бока, сзади нет. conveer_6.")]
     public GameObject sidesPrefab;
     [Tooltip("Гост двух боков. Если пусто — берётся sidesPrefab.")]

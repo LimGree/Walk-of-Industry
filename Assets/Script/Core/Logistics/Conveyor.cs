@@ -46,6 +46,8 @@ public class Conveyor : BuildingBase
     GameObject teeVisual;
     GameObject sidesVisual;
     GameObject tripleVisual;
+    Renderer[] teeDecalRenderers;
+    Material[][] teeDecalOriginals;
     readonly List<BeltCargo> cargo = new List<BeltCargo>(4);
 
     class BeltCargo
@@ -235,7 +237,7 @@ public class Conveyor : BuildingBase
     public bool TryAcceptTransfer(ItemData item, Transform visual, BuildingBase source = null)
     {
         Vector2Int entry = InferEntryDir(null, source, visual);
-        return TryAccept(item, null, entry);
+        return TryAccept(item, visual, entry);
     }
 
     bool TryAccept(ItemData item, Transform visual, Vector2Int entry)
@@ -308,7 +310,37 @@ public class Conveyor : BuildingBase
                 nearestToEntry = cargo[i].progress;
         }
 
-        return !any || nearestToEntry >= ItemGap;
+        if (any && nearestToEntry < ItemGap)
+            return false;
+
+        if (!IsMergeTile())
+            return true;
+
+        BeltInMask side = BeltRules.SideFromTravel(ExitDir, entryDir);
+        BeltInMask served = NextServedSide();
+        return served == BeltInMask.None || side == served;
+    }
+
+    bool IsMergeTile()
+    {
+        int n = 0;
+        if (FromBack) n++;
+        if (FromLeft) n++;
+        if (FromRight) n++;
+        return n >= 2;
+    }
+
+    public bool HasItemReadyToExit()
+    {
+        if (!isLive)
+            return false;
+        for (int i = 0; i < cargo.Count; i++)
+        {
+            if (cargo[i] != null && cargo[i].progress >= 0.999f)
+                return true;
+        }
+
+        return false;
     }
 
     bool IsValidEntry(Vector2Int entry)
@@ -387,7 +419,11 @@ public class Conveyor : BuildingBase
         {
             if (TryHandOff(cargo[front]))
             {
-                ReleaseCargoVisual(cargo[front]);
+                // Если visual был передан следующему объекту,
+                // источник больше не владеет им.
+                if (cargo[front].visual != null)
+                    ReleaseCargoVisual(cargo[front]);
+
                 cargo.RemoveAt(front);
             }
             else
@@ -424,14 +460,27 @@ public class Conveyor : BuildingBase
 
         Conveyor nextBelt = dest as Conveyor;
         if (nextBelt != null)
-            return nextBelt.TryAcceptTransfer(item.item, item.visual, this);
+        {
+            bool accepted = nextBelt.TryAcceptTransfer(item.item, item.visual, this);
+
+            if (accepted)
+                item.visual = null;
+
+            return accepted;
+        }
 
         Splitter nextSplit = dest as Splitter;
         if (nextSplit != null)
         {
             if (!nextSplit.CanAcceptFrom(this))
                 return false;
-            return nextSplit.TryAcceptTransfer(item.item, item.visual);
+
+            bool accepted = nextSplit.TryAcceptTransfer(item.item, item.visual);
+
+            if (accepted)
+                item.visual = null;
+
+            return accepted;
         }
 
         if (!dest.CanAcceptFrom(this))
@@ -505,6 +554,16 @@ public class Conveyor : BuildingBase
             waiting |= BeltRules.SideFromTravel(ExitDir, cargo[i].entryDir);
         }
 
+        if (IsMergeTile())
+        {
+            if (FromBack && !BeltRules.Has(waiting, BeltInMask.Back) && FeederReady(BeltInMask.Back))
+                waiting |= BeltInMask.Back;
+            if (FromLeft && !BeltRules.Has(waiting, BeltInMask.Left) && FeederReady(BeltInMask.Left))
+                waiting |= BeltInMask.Left;
+            if (FromRight && !BeltRules.Has(waiting, BeltInMask.Right) && FeederReady(BeltInMask.Right))
+                waiting |= BeltInMask.Right;
+        }
+
         BeltInMask[] order = { BeltInMask.Back, BeltInMask.Left, BeltInMask.Right };
         int start = 0;
         for (int i = 0; i < order.Length; i++)
@@ -524,6 +583,28 @@ public class Conveyor : BuildingBase
         }
 
         return BeltInMask.None;
+    }
+
+    bool FeederReady(BeltInMask side)
+    {
+        Vector2Int neighbor = Cell + BeltRules.NeighborDelta(ExitDir, side);
+        BuildingBase b = BuildingLinker.GetBuildingAt(neighbor);
+        if (b == null || b == this || !BuildingLinker.FeedsInto(b, Cell))
+            return false;
+
+        Conveyor belt = b as Conveyor;
+        if (belt != null)
+            return belt.HasItemReadyToExit();
+
+        Splitter splitter = b as Splitter;
+        if (splitter != null)
+            return splitter.HasItemReadyToward(Cell);
+
+        UndergroundConveyor tunnel = b as UndergroundConveyor;
+        if (tunnel != null)
+            return tunnel.isExit && tunnel.OutputBufferCount > 0;
+
+        return b.OutputBufferCount > 0;
     }
 
     void RemapCargoToValidEntries()
@@ -631,6 +712,8 @@ public class Conveyor : BuildingBase
         GameObject form = EnsureForm(shown);
         if (shown != BeltShape.Straight)
             PresentVisual(form, true, extraYaw, mirrorX);
+        if (shown == BeltShape.Tee)
+            ApplyTeeArrowMaterial(form, UseTeeMirrorTexture(InMask));
         InvalidateArrows();
         RefreshArrows();
     }
@@ -640,6 +723,7 @@ public class Conveyor : BuildingBase
         if (shown == BeltShape.Straight)
         {
             DestroyVisualRoot(ref cornerVisual);
+            ClearTeeDecalCache();
             DestroyVisualRoot(ref teeVisual);
             DestroyVisualRoot(ref sidesVisual);
             DestroyVisualRoot(ref tripleVisual);
@@ -649,7 +733,10 @@ public class Conveyor : BuildingBase
         if (shown != BeltShape.Corner)
             DestroyVisualRoot(ref cornerVisual);
         if (shown != BeltShape.Tee)
+        {
+            ClearTeeDecalCache();
             DestroyVisualRoot(ref teeVisual);
+        }
         if (shown != BeltShape.Sides)
             DestroyVisualRoot(ref sidesVisual);
         if (shown != BeltShape.Triple)
@@ -763,6 +850,74 @@ public class Conveyor : BuildingBase
         return Shape;
     }
 
+    static bool UseTeeMirrorTexture(BeltInMask mask)
+    {
+        return BeltRules.Has(mask, BeltInMask.Left) && !BeltRules.Has(mask, BeltInMask.Right);
+    }
+
+    void ApplyTeeArrowMaterial(GameObject visual, bool useMirror)
+    {
+        Material mirror = data != null ? data.teeMirrorMaterial : null;
+        if (visual == null || mirror == null)
+            return;
+
+        if (teeDecalRenderers == null || teeDecalRenderers.Length == 0)
+            CacheTeeDecals(visual);
+
+        for (int i = 0; i < teeDecalRenderers.Length; i++)
+        {
+            Renderer renderer = teeDecalRenderers[i];
+            Material[] original = i < teeDecalOriginals.Length ? teeDecalOriginals[i] : null;
+            if (renderer == null || original == null)
+                continue;
+
+            var mats = new Material[original.Length];
+            for (int m = 0; m < original.Length; m++)
+            {
+                Material mat = original[m];
+                mats[m] = useMirror && IsTeeArrowMaterial(mat) ? mirror : mat;
+            }
+
+            renderer.sharedMaterials = mats;
+        }
+    }
+
+    void CacheTeeDecals(GameObject visual)
+    {
+        Renderer[] found = visual.GetComponentsInChildren<Renderer>(true);
+        teeDecalRenderers = found;
+        teeDecalOriginals = new Material[found.Length][];
+        for (int i = 0; i < found.Length; i++)
+        {
+            if (found[i] == null)
+                continue;
+            Material[] mats = found[i].sharedMaterials;
+            teeDecalOriginals[i] = new Material[mats.Length];
+            for (int m = 0; m < mats.Length; m++)
+                teeDecalOriginals[i][m] = mats[m];
+        }
+    }
+
+    void ClearTeeDecalCache()
+    {
+        teeDecalRenderers = null;
+        teeDecalOriginals = null;
+    }
+
+    static bool IsTeeArrowMaterial(Material mat)
+    {
+        if (mat == null)
+            return false;
+        string n = mat.name;
+        if (n.IndexOf("Mirror", System.StringComparison.OrdinalIgnoreCase) >= 0)
+            return false;
+        if (n.IndexOf("4_5", System.StringComparison.OrdinalIgnoreCase) >= 0)
+            return true;
+        if (n.IndexOf("005", System.StringComparison.OrdinalIgnoreCase) >= 0)
+            return true;
+        return n.IndexOf("Рисунок", System.StringComparison.OrdinalIgnoreCase) >= 0;
+    }
+
     static void PresentVisual(GameObject visual, bool on, float extraYaw, bool mirrorX)
     {
         if (visual == null)
@@ -822,6 +977,7 @@ public class Conveyor : BuildingBase
     void DestroyCreatedVisuals()
     {
         DestroyVisualRoot(ref cornerVisual);
+        ClearTeeDecalCache();
         DestroyVisualRoot(ref teeVisual);
         DestroyVisualRoot(ref sidesVisual);
         DestroyVisualRoot(ref tripleVisual);

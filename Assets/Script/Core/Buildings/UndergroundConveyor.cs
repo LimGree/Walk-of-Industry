@@ -29,7 +29,11 @@ public class UndergroundConveyor : BuildingBase
 
     public static bool IsExitSave(BuildingSaveData save)
     {
-        return ReadExtraInt(save, "exit") != 0;
+        if (save == null)
+            return false;
+        if (ReadExtraInt(save, "exit") != 0)
+            return true;
+        return save.stateFloat >= 0.5f;
     }
 
     public static GameObject PrefabFor(BuildingData data, bool isExit)
@@ -153,6 +157,8 @@ public class UndergroundConveyor : BuildingBase
         base.WriteSave(save);
         if (save == null)
             return;
+        save.stateInt = pairId;
+        save.stateFloat = isExit ? 1f : 0f;
         if (save.extras == null)
             save.extras = new List<SaveKeyValue>();
         save.extras.Add(new SaveKeyValue { key = "pair", value = pairId.ToString() });
@@ -166,9 +172,15 @@ public class UndergroundConveyor : BuildingBase
             return;
 
         pairId = ReadExtraInt(save, "pair");
-        isExit = ReadExtraInt(save, "exit") != 0;
+        if (pairId <= 0)
+            pairId = save.stateInt;
+        int exitFlag = ReadExtraInt(save, "exit");
+        isExit = exitFlag != 0 || save.stateFloat >= 0.5f;
         if (pairId >= nextPairId)
             nextPairId = pairId + 1;
+
+        if (OutputBufferCount > 0)
+            WorldSim.MarkFlush(this);
 
         if (pairId <= 0)
             return;
@@ -176,11 +188,129 @@ public class UndergroundConveyor : BuildingBase
         if (PendingPairs.TryGetValue(pairId, out UndergroundConveyor other) && other != null)
         {
             PendingPairs.Remove(pairId);
-            paired = other;
-            other.paired = this;
+            BindLoadedPair(this, other);
         }
         else
             PendingPairs[pairId] = this;
+    }
+
+    static void BindLoadedPair(UndergroundConveyor a, UndergroundConveyor b)
+    {
+        if (a == null || b == null)
+            return;
+
+        UndergroundConveyor entrance = a.isExit ? b : a;
+        UndergroundConveyor exit = a.isExit ? a : b;
+        if (entrance.isExit && exit.isExit)
+        {
+            entrance = a;
+            exit = b;
+            entrance.isExit = false;
+            exit.isExit = true;
+        }
+        else if (!entrance.isExit && !exit.isExit)
+            exit.isExit = true;
+
+        int id = Mathf.Max(a.pairId, b.pairId, 1);
+        entrance.pairId = id;
+        exit.pairId = id;
+        entrance.paired = exit;
+        exit.paired = entrance;
+        WorldSim.MarkFlush(entrance);
+        WorldSim.MarkFlush(exit);
+    }
+
+    public static void FinishLoad()
+    {
+        UndergroundConveyor[] all = Object.FindObjectsByType<UndergroundConveyor>(FindObjectsSortMode.None);
+        var byPair = new Dictionary<int, UndergroundConveyor>(all.Length);
+        for (int i = 0; i < all.Length; i++)
+        {
+            UndergroundConveyor tunnel = all[i];
+            if (tunnel == null)
+                continue;
+            if (tunnel.paired != null || tunnel.pairId <= 0)
+                continue;
+            if (byPair.TryGetValue(tunnel.pairId, out UndergroundConveyor other) && other != null)
+            {
+                byPair.Remove(tunnel.pairId);
+                BindLoadedPair(tunnel, other);
+            }
+            else
+                byPair[tunnel.pairId] = tunnel;
+        }
+
+        for (int i = 0; i < all.Length; i++)
+        {
+            UndergroundConveyor entrance = all[i];
+            if (entrance == null || entrance.paired != null)
+                continue;
+            UndergroundConveyor exit = FindFacingPartner(entrance);
+            if (exit != null)
+                BindLoadedPair(entrance, exit);
+        }
+
+        PendingPairs.Clear();
+        for (int i = 0; i < all.Length; i++)
+        {
+            if (all[i] != null && all[i].OutputBufferCount > 0)
+                WorldSim.MarkFlush(all[i]);
+        }
+    }
+
+    static UndergroundConveyor FindFacingPartner(UndergroundConveyor self)
+    {
+        if (self == null)
+            return null;
+
+        Vector2Int forward = self.ForwardCell;
+        if (forward.x == 0 && forward.y == 0)
+            return null;
+
+        UndergroundConveyor ahead = WalkUnpaired(self, forward);
+        if (ahead != null && ahead.ForwardCell == forward)
+        {
+            self.isExit = false;
+            ahead.isExit = true;
+            AssignPairId(self, ahead);
+            return ahead;
+        }
+
+        UndergroundConveyor behind = WalkUnpaired(self, new Vector2Int(-forward.x, -forward.y));
+        if (behind != null && behind.ForwardCell == forward)
+        {
+            behind.isExit = false;
+            self.isExit = true;
+            AssignPairId(behind, self);
+            return behind;
+        }
+
+        return null;
+    }
+
+    static UndergroundConveyor WalkUnpaired(UndergroundConveyor from, Vector2Int step)
+    {
+        Vector2Int cell = from.Cell;
+        int maxGap = from.data != null ? Mathf.Max(1, from.data.pairMaxGap) : 5;
+        for (int n = 1; n <= maxGap + 1; n++)
+        {
+            BuildingBase found = BuildingLinker.GetBuildingAt(cell + step * n);
+            UndergroundConveyor other = found as UndergroundConveyor;
+            if (other == null || other == from || other.paired != null)
+                continue;
+            return other;
+        }
+
+        return null;
+    }
+
+    static void AssignPairId(UndergroundConveyor a, UndergroundConveyor b)
+    {
+        int id = Mathf.Max(a.pairId, b.pairId);
+        if (id <= 0)
+            id = nextPairId++;
+        a.pairId = id;
+        b.pairId = id;
     }
 
     static int ReadExtraInt(BuildingSaveData save, string key)

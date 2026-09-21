@@ -27,7 +27,7 @@
 |---|---|---|
 | нет / только зад | Straight | `prefab` |
 | один бок | Corner | `cornerPrefab`, зеркало если вход слева |
-| зад + один бок | Tee | `teePrefab`, extraYaw 270° (`Conveyor_Tee` смотрит наоборот от боков/тройника) |
+| зад + один бок | Tee | `teePrefab`, extraYaw 270° справа / 90° слева; левый рукав — `teeMirrorMaterial` (Рисунок4_5 Mirror) |
 | оба бока | Sides | `sidesPrefab`, extraYaw 90° |
 | три входа | Triple | `triplePrefab`, extraYaw 90° |
 
@@ -37,5 +37,6 @@
 
 - прямая: зад (−Z) → перед (+Z)
 - угол и слияния: край входа → центр (t = 0.5) → перед
+- два и больше входа: zipper — в центр по очереди (зад, лево, право), плотная главная не душит бок
 
 Связи: [[Conveyor]] · [[Pipe]] · [[BuildingLinker]]

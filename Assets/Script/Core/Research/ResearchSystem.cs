@@ -24,11 +24,16 @@ public class ResearchSystem : MonoBehaviour
         "research_assembler_2"
     };
 
+    public const string UndergroundResearchId = "research_underground_conveyor";
+
     private readonly HashSet<ResearchNodeData> unlockedResearch = new HashSet<ResearchNodeData>();
     private readonly HashSet<BuildingData> unlockedBuildings = new HashSet<BuildingData>();
     private readonly HashSet<RecipeData> unlockedRecipes = new HashSet<RecipeData>();
     private readonly Dictionary<ResearchNodeData, Dictionary<ItemData, int>> submittedByNode =
         new Dictionary<ResearchNodeData, Dictionary<ItemData, int>>();
+    int eventHold;
+    bool pendingUnlocks;
+    bool pendingProgress;
 
     public ResearchNodeData CurrentResearch
     {
@@ -155,7 +160,7 @@ public class ResearchSystem : MonoBehaviour
         }
 
         if (countedForResearch)
-            OnResearchProgressChanged?.Invoke();
+            NotifyProgress();
 
         if (!countedForResearch && Economy.IsGear(item) && BeltSpeedSystem.Instance != null)
         {
@@ -269,8 +274,91 @@ public class ResearchSystem : MonoBehaviour
         {
             Debug.Log($"[Research] Completed: {node.displayName}");
         }
+
+        NotifyUnlocks();
+        NotifyProgress();
+        UnlockCompanionBuildings(node);
+    }
+
+    void UnlockCompanionBuildings(ResearchNodeData node)
+    {
+        if (node == null || !IdsEqual(node.id, UndergroundResearchId))
+            return;
+
+        BuildingData splitterBuilding = GameDatabase.FindBuilding("splitter");
+        if (splitterBuilding != null)
+            UnlockBuilding(splitterBuilding);
+    }
+
+    void NotifyUnlocks()
+    {
+        if (eventHold > 0)
+        {
+            pendingUnlocks = true;
+            return;
+        }
+
         OnUnlocksChanged?.Invoke();
+    }
+
+    void NotifyProgress()
+    {
+        if (eventHold > 0)
+        {
+            pendingProgress = true;
+            return;
+        }
+
         OnResearchProgressChanged?.Invoke();
+    }
+
+    void FlushHeldEvents()
+    {
+        if (eventHold > 0)
+            return;
+        if (pendingUnlocks)
+        {
+            pendingUnlocks = false;
+            OnUnlocksChanged?.Invoke();
+        }
+
+        if (pendingProgress)
+        {
+            pendingProgress = false;
+            OnResearchProgressChanged?.Invoke();
+        }
+    }
+
+    public int CompleteAllResearch(bool grantReward = false)
+    {
+        eventHold++;
+        int completed = 0;
+        try
+        {
+            bool progressed = true;
+            int guard = 0;
+            while (progressed && guard++ < 512)
+            {
+                progressed = false;
+                List<ResearchNodeData> nodes = GetAllNodes();
+                for (int i = 0; i < nodes.Count; i++)
+                {
+                    ResearchNodeData node = nodes[i];
+                    if (node == null || IsResearchUnlocked(node))
+                        continue;
+                    CompleteResearch(node, grantReward);
+                    completed++;
+                    progressed = true;
+                }
+            }
+        }
+        finally
+        {
+            eventHold--;
+            FlushHeldEvents();
+        }
+
+        return completed;
     }
 
     public bool IsBuildingUnlocked(BuildingData building)
@@ -283,7 +371,7 @@ public class ResearchSystem : MonoBehaviour
         if (building == null || unlockedBuildings.Contains(building))
             return false;
         unlockedBuildings.Add(building);
-        OnUnlocksChanged?.Invoke();
+        NotifyUnlocks();
         return true;
     }
 
@@ -297,7 +385,7 @@ public class ResearchSystem : MonoBehaviour
         if (recipe == null || unlockedRecipes.Contains(recipe))
             return false;
         unlockedRecipes.Add(recipe);
-        OnUnlocksChanged?.Invoke();
+        NotifyUnlocks();
         return true;
     }
 
@@ -452,26 +540,7 @@ public class ResearchSystem : MonoBehaviour
             return;
         }
 
-        if (allResearchNodes == null)
-            return;
-
-        int completed = 0;
-        bool progressed = true;
-        while (progressed)
-        {
-            progressed = false;
-            for (int i = 0; i < allResearchNodes.Count; i++)
-            {
-                ResearchNodeData node = allResearchNodes[i];
-                if (node == null || IsResearchUnlocked(node) || !CanStartResearch(node))
-                    continue;
-
-                CompleteResearch(node);
-                completed++;
-                progressed = true;
-            }
-        }
-
+        int completed = CompleteAllResearch(grantReward: false);
         Debug.Log($"[Research] Debug completed {completed} node(s).");
     }
 
@@ -519,32 +588,38 @@ public class ResearchSystem : MonoBehaviour
         if (save == null)
             return;
 
-        if (save.unlockedResearchIds != null)
+        eventHold++;
+        try
         {
-            for (int i = 0; i < save.unlockedResearchIds.Count; i++)
+            if (save.unlockedResearchIds != null)
             {
-                ResearchNodeData node = FindNode(save.unlockedResearchIds[i]);
-                if (node != null)
-                    CompleteResearch(node, grantReward: false);
+                for (int i = 0; i < save.unlockedResearchIds.Count; i++)
+                {
+                    ResearchNodeData node = FindNode(save.unlockedResearchIds[i]);
+                    if (node != null)
+                        CompleteResearch(node, grantReward: false);
+                }
+            }
+
+            if (save.inProgress != null)
+            {
+                for (int i = 0; i < save.inProgress.Count; i++)
+                    ApplyProgressRow(save.inProgress[i]);
+            }
+            else if (!string.IsNullOrEmpty(save.currentResearchId) && save.submittedItems != null)
+            {
+                ApplyProgressRow(new ResearchProgressSave
+                {
+                    researchId = save.currentResearchId,
+                    submitted = save.submittedItems
+                });
             }
         }
-
-        if (save.inProgress != null)
+        finally
         {
-            for (int i = 0; i < save.inProgress.Count; i++)
-                ApplyProgressRow(save.inProgress[i]);
+            eventHold--;
+            FlushHeldEvents();
         }
-        else if (!string.IsNullOrEmpty(save.currentResearchId) && save.submittedItems != null)
-        {
-            ApplyProgressRow(new ResearchProgressSave
-            {
-                researchId = save.currentResearchId,
-                submitted = save.submittedItems
-            });
-        }
-
-        OnUnlocksChanged?.Invoke();
-        OnResearchProgressChanged?.Invoke();
     }
 
     void ApplyProgressRow(ResearchProgressSave row)

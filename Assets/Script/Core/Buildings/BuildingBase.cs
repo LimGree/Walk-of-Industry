@@ -273,7 +273,7 @@ public abstract class BuildingBase : MonoBehaviour
                 return false;
             if (fromSocket != null)
             {
-                if (BuildingLinker.GetSocketCell(fromSocket) != belt.Cell)
+                if (BuildingLinker.GetSocketFrontCell(fromSocket) != belt.Cell)
                     return false;
             }
             else if (!BuildingLinker.FeedsInto(this, belt.Cell))

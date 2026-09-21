@@ -212,20 +212,7 @@ public static class DevCommands
             return sb.Length == 0 ? "empty" : sb.ToString();
         }
         if (op == "skipall")
-        {
-            ResearchNodeData[] all = GameDatabase.AllResearches();
-            if (all.Length == 0 && rs.allResearchNodes != null)
-                all = rs.allResearchNodes.ToArray();
-            int n = 0;
-            for (int i = 0; i < all.Length; i++)
-            {
-                if (all[i] == null || rs.IsResearchUnlocked(all[i]))
-                    continue;
-                rs.CompleteResearch(all[i], false);
-                n++;
-            }
-            return "skipped " + n;
-        }
+            return "skipped " + rs.CompleteAllResearch(false);
         if (op == "skip")
         {
             ResearchNodeData node = GameDatabase.FindResearch(id);

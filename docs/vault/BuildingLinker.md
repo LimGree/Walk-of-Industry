@@ -20,5 +20,5 @@
 - `GetBuildingAt` — кто в клетке.
 - `GetSocketCell` — клетка позиции сокета.
 - `FeedsInto` — у ленты по `ExitDir`, у станка по выходу.
-- `HasInputFrom` / `AcceptsFromCell` — вход смотрит на источник.
+- `HasInputFrom` / `AcceptsFromCell` — входной сокет смотрит **наружу** на источник (`fromCell - outward`). Раньше знак был наоборот, и станок брал с клетки выхода.
 - `WorldToCell` — обёртка над сеткой.

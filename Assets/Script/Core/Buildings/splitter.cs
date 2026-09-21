@@ -61,7 +61,7 @@ public class Splitter : BuildingBase
         if (source == null)
             return false;
 
-        return BuildingLinker.OccupiesCell(source, Cell + InputOutward());
+        return BuildingLinker.FeedsInto(source, Cell);
     }
 
     public override bool CanAcceptFrom(BuildingBase source)
@@ -84,13 +84,30 @@ public class Splitter : BuildingBase
             return false;
 
         Vector3 from = visual != null ? visual.position : transform.position;
-        SpawnCargo(item, null, InferEntryFromWorld(from), Vector2Int.zero);
+        SpawnCargo(item, visual, InferEntryFromWorld(from), Vector2Int.zero);
         return true;
     }
 
     public bool HasRoomForItem()
     {
         return isLive && CanAccept();
+    }
+
+    public bool HasItemReadyToward(Vector2Int targetCell)
+    {
+        if (!isLive)
+            return false;
+        Vector2Int dir = targetCell - Cell;
+        for (int i = 0; i < cargo.Count; i++)
+        {
+            Cargo entry = cargo[i];
+            if (entry == null || entry.progress < 0.999f)
+                continue;
+            if (entry.exitDir == dir)
+                return true;
+        }
+
+        return false;
     }
 
     public bool TryStealMatching(ItemData filter, out ItemData item, out Transform visual)
@@ -191,7 +208,8 @@ public class Splitter : BuildingBase
         {
             if (TryHandOff(cargo[front]))
             {
-                ReleaseCargoVisual(cargo[front]);
+                if (cargo[front].visual != null)
+                    ReleaseCargoVisual(cargo[front]);
                 cargo.RemoveAt(front);
             }
             else
@@ -223,11 +241,21 @@ public class Splitter : BuildingBase
     bool TryHandOff(Cargo item)
     {
         EnsureSetup();
+        Vector2Int entry = item.entryDir;
+        Vector2Int preferred = item.exitDir;
+        if (preferred.x != 0 || preferred.y != 0)
+        {
+            if (preferred != Opposite(entry) && TryGive(item, preferred))
+            {
+                AdvanceOutput(preferred);
+                return true;
+            }
+        }
+
         int count = outputSockets != null ? outputSockets.Length : 0;
         if (count <= 0)
-            return TryGive(item, item.exitDir);
+            return TryGive(item, preferred);
 
-        Vector2Int entry = item.entryDir;
         int start = nextOutput;
         for (int n = 0; n < count; n++)
         {
@@ -237,11 +265,12 @@ public class Splitter : BuildingBase
                 continue;
 
             Vector2Int dir = BuildingLinker.ToCardinal(socket.GetOutward());
-            if (dir == Opposite(entry))
-                continue;
             if (dir.x == 0 && dir.y == 0)
                 continue;
-
+            if (dir == Opposite(entry))
+                continue;
+            if (dir == preferred)
+                continue;
             if (!TryGive(item, dir))
                 continue;
 
@@ -255,6 +284,74 @@ public class Splitter : BuildingBase
 
     bool TryGive(Cargo item, Vector2Int dir)
     {
+        if (item == null)
+            return false;
+
+        if (dir.x == 0 && dir.y == 0)
+            return false;
+
+        Vector2Int targetCell = Cell + dir;
+        BuildingBase dest = BuildingLinker.GetBuildingAt(targetCell);
+
+        if (dest == null || dest == this)
+            return false;
+
+        Conveyor nextBelt = dest as Conveyor;
+        if (nextBelt != null)
+        {
+            if (nextBelt is Pipe)
+                return false;
+
+            if (!nextBelt.AcceptsFromCell(Cell))
+                return false;
+
+            if (!nextBelt.TryAcceptTransfer(item.item, item.visual, this))
+                return false;
+            item.visual = null;
+            return true;
+        }
+
+        Splitter nextSplit = dest as Splitter;
+        if (nextSplit != null)
+        {
+            if (!nextSplit.CanAcceptFrom(this))
+                return false;
+
+            if (!nextSplit.TryAcceptTransfer(item.item, item.visual))
+                return false;
+            item.visual = null;
+            return true;
+        }
+
+        if (!dest.CanAcceptFrom(this))
+            return false;
+
+        BuildingSocket destInput = dest.inputSockets != null &&
+                                   dest.inputSockets.Length > 0
+            ? dest.inputSockets[0]
+            : null;
+
+        return dest.TryReceiveItem(item.item, destInput);
+    }
+
+    void AdvanceOutput(Vector2Int dir)
+    {
+        int count = outputSockets != null ? outputSockets.Length : 0;
+        if (count <= 0)
+            return;
+        for (int i = 0; i < count; i++)
+        {
+            if (outputSockets[i] == null)
+                continue;
+            if (BuildingLinker.ToCardinal(outputSockets[i].GetOutward()) != dir)
+                continue;
+            nextOutput = (i + 1) % count;
+            return;
+        }
+    }
+
+    bool CanOutputTo(Vector2Int dir)
+    {
         if (dir.x == 0 && dir.y == 0)
             return false;
 
@@ -267,7 +364,9 @@ public class Splitter : BuildingBase
         {
             if (nextBelt is Pipe)
                 return false;
-            return nextBelt.TryAcceptTransfer(item.item, item.visual, this);
+            if (!nextBelt.AcceptsFromCell(Cell))
+                return false;
+            return nextBelt.HasRoomForItem();
         }
 
         Splitter nextSplit = dest as Splitter;
@@ -275,16 +374,17 @@ public class Splitter : BuildingBase
         {
             if (!nextSplit.CanAcceptFrom(this))
                 return false;
-            return nextSplit.TryAcceptTransfer(item.item, item.visual);
+            return nextSplit.HasRoomForItem();
         }
 
         if (!dest.CanAcceptFrom(this))
             return false;
 
-        BuildingSocket destInput = dest.inputSockets != null && dest.inputSockets.Length > 0
-            ? dest.inputSockets[0]
-            : null;
-        return dest.TryReceiveItem(item.item, destInput);
+        UndergroundConveyor tunnel = dest as UndergroundConveyor;
+        if (tunnel != null)
+            return tunnel.HasOutputSpace();
+
+        return dest.HasOutputSpace();
     }
 
     static void ReleaseCargoVisual(Cargo item)
@@ -299,6 +399,7 @@ public class Splitter : BuildingBase
     {
         if (entryDir.x == 0 && entryDir.y == 0)
             entryDir = Opposite(InputOutward());
+
         if (exitDir.x == 0 && exitDir.y == 0)
             exitDir = ChooseExitDir(entryDir);
 
@@ -310,18 +411,21 @@ public class Splitter : BuildingBase
             entryDir = entryDir,
             exitDir = exitDir
         };
+
         if (WorldView.InRange(transform.position))
         {
             if (cargoItem.visual == null)
                 cargoItem.visual = BeltItemView.Rent(item, itemScale);
             else
                 BeltItemView.Prepare(cargoItem.visual);
+
         }
         else if (cargoItem.visual != null)
         {
             BeltItemView.Release(cargoItem.visual, item);
             cargoItem.visual = null;
         }
+
         cargo.Add(cargoItem);
     }
 
@@ -393,8 +497,7 @@ public class Splitter : BuildingBase
             if (fallback.x == 0 && fallback.y == 0)
                 fallback = dir;
 
-            BuildingBase dest = BuildingLinker.GetBuildingAt(Cell + dir);
-            if (dest == null || dest == this)
+            if (!CanOutputTo(dir))
                 continue;
 
             nextOutput = (index + 1) % count;
@@ -521,55 +624,26 @@ public class Splitter : BuildingBase
 
     void BindPrefabSockets()
     {
-        if (NeedSocket(inputSockets))
+        AlignModel();
+        inputSockets = new[]
         {
-            inputSockets = new[]
-            {
-                FindOrCreateSocket("InputSocket", SocketType.Input, new Vector3(0f, 0.3f, -0.5f), BuildingPrefabLayout.InputRotation)
-            };
-        }
-        else
+            FindOrCreateSocket("InputSocket", SocketType.Input, new Vector3(0f, 0.3f, -0.5f), BuildingPrefabLayout.InputRotation)
+        };
+        outputSockets = new[]
         {
-            inputSockets[0].socketType = SocketType.Input;
-        }
-
-        if (NeedSocket(outputSockets) || CountValid(outputSockets) < 3)
-        {
-            outputSockets = new[]
-            {
-                FindOrCreateSocket("OutputSocket", SocketType.Output, new Vector3(0f, 0.3f, 0.5f), BuildingPrefabLayout.OutputRotation),
-                FindOrCreateSocket("OutputSocket (1)", SocketType.Output, new Vector3(0.5f, 0.3f, 0f), Quaternion.Euler(0f, 90f, 0f)),
-                FindOrCreateSocket("OutputSocket (2)", SocketType.Output, new Vector3(-0.5f, 0.3f, 0f), Quaternion.Euler(0f, -90f, 0f))
-            };
-        }
-        else
-        {
-            for (int i = 0; i < outputSockets.Length; i++)
-            {
-                if (outputSockets[i] != null)
-                    outputSockets[i].socketType = SocketType.Output;
-            }
-        }
+            FindOrCreateSocket("OutputSocket", SocketType.Output, new Vector3(0f, 0.3f, 0.5f), BuildingPrefabLayout.OutputRotation),
+            FindOrCreateSocket("OutputSocket (1)", SocketType.Output, new Vector3(0.5f, 0.3f, 0f), Quaternion.Euler(0f, 90f, 0f)),
+            FindOrCreateSocket("OutputSocket (2)", SocketType.Output, new Vector3(-0.5f, 0.3f, 0f), Quaternion.Euler(0f, -90f, 0f))
+        };
     }
 
-    static int CountValid(BuildingSocket[] sockets)
+    void AlignModel()
     {
-        if (sockets == null)
-            return 0;
-
-        int count = 0;
-        for (int i = 0; i < sockets.Length; i++)
-        {
-            if (sockets[i] != null)
-                count++;
-        }
-
-        return count;
-    }
-
-    static bool NeedSocket(BuildingSocket[] sockets)
-    {
-        return sockets == null || sockets.Length == 0 || sockets[0] == null;
+        Transform visual = BuildingPrefabLayout.FindNamed(transform, "splitter_model");
+        if (visual == null)
+            return;
+        visual.localRotation = Quaternion.Euler(0f, 90f, 0f);
+        visual.localPosition = Vector3.zero;
     }
 
     BuildingSocket FindOrCreateSocket(string socketName, SocketType type, Vector3 localPos, Quaternion localRot)
