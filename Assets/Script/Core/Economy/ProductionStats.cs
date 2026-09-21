@@ -14,6 +14,7 @@ public class ProductionStats : MonoBehaviour
     int coinsGained;
     int coinsSpent;
     int rubiesGained;
+    float sessionBegan;
     readonly List<MoneyEvent> money = new List<MoneyEvent>(128);
 
     struct Event
@@ -47,7 +48,18 @@ public class ProductionStats : MonoBehaviour
         }
 
         Instance = this;
+        sessionBegan = Time.unscaledTime;
         ResetAll();
+    }
+
+    public float SessionSeconds => Mathf.Max(0f, Time.unscaledTime - sessionBegan);
+
+    public int TotalProducedCount()
+    {
+        int n = 0;
+        foreach (var pair in producedTotal)
+            n += pair.Value;
+        return n;
     }
 
     void OnDestroy()
@@ -74,6 +86,8 @@ public class ProductionStats : MonoBehaviour
         Add(producedTotal, item.id, amount);
         events.Add(new Event { time = Time.unscaledTime, id = item.id, amount = amount, produced = true });
         Trim();
+        producedTotal.TryGetValue(item.id, out int total);
+        AchievementSystem.NotifyProduced(item.id, total);
     }
 
     public void RecordConsumed(ItemData item, int amount)
@@ -188,6 +202,7 @@ public class ProductionStats : MonoBehaviour
         coinsGained = Mathf.Max(0, save.statsCoinsGained);
         coinsSpent = Mathf.Max(0, save.statsCoinsSpent);
         rubiesGained = Mathf.Max(0, save.statsRubiesGained);
+        sessionBegan = Time.unscaledTime;
     }
 
     float Rate(string itemId, bool produced)

@@ -1,7 +1,9 @@
 # PowerGenerator
 
-**Файл:** `Assets/Script/Core/Buildings/PowerGenerator.cs`  
+**Файлы:** `Assets/Script/Core/Buildings/PowerGenerator.cs`, префаб `Assets/prefabs/Builders/PowerGenerator.prefab`, данные `PowerGenerator.asset`  
 **Предок:** [[BuildingBase]]
+
+Модель `Assets/models/Builders/Generator from blender/Generator.fbx`, иконка `Assets/images/Builder_icon/Generator.png`. Исследование `research_power_generator` после шестерёнок. Топливо — уголь, вход сзади.
 
 ## Зачем задуман
 
@@ -13,8 +15,8 @@
 - таймер горения `remainingFuelTime`;
 - флаг `isPowered`, пока таймер > 0.
 
-## Чего нет
+## Что делает
 
-Комментарий в Update прямо говорит: поиск зданий вокруг ещё не дописан. Другие станки **не читают** этот генератор. Это заготовка.
+Жрёт уголь/брёвна (или `fuelItem`). Пока горит — `GetNearbySpeedMultiplier` ускоряет крафт и добычу в радиусе. Сейв таймера в `stateFloat`. Иконка питания в [[MachineUI]].
 
-Не путать с «электричеством» как отдельной сетью — её в проекте нет.
+Не электрическая сеть.

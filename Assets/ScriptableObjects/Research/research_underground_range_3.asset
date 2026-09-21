@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 943e43c1941a13b46bc200ba529369b4, type: 3}
+  m_Name: research_underground_range_3
+  m_EditorClassIdentifier: 
+  id: research_underground_range_3
+  displayName: "\u041F\u043E\u0434\u0437\u0435\u043C\u043A\u0430 \u0434\u0430\u043B\u044C\u043D\u0430\u044F"
+  description: "\u0417\u0430\u0437\u043E\u0440 \u043F\u043E\u0434\u0437\u0435\u043C\u043D\u043E\u0433\u043E
+    \u043A\u043E\u043D\u0432\u0435\u0439\u0435\u0440\u0430 \u0434\u043E 9 \u043A\u043B\u0435\u0442\u043E\u043A."
+  icon: {fileID: 21300000, guid: ff51556fed59a0944b6a0d632f66fe27, type: 3}
+  requiredItems:
+  - item: {fileID: 11400000, guid: 9d495ae5fdb87d6479f40cd1e73fed53, type: 2}
+    amount: 500
+  - item: {fileID: 11400000, guid: 69846796d4fa8ff47bc3d0a2f65ab91a, type: 2}
+    amount: 200
+  requiredResearches:
+  - {fileID: 11400000, guid: e7a1b2c3d4e5061728394a5b6c7d8e91, type: 2}
+  unlockedBuildings: []
+  unlockedRecipes: []
+  rubyReward: 0

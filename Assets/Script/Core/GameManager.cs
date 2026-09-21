@@ -41,6 +41,10 @@ public class GameManager : MonoBehaviour
             gameObject.AddComponent<PlayerWallet>();
         if (GetComponent<ProductionStats>() == null)
             gameObject.AddComponent<ProductionStats>();
+        if (GetComponent<AchievementSystem>() == null)
+            gameObject.AddComponent<AchievementSystem>();
+        if (GetComponent<PhotoMode>() == null)
+            gameObject.AddComponent<PhotoMode>();
         if (GetComponent<BeltSpeedSystem>() == null)
             gameObject.AddComponent<BeltSpeedSystem>();
         if (GetComponent<MapMarkerSystem>() == null)
@@ -49,6 +53,8 @@ public class GameManager : MonoBehaviour
             gameObject.AddComponent<MapExploration>();
         if (GetComponent<WalletHud>() == null)
             gameObject.AddComponent<WalletHud>();
+        if (GetComponent<MachineIdleHud>() == null)
+            gameObject.AddComponent<MachineIdleHud>();
         if (GetComponent<SelectionActionsUI>() == null)
             gameObject.AddComponent<SelectionActionsUI>();
         if (GetComponent<CrosshairHud>() == null)
@@ -166,6 +172,10 @@ public class GameManager : MonoBehaviour
             ResearchUI.Instance.Close();
         if (paused && BuildMenuUI.Instance != null && BuildMenuUI.Instance.IsOpen)
             BuildMenuUI.Instance.CloseMenu(false);
+        if (paused && PhotoMode.Instance != null)
+            PhotoMode.Instance.Cancel();
+        if (paused && BeltRide.Instance != null && BeltRide.Instance.IsRiding)
+            BeltRide.Instance.Stop();
 
         if (pauseUi == null)
             pauseUi = new IndustryPause();
@@ -185,7 +195,30 @@ public class GameManager : MonoBehaviour
         bool researchOpen = ResearchUI.Instance != null && ResearchUI.Instance.IsOpen;
         bool buildOpen = BuildMenuUI.Instance != null && BuildMenuUI.Instance.IsOpen;
         bool tutorialOpen = TutorialSystem.Instance != null && TutorialSystem.Instance.IsModal;
-        bool menuOpen = uiOpen || mapOpen || bagOpen || shopOpen || selectionOpen || researchOpen || buildOpen || tutorialOpen;
+        bool modalOpen = UiModal.IsOpen;
+        bool consoleOpen = DevConsole.IsOpen;
+        bool menuOpen = uiOpen || mapOpen || bagOpen || shopOpen || selectionOpen || researchOpen || buildOpen || tutorialOpen || modalOpen || consoleOpen;
+        if (PhotoMode.IsActive)
+        {
+            UnityEngine.Cursor.lockState = CursorLockMode.Locked;
+            UnityEngine.Cursor.visible = false;
+            SetPlayerControl(false);
+            return;
+        }
+
+        if (BeltRide.Instance != null && BeltRide.Instance.IsRiding)
+        {
+            UnityEngine.Cursor.lockState = CursorLockMode.Locked;
+            UnityEngine.Cursor.visible = false;
+            PlayerMovement rideMove = Object.FindFirstObjectByType<PlayerMovement>();
+            if (rideMove != null)
+            {
+                rideMove.canMove = false;
+                rideMove.canLook = true;
+            }
+            return;
+        }
+
         bool freeCursor = isPaused || menuOpen;
 
         UnityEngine.Cursor.lockState = freeCursor ? CursorLockMode.None : CursorLockMode.Locked;

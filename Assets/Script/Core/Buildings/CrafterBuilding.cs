@@ -20,7 +20,14 @@ public abstract class CrafterBuilding : BuildingBase, IInteractable
     protected readonly Dictionary<ItemData, int> inputBuffer = new Dictionary<ItemData, int>();
     float simCarry;
 
-    public virtual float CraftSpeed => level >= 2 ? 2f : 1f;
+    public virtual float CraftSpeed
+    {
+        get
+        {
+            float baseSpeed = level >= 2 ? 2f : 1f;
+            return baseSpeed * PowerGenerator.GetNearbySpeedMultiplier(transform.position);
+        }
+    }
     public override bool CanUpgradeBuilding => false;
     protected virtual string WorkClip => "bld_assembler_loop";
 
@@ -140,6 +147,17 @@ public abstract class CrafterBuilding : BuildingBase, IInteractable
             return 0;
         inputBuffer.TryGetValue(item, out int have);
         return have;
+    }
+
+    public string IdleReason()
+    {
+        if (currentRecipe == null)
+            return null;
+        if (!HasEnoughInputs())
+            return "input";
+        if (!HasSpaceForRecipeOutputs())
+            return "output";
+        return null;
     }
 
     public virtual void SetRecipe(RecipeData recipe)

@@ -28,12 +28,15 @@ public class MachineUI : MonoBehaviour
     Button tabRecipes;
     Button tabBelts;
     Button tabStats;
+    Button tabIdle;
     VisualElement bodyHost;
     ScrollView bodyList;
     VisualElement researchPage;
     VisualElement recipePage;
     VisualElement beltPage;
     VisualElement statsPage;
+    VisualElement idlePage;
+    ScrollView idleList;
     VisualElement researchView;
     VisualElement researchCanvas;
     VisualElement researchDetail;
@@ -68,6 +71,7 @@ public class MachineUI : MonoBehaviour
     const int TabRecipes = 1;
     const int TabBelts = 2;
     const int TabStats = 3;
+    const int TabIdle = 4;
 
     void Awake()
     {
@@ -153,24 +157,34 @@ public class MachineUI : MonoBehaviour
         IndustryUi.Show(upgradeBtn, false);
         upgradeBtn.RegisterCallback<PointerEnterEvent>(OnUpgradeHover);
         upgradeBtn.RegisterCallback<PointerLeaveEvent>(_ => UiTooltip.Hide());
+        VisualElement uxmlBody = overlay.Q("Body");
+        if (uxmlBody != null)
+            IndustryUi.Show(uxmlBody, false);
+
         var statusRow = IndustryUi.El("StatusRow", "status-row");
         statusRow.Add(IndustryUi.El("Dot", "status-dot"));
         statusLabel = IndustryUi.Text("Status", "", "body-small", "grow");
         statusRow.Add(statusLabel);
-        panel.Add(statusRow);
         progress = IndustryUi.ProgressBar("Progress");
-        panel.Add(progress);
+        int insertAt = header != null ? panel.IndexOf(header) + 1 : 0;
+        panel.Insert(insertAt++, statusRow);
+        panel.Insert(insertAt++, progress);
 
         tabRow = IndustryUi.El("Tabs", "tab-row");
         tabResearch = IndustryUi.TabBtn(UiLocale.T("machine.tab_research"), () => OpenLabTab(TabResearch));
         tabRecipes = IndustryUi.TabBtn(UiLocale.T("machine.tab_recipes"), () => OpenLabTab(TabRecipes));
         tabBelts = IndustryUi.TabBtn(UiLocale.T("machine.tab_belts"), () => OpenLabTab(TabBelts));
         tabStats = IndustryUi.TabBtn(UiLocale.T("machine.tab_stats"), () => OpenLabTab(TabStats));
+        tabIdle = IndustryUi.TabBtn(UiLocale.T("machine.tab_idle"), () => OpenLabTab(TabIdle));
         tabRow.Add(tabResearch);
         tabRow.Add(tabRecipes);
         tabRow.Add(tabBelts);
         tabRow.Add(tabStats);
-        panel.Add(tabRow);
+        tabRow.Add(tabIdle);
+        if (header != null)
+            panel.Insert(panel.IndexOf(progress) + 1, tabRow);
+        else
+            panel.Add(tabRow);
 
         bodyHost = IndustryUi.El("Body", "col", "grow");
         recipeSearchHost = IndustryUi.El("RecipeSearchHost", "search-host");
@@ -226,6 +240,10 @@ public class MachineUI : MonoBehaviour
         statsList = IndustryUi.Scroll("StatsList");
         statsPage.Add(statsList);
 
+        idlePage = IndustryUi.El("IdlePage", "col", "grow");
+        idleList = IndustryUi.Scroll("IdleList");
+        idlePage.Add(idleList);
+
         storageSummary = IndustryUi.Text("StorageSum", "", "body-text");
         storageScroll = IndustryUi.Scroll("StorageScroll");
         storageGrid = IndustryUi.El("StorageGrid", "grid");
@@ -240,6 +258,8 @@ public class MachineUI : MonoBehaviour
         {
             if (currentBuilding is RoboticArm arm)
                 RefreshArmFilter(arm);
+            else if (currentBuilding is Conveyor belt)
+                RefreshBeltFilter(belt);
         });
         filterSearchHost.Add(filterSearch);
         filterSearchHost.pickingMode = PickingMode.Position;
@@ -251,6 +271,7 @@ public class MachineUI : MonoBehaviour
         bodyHost.Add(recipePage);
         bodyHost.Add(beltPage);
         bodyHost.Add(statsPage);
+        bodyHost.Add(idlePage);
         bodyHost.Add(storageSummary);
         bodyHost.Add(storageScroll);
         bodyHost.Add(armSummary);
@@ -308,6 +329,11 @@ public class MachineUI : MonoBehaviour
             SetHeader(title, building);
             ShowCrafterUI(crafter);
         }
+        else if (building is PowerGenerator gen)
+        {
+            SetHeader(building.data != null ? building.data.displayName : "Generator", building);
+            ShowPowerUI(gen);
+        }
         else if (building is ResearchLab)
         {
             SetHeader("Research Lab", building);
@@ -322,6 +348,11 @@ public class MachineUI : MonoBehaviour
         {
             SetHeader("Роборука", building);
             ShowRoboticArmUI(arm);
+        }
+        else if (building is Conveyor belt)
+        {
+            SetHeader(building.data != null ? building.data.displayName : "Конвейер", building);
+            ShowConveyorUI(belt);
         }
         else
         {
@@ -451,6 +482,7 @@ public class MachineUI : MonoBehaviour
         IndustryUi.Show(recipePage, false);
         IndustryUi.Show(beltPage, false);
         IndustryUi.Show(statsPage, false);
+        IndustryUi.Show(idlePage, false);
         IndustryUi.Show(storageSummary, false);
         IndustryUi.Show(storageScroll, false);
         IndustryUi.Show(armSummary, false);
@@ -499,6 +531,20 @@ public class MachineUI : MonoBehaviour
             null));
     }
 
+    void ShowPowerUI(PowerGenerator gen)
+    {
+        IndustryUi.Show(bodyList, true);
+        bodyList.Clear();
+        string fuel = gen.Powered
+            ? UiLocale.T("machine.power_on", gen.RemainingFuel.ToString("0.0"))
+            : UiLocale.T("machine.power_off");
+        bodyList.Add(IndustryUi.ActionCard(
+            UiLocale.T("machine.powered"),
+            fuel + "  ·  ×" + gen.speedMultiplier.ToString("0.0") + "  ·  " + gen.powerRadius.ToString("0") + " м",
+            gen.Powered,
+            null));
+    }
+
     void ShowExtractorUI(Extractor extractor)
     {
         IndustryUi.Show(bodyList, true);
@@ -510,6 +556,19 @@ public class MachineUI : MonoBehaviour
             ? "Mining  " + extractor.resource.displayName
             : "No resource node";
         bodyList.Add(IndustryUi.RecipeCard(title, null, outputs, true, null));
+        bool front = extractor.requireFrontOutput;
+        bodyList.Add(IndustryUi.ActionCard(
+            UiLocale.T("machine.extractor_front"),
+            front ? UiLocale.T("machine.extractor_front_on") : UiLocale.T("machine.extractor_front_off"),
+            false,
+            () =>
+            {
+                extractor.requireFrontOutput = !extractor.requireFrontOutput;
+                ShowExtractorUI(extractor);
+            }));
+        float power = PowerGenerator.GetNearbySpeedMultiplier(extractor.transform.position);
+        if (power > 1.01f)
+            bodyList.Add(IndustryUi.ActionCard(UiLocale.T("machine.powered"), "×" + power.ToString("0.0"), true, null));
     }
 
     void ShowCrafterUI(CrafterBuilding crafter)
@@ -701,6 +760,72 @@ public class MachineUI : MonoBehaviour
         }
     }
 
+    void ShowConveyorUI(Conveyor belt)
+    {
+        IndustryUi.Show(armSummary, true);
+        IndustryUi.Show(filterSearchHost, true);
+        IndustryUi.Show(armScroll, true);
+        if (filterSearch != null)
+            filterSearch.value = "";
+        RefreshBeltFilter(belt);
+    }
+
+    void RefreshBeltFilter(Conveyor belt)
+    {
+        if (belt == null || armGrid == null)
+            return;
+        armGrid.Clear();
+        string query = filterSearch != null ? filterSearch.value : "";
+        if (MatchesQuery(UiLocale.T("machine.filter_any"), query))
+        {
+            armGrid.Add(IndustryUi.FilterCard(
+                null,
+                UiLocale.T("machine.filter_any"),
+                belt.Filter == null ? UiLocale.T("machine.filter_on") : UiLocale.T("machine.filter_off"),
+                belt.Filter == null,
+                () =>
+                {
+                    belt.SetFilter(null);
+                    RefreshBeltFilter(belt);
+                }));
+        }
+
+        bool fluids = belt is Pipe;
+        var seen = new HashSet<string>();
+        ItemData[] items = GameDatabase.AllItems();
+        if (items != null)
+        {
+            for (int i = 0; i < items.Length; i++)
+            {
+                ItemData item = items[i];
+                if (item == null || string.IsNullOrEmpty(item.id) || !seen.Add(item.id))
+                    continue;
+                if (item.isFluid != fluids)
+                    continue;
+                if (!MatchesQuery(item.displayName, query) && !MatchesQuery(item.id, query))
+                    continue;
+                ItemData captured = item;
+                bool selected = belt.Filter == item;
+                armGrid.Add(IndustryUi.FilterCard(
+                    item.icon,
+                    item.displayName,
+                    selected ? UiLocale.T("machine.filter_set") : UiLocale.T("machine.filter_only"),
+                    selected,
+                    () =>
+                    {
+                        belt.SetFilter(captured);
+                        RefreshBeltFilter(belt);
+                    }));
+            }
+        }
+
+        if (armSummary != null)
+        {
+            string name = belt.Filter != null ? belt.Filter.displayName : UiLocale.T("machine.filter_any");
+            armSummary.text = UiLocale.T("machine.belt_filter", name);
+        }
+    }
+
     void ShowRoboticArmUI(RoboticArm arm)
     {
         IndustryUi.Show(armSummary, true);
@@ -790,6 +915,8 @@ public class MachineUI : MonoBehaviour
                 FillRecipeTab();
             else if (labTab == TabBelts)
                 RebuildBeltTree();
+            else if (labTab == TabIdle)
+                RebuildIdleList();
             else
                 RebuildStatsList();
             return;
@@ -809,10 +936,12 @@ public class MachineUI : MonoBehaviour
         IndustryUi.Show(recipePage, tab == TabRecipes);
         IndustryUi.Show(beltPage, tab == TabBelts);
         IndustryUi.Show(statsPage, tab == TabStats);
+        IndustryUi.Show(idlePage, tab == TabIdle);
         IndustryUi.SetOn(tabResearch, tab == TabResearch, "tab-on");
         IndustryUi.SetOn(tabRecipes, tab == TabRecipes, "tab-on");
         IndustryUi.SetOn(tabBelts, tab == TabBelts, "tab-on");
         IndustryUi.SetOn(tabStats, tab == TabStats, "tab-on");
+        IndustryUi.SetOn(tabIdle, tab == TabIdle, "tab-on");
 
         if (tab == TabResearch)
             FillResearchTab();
@@ -820,6 +949,8 @@ public class MachineUI : MonoBehaviour
             FillRecipeTab();
         else if (tab == TabBelts)
             RebuildBeltTree();
+        else if (tab == TabIdle)
+            RebuildIdleList();
         else
             RebuildStatsList();
     }
@@ -1013,6 +1144,51 @@ public class MachineUI : MonoBehaviour
         return row;
     }
 
+    void RebuildIdleList()
+    {
+        if (idleList == null)
+            return;
+        idleList.Clear();
+        MachineIdleHud watch = MachineIdleHud.Instance;
+        if (watch == null || watch.Rows.Count == 0)
+        {
+            idleList.Add(IndustryUi.Text("Empty", UiLocale.T("idle.empty"), "muted"));
+            nextStatsRefresh = Time.unscaledTime + 0.8f;
+            return;
+        }
+
+        bool canTp = MapSettings.AllowTeleport;
+        for (int i = 0; i < watch.Rows.Count; i++)
+        {
+            MachineIdleHud.IdleRow row = watch.Rows[i];
+            if (row.building == null)
+                continue;
+            string why = row.reason == "input"
+                ? UiLocale.T("idle.no_input")
+                : UiLocale.T("idle.output_full");
+            string sub = why + "  ·  " + row.cell.x + "," + row.cell.y;
+            Vector2Int cell = row.cell;
+            idleList.Add(IndustryUi.ActionCard(
+                row.Name,
+                canTp ? sub + "  ·  " + UiLocale.T("map.teleport") : sub,
+                canTp,
+                canTp ? () => JumpIdle(cell) : null));
+        }
+
+        nextStatsRefresh = Time.unscaledTime + 0.8f;
+    }
+
+    static void JumpIdle(Vector2Int cell)
+    {
+        if (!MapSettings.AllowTeleport)
+            return;
+        if (Instance != null)
+            Instance.Close();
+        PlayerMovement player = UnityEngine.Object.FindFirstObjectByType<PlayerMovement>();
+        if (player != null)
+            player.TeleportToCell(cell);
+    }
+
     void RebuildStatsList()
     {
         if (statsList == null)
@@ -1048,18 +1224,27 @@ public class MachineUI : MonoBehaviour
                 ids.Add(pair.Key);
             var sorted = new List<string>(ids);
             sorted.Sort();
+            float maxRate = 0.01f;
+            for (int i = 0; i < sorted.Count; i++)
+            {
+                maxRate = Mathf.Max(maxRate, stats.ProducedPerMinute(sorted[i]));
+                maxRate = Mathf.Max(maxRate, stats.ConsumedPerMinute(sorted[i]));
+            }
+
             for (int i = 0; i < sorted.Count; i++)
             {
                 string id = sorted[i];
                 ItemData item = GameDatabase.FindItem(id);
                 stats.ProducedTotal.TryGetValue(id, out int made);
                 stats.ConsumedTotal.TryGetValue(id, out int used);
-                statsList.Add(IndustryUi.StatRow(
+                float plus = stats.ProducedPerMinute(id);
+                float minus = stats.ConsumedPerMinute(id);
+                statsList.Add(IndustryUi.RateBar(
                     item != null ? item.icon : null,
-                    item != null ? item.displayName : id,
-                    "всего +" + made + "   −" + used
-                    + "   ·   +" + stats.ProducedPerMinute(id).ToString("0.#") + "/мин   −"
-                    + stats.ConsumedPerMinute(id).ToString("0.#") + "/мин"));
+                    (item != null ? item.displayName : id) + "   всего +" + made + " −" + used,
+                    plus,
+                    minus,
+                    maxRate));
             }
         }
 
@@ -1106,6 +1291,8 @@ public class MachineUI : MonoBehaviour
 
             if (labTab == TabStats && Time.unscaledTime >= nextStatsRefresh)
                 RebuildStatsList();
+            if (labTab == TabIdle && Time.unscaledTime >= nextStatsRefresh)
+                RebuildIdleList();
         }
     }
 }

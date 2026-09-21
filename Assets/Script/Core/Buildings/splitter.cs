@@ -4,7 +4,7 @@ using UnityEngine;
 /// <summary>
 /// Перекрёсток ленты: 1 вход, 3 выхода. Предметы едут по клетке, как на конвейере.
 /// </summary>
-public class Splitter : BuildingBase
+public class Splitter : BuildingBase, IInteractable
 {
     [Header("Belt")]
     public float speed = 2.5f;
@@ -37,6 +37,32 @@ public class Splitter : BuildingBase
     void Awake()
     {
         EnsureSetup();
+    }
+
+    public void Interact(GameObject interactor)
+    {
+        BeltRide.TryInteract(this, interactor);
+    }
+
+    public Vector2Int TakeRideExit(Vector2Int entry)
+    {
+        return ChooseExitDir(entry);
+    }
+
+    public Vector3 RideWorld(Vector2Int entry, Vector2Int exit, float t)
+    {
+        float cell = GridFootprint.CellSize;
+        float h = resolvedHeight > 0.05f ? resolvedHeight : itemHeight;
+        Vector3 up = Vector3.up * h;
+        Vector3 start = transform.position - BuildingLinker.CardinalToWorld(entry) * (cell * 0.5f) + up;
+        Vector3 mid = transform.position + up;
+        Vector3 end = transform.position + BuildingLinker.CardinalToWorld(exit) * (cell * 0.5f) + up;
+        t = Mathf.Clamp01(t);
+        if (entry == exit)
+            return Vector3.Lerp(start, end, t);
+        if (t < 0.5f)
+            return Vector3.Lerp(start, mid, t * 2f);
+        return Vector3.Lerp(mid, end, (t - 0.5f) * 2f);
     }
 
     public override void OnPlaced()

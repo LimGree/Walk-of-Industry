@@ -9,7 +9,9 @@ using UnityEngine;
 public class SocketArrow : MonoBehaviour
 {
     static readonly List<SocketArrow> live = new List<SocketArrow>();
+    static readonly HashSet<int> selectedIds = new HashSet<int>();
     static bool buildMode;
+    static BuildingBase focusBuilding;
 
     MeshRenderer[] rends;
 
@@ -23,7 +25,57 @@ public class SocketArrow : MonoBehaviour
     public static void SetBuildMode(bool on)
     {
         buildMode = on;
+        if (!on)
+        {
+            focusBuilding = null;
+            selectedIds.Clear();
+        }
         RefreshAll();
+    }
+
+    public static void SetFocus(BuildingBase aim, IReadOnlyList<BuildingBase> selected)
+    {
+        bool changed = focusBuilding != aim;
+        focusBuilding = aim;
+        if (selected == null || selected.Count == 0)
+        {
+            if (selectedIds.Count > 0)
+            {
+                selectedIds.Clear();
+                changed = true;
+            }
+        }
+        else
+        {
+            var next = new HashSet<int>();
+            for (int i = 0; i < selected.Count; i++)
+            {
+                if (selected[i] != null)
+                    next.Add(selected[i].GetInstanceID());
+            }
+            if (next.Count != selectedIds.Count)
+                changed = true;
+            else
+            {
+                foreach (int id in next)
+                {
+                    if (!selectedIds.Contains(id))
+                    {
+                        changed = true;
+                        break;
+                    }
+                }
+            }
+            if (changed)
+            {
+                selectedIds.Clear();
+                foreach (int id in next)
+                    selectedIds.Add(id);
+            }
+        }
+
+        if (changed)
+            RefreshAll();
     }
 
     public static void RefreshOn(Transform root)
@@ -96,7 +148,7 @@ public class SocketArrow : MonoBehaviour
 
     public void Apply()
     {
-        bool show = !Application.isPlaying || buildMode;
+        bool show = !Application.isPlaying || (buildMode && ShouldShowHere());
         if (show && Application.isPlaying)
         {
             Conveyor belt = GetComponentInParent<Conveyor>();
@@ -111,5 +163,15 @@ public class SocketArrow : MonoBehaviour
             if (rends[i] != null)
                 rends[i].enabled = show;
         }
+    }
+
+    bool ShouldShowHere()
+    {
+        BuildingBase owner = GetComponentInParent<BuildingBase>();
+        if (owner == null || !owner.IsPlaced)
+            return true;
+        if (owner == focusBuilding)
+            return true;
+        return selectedIds.Contains(owner.GetInstanceID());
     }
 }

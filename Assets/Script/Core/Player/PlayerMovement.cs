@@ -29,6 +29,8 @@ public class PlayerMovement : MonoBehaviour
     Camera viewCam;
     float baseFov = 60f;
     float zoomStrength = 0.55f;
+    Light flashlight;
+    bool flashlightOn;
 
     // Input System variables
     private InputSystem_Actions inputActions;
@@ -81,6 +83,9 @@ public class PlayerMovement : MonoBehaviour
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
         BindCamera();
+        if (GetComponent<BeltRide>() == null)
+            gameObject.AddComponent<BeltRide>();
+        EnsureFlashlight();
         zoomStrength = Mathf.Clamp(PlayerPrefs.GetFloat("CamZoom", 0.55f), 0.2f, 0.85f);
 
         // Подписка на события
@@ -106,6 +111,10 @@ public class PlayerMovement : MonoBehaviour
             return;
         }
 
+        if (!KeybindStore.BlocksGameplayInput && !DevConsole.IsOpen
+            && Keyboard.current != null && Keyboard.current.fKey.wasPressedThisFrame)
+            ToggleFlashlight();
+
         if (TutorialSystem.Instance != null && TutorialSystem.Instance.IsModal)
         {
             RestoreFov();
@@ -127,6 +136,43 @@ public class PlayerMovement : MonoBehaviour
         if (canLook) HandleMouseLook();
         if (canMove) HandleMovement();
         HandleZoom();
+    }
+
+    void EnsureFlashlight()
+    {
+        if (cameraTransform == null)
+            BindCamera();
+        if (cameraTransform == null)
+            return;
+        Transform existing = cameraTransform.Find("Flashlight");
+        if (existing != null)
+            flashlight = existing.GetComponent<Light>();
+        if (flashlight == null)
+        {
+            var go = new GameObject("Flashlight");
+            go.transform.SetParent(cameraTransform, false);
+            go.transform.localPosition = new Vector3(0.12f, -0.08f, 0.08f);
+            go.transform.localRotation = Quaternion.identity;
+            flashlight = go.AddComponent<Light>();
+        }
+
+        flashlight.type = LightType.Spot;
+        flashlight.range = 24f;
+        flashlight.spotAngle = 58f;
+        flashlight.innerSpotAngle = 28f;
+        flashlight.intensity = 2.4f;
+        flashlight.color = new Color(1f, 0.96f, 0.88f, 1f);
+        flashlight.shadows = LightShadows.None;
+        flashlight.enabled = flashlightOn;
+    }
+
+    void ToggleFlashlight()
+    {
+        EnsureFlashlight();
+        if (flashlight == null)
+            return;
+        flashlightOn = !flashlightOn;
+        flashlight.enabled = flashlightOn;
     }
 
     void OnDisable()

@@ -34,6 +34,7 @@ public class PlayerBuilder : MonoBehaviour
     public bool HasHeldBuilding => currentBuildingData != null;
     public GameObject CurrentGhost => currentGhost;
     public BuildingData CurrentBuildingData => currentBuildingData;
+    public float PlacementYaw => currentRotationY;
     public BuildSelectionController Selection => selection;
 
     BuildSelectionController selection;
@@ -153,6 +154,7 @@ public class PlayerBuilder : MonoBehaviour
         }
 
         UpdateAim();
+        RefreshIoArrows();
 
         if (BlocksBuildInput)
         {
@@ -210,8 +212,15 @@ public class PlayerBuilder : MonoBehaviour
 
     void OnRotate(InputAction.CallbackContext ctx)
     {
-        if (!isBuildMode || strokeActive || IsGameplayBuildInputBlocked() || BlocksBuildInput)
+        if (!isBuildMode || strokeActive || IsGameplayBuildInputBlocked())
             return;
+        if (BlocksBuildInput)
+        {
+            if (selection != null)
+                selection.TryRotateSelected();
+            return;
+        }
+
         HandleRotateKey();
     }
 
@@ -413,6 +422,23 @@ public class PlayerBuilder : MonoBehaviour
         CurrentFootprintSize = Vector2Int.one;
     }
 
+    void RefreshIoArrows()
+    {
+        if (!isBuildMode)
+            return;
+        BuildingBase aim = null;
+        if (HasPlacementTarget)
+        {
+            Vector2Int cell = GridFootprint.GetMinCell(CurrentPlacementPosition, Vector2Int.one);
+            aim = BuildingLinker.GetBuildingAt(cell);
+        }
+
+        IReadOnlyList<BuildingBase> selected = selection != null && selection.IsSelectionMode
+            ? selection.SelectedBuildings
+            : null;
+        SocketArrow.SetFocus(aim, selected);
+    }
+
     public bool TryGetAimCell(out Vector2Int cell, out Vector3 worldPos)
     {
         cell = default;
@@ -474,14 +500,15 @@ public class PlayerBuilder : MonoBehaviour
         }
 
         Vector3 placePos = CurrentPlacementPosition;
-        Quaternion rot = Quaternion.Euler(0f, currentRotationY, 0f);
+        float yaw = GhostYaw(placePos);
+        Quaternion rot = Quaternion.Euler(0f, yaw, 0f);
         currentGhost.transform.SetPositionAndRotation(placePos, rot);
 
         Conveyor.PreviewExits.Clear();
         Conveyor ghostBelt = currentGhost.GetComponent<Conveyor>();
         if (ghostBelt != null)
         {
-            Conveyor.RegisterPreviewExit(placePos, currentRotationY);
+            Conveyor.RegisterPreviewExit(placePos, yaw);
             ghostBelt.Preview(placePos, rot);
             Conveyor.ApplyWorldVisualOverrides();
         }
@@ -827,7 +854,7 @@ public class PlayerBuilder : MonoBehaviour
                     paid++;
             }
 
-            strokeSlots.Add(MakeSlot(min, pos, valid, strokeYaw, strokeBuilding, false, 0));
+            strokeSlots.Add(MakeSlot(min, pos, valid, LineYaw(dir), strokeBuilding, false, 0));
         }
 
         ApplySmartYawToLastSlot();
@@ -886,13 +913,13 @@ public class PlayerBuilder : MonoBehaviour
     void RebuildTunneledLine(int extra, int dir, int step, Quaternion rot)
     {
         BuildingData ug = UndergroundBuilding();
-        int maxGap = ug != null ? Mathf.Max(1, ug.pairMaxGap) : 5;
+        int maxGap = ResearchSystem.UndergroundMaxGap();
         int ugCost = Economy.BuildCost(ug);
         int beltCost = Economy.BuildCost(strokeBuilding);
         int coins = PlayerWallet.Instance != null ? PlayerWallet.Instance.Coins : int.MaxValue;
         int spent = 0;
         int nextPair = 1;
-        float yaw = strokeYaw;
+        float yaw = LineYaw(dir);
 
         int n = extra + 1;
         var open = new bool[n];
@@ -963,7 +990,7 @@ public class PlayerBuilder : MonoBehaviour
         int extra = 0;
         int dir = 1;
         int step = 1;
-        int maxExtra = Mathf.Max(1, strokeBuilding.pairMaxGap) + 1;
+        int maxExtra = Mathf.Max(1, ResearchSystem.UndergroundMaxGap()) + 1;
         if (strokeAxis.HasValue)
         {
             int axisDelta = strokeAxis.Value.x != 0 ? delta.x : delta.y;
@@ -1011,9 +1038,24 @@ public class PlayerBuilder : MonoBehaviour
         return 0f;
     }
 
+    float LineYaw(int dir)
+    {
+        if (strokeAxis.HasValue)
+            return YawFromCellDir(strokeAxis.Value, dir);
+        return strokeYaw;
+    }
+
+    float GhostYaw(Vector3 placePos)
+    {
+        if (currentBuildingData == null || !currentBuildingData.IsConveyor)
+            return currentRotationY;
+        Vector2Int cell = BuildingLinker.WorldToCell(placePos);
+        return BuildingLinker.MaybeSmartYaw(cell, currentRotationY, null);
+    }
+
     void ApplySmartYawToLastSlot()
     {
-        if (strokeSlots.Count == 0 || strokeBuilding == null || !strokeBuilding.IsConveyor)
+        if (strokeSlots.Count != 1 || strokeBuilding == null || !strokeBuilding.IsConveyor)
             return;
 
         int last = strokeSlots.Count - 1;
@@ -1292,16 +1334,25 @@ public class PlayerBuilder : MonoBehaviour
         SpawnAt(placePos, placeRot, currentBuildingData);
     }
 
-    void SpawnAt(Vector3 placePos, Quaternion placeRot, BuildingData data)
+    public bool TrySpawnBuilding(BuildingData data, Vector3 placePos, float yaw)
     {
         if (data == null || data.prefab == null)
-            return;
+            return false;
+        if (ResearchSystem.Instance != null && !ResearchSystem.Instance.IsBuildingUnlocked(data))
+            return false;
+        return SpawnAt(placePos, Quaternion.Euler(0f, yaw, 0f), data);
+    }
+
+    bool SpawnAt(Vector3 placePos, Quaternion placeRot, BuildingData data)
+    {
+        if (data == null || data.prefab == null)
+            return false;
 
         int cost = Economy.BuildCost(data);
         if (PlayerWallet.Instance != null && !PlayerWallet.Instance.TrySpendCoins(cost))
         {
             GameAudio.World("world_invalid", placePos);
-            return;
+            return false;
         }
 
         GameObject go = Instantiate(data.prefab, placePos, placeRot);
@@ -1318,6 +1369,8 @@ public class PlayerBuilder : MonoBehaviour
         {
             RegisterGenericOnGrid(go);
         }
+
+        return true;
     }
 
     void RegisterGenericOnGrid(GameObject obj)

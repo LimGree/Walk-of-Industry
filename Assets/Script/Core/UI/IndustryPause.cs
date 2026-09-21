@@ -7,6 +7,9 @@ public class IndustryPause
     VisualElement root;
     VisualElement home;
     VisualElement settings;
+    VisualElement achievements;
+    ScrollView achieveList;
+    Label sessionStats;
     bool listening;
     string settingsTab = "general";
 
@@ -37,7 +40,10 @@ public class IndustryPause
             UiAudio.PlayConfirm();
             UiNotification.Push(UiLocale.T("pause.saved"), "", UiStatus.Completed);
         }));
+        sessionStats = IndustryUi.Text("Session", "", "caption", "pause-stats");
+        home.Add(sessionStats);
         home.Add(IndustryUi.El("Div1", "divider"));
+        home.Add(IndustryUi.Btn(UiLocale.T("pause.achievements"), ShowAchievements));
         home.Add(IndustryUi.Btn(UiLocale.T("menu.settings"), () => ShowSettings("general")));
         home.Add(IndustryUi.El("Div2", "divider"));
         home.Add(IndustryUi.Btn(UiLocale.T("pause.exit"), () =>
@@ -50,6 +56,13 @@ public class IndustryPause
         }, "btn-danger"));
         home.Add(IndustryUi.Text("Esc", UiLocale.T("pause.esc"), "esc-hint"));
         root.Add(home);
+
+        achievements = IndustryUi.El("Ach", "panel", "panel-menu");
+        achievements.Add(IndustryUi.Text("AT", UiLocale.T("pause.achievements"), "title-hero"));
+        achieveList = IndustryUi.Scroll("AchList");
+        achievements.Add(achieveList);
+        achievements.Add(IndustryUi.Btn(UiLocale.T("menu.back"), ShowHome, "btn-ghost"));
+        root.Add(achievements);
 
         settings = IndustryUi.El("Settings", "panel", "panel-menu");
         settings.AddToClassList("settings-shell");
@@ -67,10 +80,67 @@ public class IndustryPause
             ShowHome();
     }
 
+    void RefreshSessionStats()
+    {
+        if (sessionStats == null)
+            return;
+        ProductionStats stats = ProductionStats.Instance;
+        float sec = stats != null ? stats.SessionSeconds : 0f;
+        int min = Mathf.FloorToInt(sec / 60f);
+        int s = Mathf.FloorToInt(sec % 60f);
+        BuildingBase[] buildings = Object.FindObjectsByType<BuildingBase>(FindObjectsSortMode.None);
+        Conveyor[] belts = Object.FindObjectsByType<Conveyor>(FindObjectsSortMode.None);
+        int items = stats != null ? stats.TotalProducedCount() : 0;
+        int coins = stats != null ? stats.CoinsGainedTotal : 0;
+        sessionStats.text = UiLocale.T("pause.session",
+            min.ToString("00") + ":" + s.ToString("00"),
+            buildings.Length.ToString(),
+            belts.Length.ToString(),
+            items.ToString(),
+            coins.ToString());
+    }
+
     public void ShowHome()
     {
         IndustryUi.Show(home, true);
         IndustryUi.Show(settings, false);
+        IndustryUi.Show(achievements, false);
+        RefreshSessionStats();
+    }
+
+    void ShowAchievements()
+    {
+        FillAchievements();
+        IndustryUi.Show(home, false);
+        IndustryUi.Show(settings, false);
+        IndustryUi.Show(achievements, true);
+    }
+
+    void FillAchievements()
+    {
+        if (achieveList == null)
+            return;
+        achieveList.Clear();
+        AchievementSystem sys = AchievementSystem.Instance;
+        int done = 0;
+        for (int i = 0; i < AchievementSystem.Catalog.Length; i++)
+        {
+            AchievementSystem.Def def = AchievementSystem.Catalog[i];
+            bool on = sys != null && sys.IsUnlocked(def.id);
+            if (on)
+                done++;
+            var row = IndustryUi.El("A", "achieve-row");
+            if (on)
+                row.AddToClassList("is-on");
+            row.Add(IndustryUi.Text("M", on ? "★" : "·", on ? "gold" : "muted"));
+            var col = IndustryUi.El("C", "col", "grow");
+            col.Add(IndustryUi.Text("T", UiLocale.T(def.titleKey), on ? "body-text" : "muted"));
+            col.Add(IndustryUi.Text("B", UiLocale.T(def.bodyKey), "caption"));
+            row.Add(col);
+            achieveList.Add(row);
+        }
+
+        achieveList.Insert(0, IndustryUi.Text("Sum", done + " / " + AchievementSystem.Catalog.Length, "caption"));
     }
 
     void ShowSettings(string tab = "general")

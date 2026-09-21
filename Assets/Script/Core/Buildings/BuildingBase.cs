@@ -35,6 +35,7 @@ public abstract class BuildingBase : MonoBehaviour
 
     public int OutputBufferCount => outputBuffer.Count;
     public int OutputBufferFree => Mathf.Max(0, maxOutputBuffer - outputBuffer.Count);
+    public bool IsPlaced => worldPlaced;
 
     public bool OutputContains(ItemData item)
     {
@@ -65,6 +66,7 @@ public abstract class BuildingBase : MonoBehaviour
         BuildingVisuals.ApplyPlaced(this, ReadLevel());
         if (!BuildingLinker.SuppressRelink)
             BuildingLinker.RelinkAround(this);
+        AchievementSystem.NotifyPlaced(this);
     }
 
     public virtual void OnRemoved()

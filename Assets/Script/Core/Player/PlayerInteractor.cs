@@ -13,6 +13,10 @@ public class PlayerInteractor : MonoBehaviour
     {
         get
         {
+            if (currentInteractable is Conveyor || currentInteractable is Splitter)
+                return BeltRide.BuildModeOn()
+                    ? UiLocale.T("hint.belt_menu")
+                    : UiLocale.T("hint.ride_belt");
             if (currentInteractable is BuildingBase building && building.data != null
                 && !string.IsNullOrEmpty(building.data.displayName))
                 return building.data.displayName;
@@ -58,8 +62,13 @@ public class PlayerInteractor : MonoBehaviour
 
     void OnInteract(InputAction.CallbackContext ctx)
     {
-        if (KeybindStore.BlocksGameplayInput)
+        if (KeybindStore.BlocksGameplayInput || PhotoMode.IsActive)
             return;
+        if (BeltRide.Instance != null && BeltRide.Instance.IsRiding)
+        {
+            BeltRide.Instance.Stop();
+            return;
+        }
         if (GameManager.Instance != null && GameManager.Instance.IsPaused)
             return;
         if (MachineUI.Instance != null && MachineUI.Instance.IsOpen)

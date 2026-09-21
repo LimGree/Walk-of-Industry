@@ -183,6 +183,44 @@ public class TutorialSystem : MonoBehaviour
         Changed?.Invoke();
     }
 
+    public void RepeatStep()
+    {
+        if (!IsRunning)
+            return;
+        SetStep(Step, force: true);
+        if (GameManager.Instance != null)
+            GameManager.Instance.RestoreGameplayFocus();
+    }
+
+    public void SkipToLab()
+    {
+        JumpTo(TutorialStep.Lab);
+    }
+
+    public void SkipToBelts()
+    {
+        JumpTo(TutorialStep.Belts);
+    }
+
+    public void JumpTo(TutorialStep target)
+    {
+        if (!IsRunning)
+            return;
+        if (target <= TutorialStep.Welcome)
+        {
+            AcceptWelcome();
+            return;
+        }
+
+        if (target >= TutorialStep.Hotbar)
+            FillHotbar();
+        if (target > floor)
+            floor = target;
+        SetStep(target, force: true);
+        if (GameManager.Instance != null)
+            GameManager.Instance.RestoreGameplayFocus();
+    }
+
     public void SkipStep()
     {
         if (!IsRunning)
@@ -241,9 +279,9 @@ public class TutorialSystem : MonoBehaviour
         fx?.Clear();
     }
 
-    void SetStep(TutorialStep next)
+    void SetStep(TutorialStep next, bool force = false)
     {
-        if (Step == next && stepEnteredAt > 0f)
+        if (!force && Step == next && stepEnteredAt > 0f)
             return;
         Step = next;
         stepEnteredAt = Time.unscaledTime;

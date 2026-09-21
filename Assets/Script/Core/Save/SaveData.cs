@@ -37,6 +37,8 @@ public class SaveData
     public int tutorialStep;
     public bool tutorialFinished;
     public bool tutorialSkipped;
+    public List<string> achievements = new List<string>();
+    public bool timeCheated;
     public List<SaveKeyValue> extras = new List<SaveKeyValue>();
 
     public static SaveData Normalize(SaveData data)
@@ -62,6 +64,8 @@ public class SaveData
             data.statsConsumed = new List<ItemAmountSave>();
         if (data.markers == null)
             data.markers = new List<MapMarkerSave>();
+        if (data.achievements == null)
+            data.achievements = new List<string>();
         if (data.version < 6)
             data.worldHour = 9f;
         data.worldHour = DayNight.WrapHour(data.worldHour);

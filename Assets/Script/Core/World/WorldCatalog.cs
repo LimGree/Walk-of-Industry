@@ -11,6 +11,7 @@ public class WorldInfo
     public int seed;
     public string created;
     public string lastPlayed;
+    public bool sandbox;
 }
 
 [Serializable]
@@ -78,6 +79,13 @@ public static class WorldCatalog
         return Path.Combine(Root, world.id, "save.json");
     }
 
+    public static string PreviewPath(WorldInfo world)
+    {
+        if (world == null || string.IsNullOrEmpty(world.id))
+            return null;
+        return Path.Combine(Root, world.id, "preview.png");
+    }
+
     public static string ActiveSavePath => SavePath(Active);
     public static string WorldsFolder => Root;
 
@@ -88,19 +96,22 @@ public static class WorldCatalog
         return index.worlds;
     }
 
-    public static WorldInfo CreateWorld(string name)
+    public static WorldInfo CreateWorld(string name, bool sandbox = false, int seed = 0)
     {
         if (string.IsNullOrWhiteSpace(name))
-            name = "Новый мир";
+            name = sandbox ? "ТЕСТ" : "Новый мир";
+        if (seed <= 0)
+            seed = UnityEngine.Random.Range(1, 999999);
 
         Directory.CreateDirectory(Root);
         var world = new WorldInfo
         {
             id = "world_" + DateTime.UtcNow.Ticks,
             name = name.Trim(),
-            seed = UnityEngine.Random.Range(1, 999999),
+            seed = seed,
             created = DateTime.Now.ToString("yyyy-MM-dd HH:mm"),
-            lastPlayed = DateTime.Now.ToString("yyyy-MM-dd HH:mm")
+            lastPlayed = DateTime.Now.ToString("yyyy-MM-dd HH:mm"),
+            sandbox = sandbox
         };
 
         WorldIndex index = ReadIndex();
@@ -113,8 +124,10 @@ public static class WorldCatalog
             version = SaveData.CurrentVersion,
             worldName = world.name,
             seed = world.seed,
-            coins = Economy.StartingCoins,
-            rubies = Economy.StartingRubies
+            coins = sandbox ? 500000 : Economy.StartingCoins,
+            rubies = sandbox ? 999 : Economy.StartingRubies,
+            tutorialSkipped = sandbox,
+            tutorialFinished = sandbox
         };
         File.WriteAllText(SavePath(world), JsonUtility.ToJson(save, true));
         return world;
@@ -176,5 +189,69 @@ public static class WorldCatalog
     {
         Directory.CreateDirectory(Root);
         File.WriteAllText(IndexPath, JsonUtility.ToJson(index ?? new WorldIndex(), true));
+    }
+
+    public static int ParseSeed(string raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+            return 0;
+        raw = raw.Trim();
+        int n;
+        if (int.TryParse(raw, out n))
+            return Mathf.Abs(n);
+        int hash = 23;
+        for (int i = 0; i < raw.Length; i++)
+            hash = hash * 31 + raw[i];
+        return Mathf.Abs(hash % 999999) + 1;
+    }
+
+    public static int PeekCoins(WorldInfo world)
+    {
+        string path = SavePath(world);
+        if (string.IsNullOrEmpty(path) || !File.Exists(path))
+            return 0;
+        try
+        {
+            SaveData data = JsonUtility.FromJson<SaveData>(File.ReadAllText(path));
+            return data != null ? Mathf.Max(0, data.coins) : 0;
+        }
+        catch
+        {
+            return 0;
+        }
+    }
+
+    public static void WritePreviewPng(WorldInfo world, byte[] png)
+    {
+        string path = PreviewPath(world);
+        if (string.IsNullOrEmpty(path) || png == null || png.Length == 0)
+            return;
+        Directory.CreateDirectory(Path.GetDirectoryName(path));
+        File.WriteAllBytes(path, png);
+    }
+
+    public static Texture2D LoadPreview(WorldInfo world)
+    {
+        string path = PreviewPath(world);
+        if (string.IsNullOrEmpty(path) || !File.Exists(path))
+            return null;
+        try
+        {
+            byte[] bytes = File.ReadAllBytes(path);
+            var tex = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+            tex.filterMode = FilterMode.Point;
+            tex.wrapMode = TextureWrapMode.Clamp;
+            if (!tex.LoadImage(bytes))
+            {
+                UnityEngine.Object.Destroy(tex);
+                return null;
+            }
+
+            return tex;
+        }
+        catch
+        {
+            return null;
+        }
     }
 }

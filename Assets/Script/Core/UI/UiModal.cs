@@ -13,7 +13,7 @@ public static class UiModal
 
     public static bool IsOpen => host != null && host.style.display == DisplayStyle.Flex;
 
-    public static void Confirm(string heading, string message, string confirmLabel, Action onConfirm)
+    public static void Confirm(string heading, string message, string confirmLabel, Action onConfirm, bool danger = true)
     {
         Ensure();
         if (host == null)
@@ -23,11 +23,10 @@ public static class UiModal
         title.text = heading ?? "";
         body.text = message ?? "";
         IndustryUi.Show(field, false);
-        SetConfirmDanger(true);
+        SetConfirmDanger(danger);
         IndustryUi.SetButtonLabel(confirm, string.IsNullOrEmpty(confirmLabel) ? UiLocale.T("modal.ok") : confirmLabel);
         RelabelCancel();
-        host.style.display = DisplayStyle.Flex;
-        UiAudio.PlayModal();
+        Show();
     }
 
     public static void Prompt(string heading, string message, string confirmLabel, string initial, Action<string> onConfirm)
@@ -48,8 +47,7 @@ public static class UiModal
         SetConfirmDanger(false);
         IndustryUi.SetButtonLabel(confirm, string.IsNullOrEmpty(confirmLabel) ? UiLocale.T("modal.ok") : confirmLabel);
         RelabelCancel();
-        host.style.display = DisplayStyle.Flex;
-        UiAudio.PlayModal();
+        Show();
     }
 
     public static void Hide()
@@ -58,6 +56,20 @@ public static class UiModal
         pendingText = null;
         if (host != null)
             host.style.display = DisplayStyle.None;
+        if (GameManager.Instance != null)
+            GameManager.Instance.RestoreGameplayFocus();
+    }
+
+    static void Show()
+    {
+        if (host == null)
+            return;
+        host.pickingMode = PickingMode.Position;
+        host.style.display = DisplayStyle.Flex;
+        host.BringToFront();
+        UiAudio.PlayModal();
+        if (GameManager.Instance != null)
+            GameManager.Instance.RestoreGameplayFocus();
     }
 
     static void RelabelCancel()

@@ -14,7 +14,11 @@
 
 ## Методы
 
-- `ListWorlds` / `CreateWorld` / `DeleteWorld` / `SetActive`
-- `SavePath` / `ActiveSavePath` / `WorldsFolder` — последнюю открывает кнопка в [[SettingsHub]]
+- `ListWorlds` / `CreateWorld(name, sandbox, seed)` — seed 0 = случайный
+- `DeleteWorld` / `SetActive`
+- `ParseSeed` / `PeekCoins` / `LoadPreview` / `WritePreviewPng`
+- `SavePath` / `PreviewPath` / `ActiveSavePath` / `WorldsFolder`
+
+После каждого сейва рядом с `save.json` пишется `preview.png` — скрин камеры без UI.
 
 [[MainMenu]] рисует карточки отсюда. [[SaveSystem]] пишет в активный мир.

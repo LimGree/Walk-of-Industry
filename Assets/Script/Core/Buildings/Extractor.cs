@@ -27,12 +27,16 @@ public class Extractor : BuildingBase, IInteractable
     private float nextFailLogTime;
     float simCarry;
 
+    public bool IsOutputJammed => boundNode != null && !HasOutputSpace(1) && !CanPushAnyNow();
+
     public bool CanUpgrade => level < 2;
     public override bool CanUpgradeBuilding =>
         CanUpgrade
         && ResearchSystem.Instance != null
         && ResearchSystem.Instance.IsResearchIdUnlocked("research_extractor_2");
-    public float CurrentInterval => Mathf.Max(0.05f, extractInterval * Economy.ExtractTimeMul);
+    public bool requireFrontOutput;
+    public float CurrentInterval => Mathf.Max(0.05f,
+        extractInterval * Economy.ExtractTimeMul / PowerGenerator.GetNearbySpeedMultiplier(transform.position));
     public int CurrentItemsPerCycle => Mathf.Max(1, itemsPerCycle);
 
     void Awake()
@@ -44,6 +48,7 @@ public class Extractor : BuildingBase, IInteractable
 
     public override void OnPlaced()
     {
+        BuildingPrefabLayout.ApplyPrimarySockets(this);
         base.OnPlaced();
         timer = 0f;
         EnsureCollider();
@@ -76,6 +81,19 @@ public class Extractor : BuildingBase, IInteractable
     public override int ReadLevel()
     {
         return level;
+    }
+
+    public override void WriteSave(BuildingSaveData save)
+    {
+        base.WriteSave(save);
+        if (save != null)
+            save.stateInt = requireFrontOutput ? 1 : 0;
+    }
+
+    public override void ReadSave(BuildingSaveData save)
+    {
+        base.ReadSave(save);
+        requireFrontOutput = save != null && save.stateInt != 0;
     }
 
     public override void ApplyLevel(int savedLevel)
@@ -233,8 +251,63 @@ public class Extractor : BuildingBase, IInteractable
         }
     }
 
+    protected override bool TryPushToConnections(ItemData item)
+    {
+        if (!requireFrontOutput)
+            return base.TryPushToConnections(item);
+        if (outputSockets == null)
+            return false;
+        for (int i = 0; i < outputSockets.Length; i++)
+        {
+            BuildingSocket socket = outputSockets[i];
+            if (socket == null)
+                continue;
+            BuildingBase front = BuildingLinker.GetBuildingAt(BuildingLinker.GetSocketFrontCell(socket));
+            if (front != null && TryGiveFront(front, item, socket))
+                return true;
+        }
+
+        return false;
+    }
+
+    bool TryGiveFront(BuildingBase dest, ItemData item, BuildingSocket socket)
+    {
+        if (dest == null || dest == this || item == null)
+            return false;
+        Conveyor belt = dest as Conveyor;
+        if (belt != null)
+        {
+            if (belt is Pipe)
+                return false;
+            if (!belt.AcceptsFromCell(BuildingLinker.WorldToCell(transform.position)))
+                return false;
+            return belt.TryAcceptTransfer(item, null, this);
+        }
+
+        if (!dest.CanAcceptFrom(this))
+            return false;
+        return dest.TryReceiveItem(item, socket);
+    }
+
     bool CanPushAnyNow()
     {
+        if (requireFrontOutput)
+        {
+            if (outputSockets == null)
+                return false;
+            for (int i = 0; i < outputSockets.Length; i++)
+            {
+                BuildingSocket socket = outputSockets[i];
+                if (socket == null)
+                    continue;
+                BuildingBase front = BuildingLinker.GetBuildingAt(BuildingLinker.GetSocketFrontCell(socket));
+                if (front != null && front != this)
+                    return true;
+            }
+
+            return false;
+        }
+
         if (outputSockets == null) return false;
 
         for (int i = 0; i < outputSockets.Length; i++)

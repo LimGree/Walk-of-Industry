@@ -27,7 +27,8 @@ public class OilExtractor : BuildingBase, IInteractable
         }
     }
 
-    public float CurrentInterval => Mathf.Max(0.05f, extractInterval * Economy.ExtractTimeMul);
+    public float CurrentInterval => Mathf.Max(0.05f,
+        extractInterval * Economy.ExtractTimeMul / PowerGenerator.GetNearbySpeedMultiplier(transform.position));
     public int CurrentItemsPerCycle => Mathf.Max(1, itemsPerCycle);
 
     void Awake()

@@ -115,6 +115,8 @@ public class SaveSystem : MonoBehaviour
             data.worldWeather = (int)Weather.Kind;
         if (TutorialSystem.Instance != null)
             TutorialSystem.Instance.CaptureSave(data);
+        if (AchievementSystem.Instance != null)
+            AchievementSystem.Instance.CaptureSave(data);
 
         PlayerInventory inv = Object.FindFirstObjectByType<PlayerInventory>();
         if (inv != null)
@@ -126,6 +128,8 @@ public class SaveSystem : MonoBehaviour
         string path = WorldCatalog.ActiveSavePath;
         Directory.CreateDirectory(Path.GetDirectoryName(path));
         File.WriteAllText(path, JsonUtility.ToJson(data, true));
+        if (WorldCatalog.Active != null)
+            WorldCatalog.WritePreviewPng(WorldCatalog.Active, ScreenPreview.CapturePng());
         WorldCatalog.SetActive(WorldCatalog.Active);
         Debug.Log($"[Save] v{data.version}  {data.buildings.Count} зданий → {path}");
     }
@@ -183,12 +187,14 @@ public class SaveSystem : MonoBehaviour
         if (data == null)
         {
             Debug.LogError("[Save] Не удалось прочитать сохранение");
+            AchievementSystem.Mute = false;
             Report(1f);
             yield break;
         }
 
         BuildingData[] catalog = GameDatabase.AllBuildings();
         BuildingLinker.SuppressRelink = true;
+        AchievementSystem.Mute = true;
         UndergroundConveyor.BeginLoad();
         ClearWorldBuildings();
         Report(0.08f);
@@ -261,6 +267,8 @@ public class SaveSystem : MonoBehaviour
 
         if (TutorialSystem.Instance != null)
             TutorialSystem.Instance.PrepareFromSave(true, data);
+        if (AchievementSystem.Instance != null)
+            AchievementSystem.Instance.ApplySave(data);
 
         PlayerInventory inv = Object.FindFirstObjectByType<PlayerInventory>();
         if (inv != null)
@@ -276,9 +284,17 @@ public class SaveSystem : MonoBehaviour
                 player.ApplySavedPose(data.playerPos, data.playerYaw, data.playerPitch);
         }
 
+        if (WorldCatalog.Active != null && WorldCatalog.Active.sandbox && count == 0)
+        {
+            TestYard.Populate();
+            BuildingBase[] after = Object.FindObjectsByType<BuildingBase>(FindObjectsSortMode.None);
+            count = after != null ? after.Length : count;
+        }
+
         if (TutorialSystem.Instance != null)
             TutorialSystem.Instance.OnWorldReady(true, data);
 
+        AchievementSystem.Mute = false;
         nextAutoSave = Time.unscaledTime + Mathf.Max(30f, autoSaveInterval);
         Debug.Log($"[Save] Загружено зданий: {count}  (файл v{data.version})");
         Report(1f);

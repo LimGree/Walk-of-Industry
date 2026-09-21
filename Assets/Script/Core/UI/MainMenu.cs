@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 using UnityEngine.UIElements;
 
@@ -15,6 +16,8 @@ public class MainMenu : MonoBehaviour
     VisualElement create;
     ScrollView worldList;
     TextField nameField;
+    TextField seedField;
+    Button continueBtn;
     bool rebuildQueued;
 
     void Awake()
@@ -40,12 +43,36 @@ public class MainMenu : MonoBehaviour
         rebuildQueued = true;
     }
 
+    void Update()
+    {
+        bool chord = SandboxChordHeld();
+        if (continueBtn != null)
+        {
+            string label = chord ? UiLocale.T("menu.test_yard") : UiLocale.T("menu.continue");
+            IndustryUi.SetButtonLabel(continueBtn, label);
+            if (string.IsNullOrEmpty(continueBtn.Q<Label>(className: "btn-label")?.text))
+                continueBtn.text = label;
+        }
+
+        if (chord && Keyboard.current != null && Keyboard.current.enterKey.wasPressedThisFrame
+            && home != null && home.resolvedStyle.display != DisplayStyle.None)
+            ContinueLatest();
+    }
+
     void LateUpdate()
     {
         if (!rebuildQueued)
             return;
         rebuildQueued = false;
         BuildUi();
+    }
+
+    void OnContinuePointer(PointerDownEvent evt)
+    {
+        if (evt.button != 0 || !SandboxChordHeld())
+            return;
+        evt.StopImmediatePropagation();
+        ContinueLatest();
     }
 
     public static void LoadGame()
@@ -75,14 +102,17 @@ public class MainMenu : MonoBehaviour
         home.Add(IndustryUi.Text("Title", "WALK", "display"));
         home.Add(IndustryUi.Text("Title2", "OF INDUSTRY", "title-hero"));
         home.Add(IndustryUi.Text("Tag", GameBranding.Tagline, "tagline"));
-        home.Add(IndustryUi.Btn(UiLocale.T("menu.continue"), ContinueLatest, "btn-primary"));
+        continueBtn = IndustryUi.Btn(UiLocale.T("menu.continue"), ContinueLatest, "btn-primary");
+        continueBtn.name = "Continue";
+        continueBtn.RegisterCallback<PointerDownEvent>(OnContinuePointer, TrickleDown.TrickleDown);
+        home.Add(continueBtn);
         home.Add(IndustryUi.Btn(UiLocale.T("menu.worlds"), ShowWorlds));
         home.Add(IndustryUi.Btn(UiLocale.T("menu.settings"), ShowSettings));
         home.Add(IndustryUi.Btn(UiLocale.T("menu.exit"), Quit, "btn-ghost"));
         bg.Add(home);
 
         worlds = MenuPanel("Worlds");
-        worlds.style.width = 560;
+        worlds.style.width = 640;
         worlds.Add(IndustryUi.Text("Title", UiLocale.T("menu.worlds"), "title-hero"));
         worldList = new ScrollView();
         worldList.AddToClassList("scroll");
@@ -99,6 +129,14 @@ public class MainMenu : MonoBehaviour
         nameField.label = "";
         nameField.style.unityTextAlign = TextAnchor.MiddleLeft;
         create.Add(nameField);
+        seedField = new TextField { value = "" };
+        seedField.AddToClassList("field");
+        seedField.label = UiLocale.T("menu.seed_field");
+        create.Add(seedField);
+        var seedRow = IndustryUi.El("SeedRow", "row");
+        seedRow.Add(IndustryUi.Btn(UiLocale.T("menu.seed_random"), () => { seedField.value = ""; }, "btn-small", "btn-ghost"));
+        seedRow.Add(IndustryUi.Btn(UiLocale.T("menu.seed_copy"), CopyLastSeed, "btn-small", "btn-ghost"));
+        create.Add(seedRow);
         create.Add(IndustryUi.Btn(UiLocale.T("menu.create"), CreateAndPlay, "btn-primary"));
         create.Add(IndustryUi.Btn(UiLocale.T("menu.back"), ShowWorlds, "btn-ghost"));
         bg.Add(create);
@@ -162,6 +200,8 @@ public class MainMenu : MonoBehaviour
         IndustryUi.Show(create, true);
         if (nameField != null)
             nameField.value = UiLocale.T("menu.default_world", WorldCatalog.ListWorlds().Count + 1);
+        if (seedField != null)
+            seedField.value = "";
     }
 
     void HideAll()
@@ -180,14 +220,32 @@ public class MainMenu : MonoBehaviour
 
     void CreateAndPlay()
     {
-        WorldInfo world = WorldCatalog.CreateWorld(nameField != null ? nameField.value : "");
+        int seed = WorldCatalog.ParseSeed(seedField != null ? seedField.value : "");
+        WorldInfo world = WorldCatalog.CreateWorld(nameField != null ? nameField.value : "", false, seed);
         PlayWorld(world);
+    }
+
+    void CopyLastSeed()
+    {
+        if (seedField == null)
+            return;
+        List<WorldInfo> list = WorldCatalog.ListWorlds();
+        if (list.Count == 0)
+            return;
+        seedField.value = list[0].seed.ToString();
     }
 
     void RefreshWorldList()
     {
         if (worldList == null)
             return;
+        for (int c = 0; c < worldList.childCount; c++)
+        {
+            Texture2D old = worldList[c].userData as Texture2D;
+            if (old != null)
+                Destroy(old);
+        }
+
         worldList.Clear();
         List<WorldInfo> list = WorldCatalog.ListWorlds();
         if (list.Count == 0)
@@ -200,10 +258,24 @@ public class MainMenu : MonoBehaviour
         {
             WorldInfo world = list[i];
             var card = IndustryUi.El(world.id, "card", "world-card");
-            card.Add(IndustryUi.Text("Idx", UiLocale.T("menu.world_n", (i + 1).ToString("00")), "label-caps"));
-            card.Add(IndustryUi.Text("Name", world.name, "heading-3"));
-            card.Add(IndustryUi.Text("Played", UiLocale.T("menu.last_played", world.lastPlayed), "caption"));
-            card.Add(IndustryUi.Text("Seed", UiLocale.T("menu.seed", world.seed), "caption"));
+            var body = IndustryUi.El("Body", "row");
+            Texture2D preview = WorldCatalog.LoadPreview(world);
+            var thumb = IndustryUi.El("Thumb", "world-preview");
+            if (preview != null)
+            {
+                thumb.style.backgroundImage = new StyleBackground(preview);
+                card.userData = preview;
+            }
+            body.Add(thumb);
+            var meta = IndustryUi.El("Meta", "col", "grow");
+            meta.Add(IndustryUi.Text("Idx", UiLocale.T("menu.world_n", (i + 1).ToString("00")), "label-caps"));
+            meta.Add(IndustryUi.Text("Name", world.name, "heading-3"));
+            meta.Add(IndustryUi.Text("Played", UiLocale.T("menu.last_played", world.lastPlayed), "caption"));
+            meta.Add(IndustryUi.Text("Seed", UiLocale.T("menu.seed", world.seed), "caption"));
+            int coins = WorldCatalog.PeekCoins(world);
+            meta.Add(IndustryUi.Text("Coins", UiLocale.T("menu.world_coins", coins), "caption"));
+            body.Add(meta);
+            card.Add(body);
             var actions = IndustryUi.El("A", "row");
             actions.Add(IndustryUi.Btn(UiLocale.T("menu.play"), () => PlayWorld(world), "btn-small", "btn-primary"));
             WorldInfo captured = world;
@@ -226,6 +298,12 @@ public class MainMenu : MonoBehaviour
 
     void ContinueLatest()
     {
+        if (SandboxChordHeld())
+        {
+            PlayWorld(WorldCatalog.CreateWorld("ТЕСТ", true));
+            return;
+        }
+
         List<WorldInfo> list = WorldCatalog.ListWorlds();
         if (list.Count == 0)
         {
@@ -233,6 +311,17 @@ public class MainMenu : MonoBehaviour
             return;
         }
         PlayWorld(list[0]);
+    }
+
+    static bool SandboxChordHeld()
+    {
+        Keyboard kb = Keyboard.current;
+        if (kb == null)
+            return false;
+        bool shift = kb.leftShiftKey.isPressed || kb.rightShiftKey.isPressed;
+        bool ctrl = kb.leftCtrlKey.isPressed || kb.rightCtrlKey.isPressed;
+        bool alt = kb.leftAltKey.isPressed || kb.rightAltKey.isPressed;
+        return shift && ctrl && alt;
     }
 
     static void Quit()

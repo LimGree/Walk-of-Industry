@@ -1,71 +1,114 @@
+using System.Collections.Generic;
 using UnityEngine;
 
-public class PowerGenerator : BuildingBase
+public class PowerGenerator : BuildingBase, IInteractable
 {
-    [Header("Power Settings")]
-    public ItemData fuelItem;                 // какой предмет является топливом (уголь и т.д.)
-    public float fuelBurnTime = 10f;          // сколько секунд работает от 1 топлива
-    public float powerRadius = 15f;           // радиус, в котором ускоряет машины
-    public float speedMultiplier = 1.5f;      // во сколько раз ускоряет
+    static readonly List<PowerGenerator> live = new List<PowerGenerator>();
 
-    private float remainingFuelTime = 0f;
-    private bool isPowered = false;
+    [Header("Power Settings")]
+    public ItemData fuelItem;
+    public float fuelBurnTime = 10f;
+    public float powerRadius = 15f;
+    public float speedMultiplier = 1.5f;
+
+    float remainingFuelTime;
+    bool isPowered;
+
+    public bool Powered => isPowered;
+    public float RemainingFuel => remainingFuelTime;
+    public float SpeedMul => isPowered ? speedMultiplier : 1f;
+
+    void OnEnable()
+    {
+        if (!live.Contains(this))
+            live.Add(this);
+    }
+
+    void OnDisable()
+    {
+        live.Remove(this);
+    }
 
     public override void OnPlaced()
     {
+        BuildingPrefabLayout.ApplyPrimarySockets(this);
         base.OnPlaced();
-        remainingFuelTime = 0f;
-        isPowered = false;
+        if (remainingFuelTime <= 0f)
+            isPowered = false;
     }
 
     void Update()
     {
-        // Тратим топливо
         if (remainingFuelTime > 0f)
         {
             remainingFuelTime -= Time.deltaTime;
-            isPowered = true;
+            isPowered = remainingFuelTime > 0f;
         }
         else
-        {
             isPowered = false;
-        }
-
-        // Можно потом добавить визуал (огонь, свет и т.д.)
     }
 
     public override bool TryReceiveItem(ItemData item, BuildingSocket fromSocket)
     {
-        // Принимаем только топливо
-        if (item != fuelItem) return false;
-
-        // Добавляем время горения
-        remainingFuelTime += fuelBurnTime;
+        if (!IsFuel(item))
+            return false;
+        remainingFuelTime += Mathf.Max(0.1f, fuelBurnTime);
+        isPowered = true;
         return true;
     }
 
-    // Другие здания могут спросить, есть ли рядом работающий генератор
+    bool IsFuel(ItemData item)
+    {
+        if (item == null)
+            return false;
+        if (fuelItem != null)
+            return item == fuelItem;
+        string id = item.id != null ? item.id.Trim().ToLowerInvariant() : "";
+        return id == "coal_ore" || id == "coal" || id == "log";
+    }
+
     public bool IsPowered() => isPowered;
+    public float GetSpeedMultiplier() => SpeedMul;
 
-    public float GetSpeedMultiplier() => isPowered ? speedMultiplier : 1f;
-
-    // Можно вызывать из других зданий
     public static float GetNearbySpeedMultiplier(Vector3 position, float checkRadius = 20f)
     {
-        var generators = FindObjectsByType<PowerGenerator>(FindObjectsSortMode.None);
-        float bestMultiplier = 1f;
-
-        foreach (var gen in generators)
+        float best = 1f;
+        for (int i = live.Count - 1; i >= 0; i--)
         {
-            if (!gen.isPowered) continue;
-
+            PowerGenerator gen = live[i];
+            if (gen == null)
+            {
+                live.RemoveAt(i);
+                continue;
+            }
+            if (!gen.isPowered || !gen.IsPlaced)
+                continue;
             float dist = Vector3.Distance(position, gen.transform.position);
             if (dist <= gen.powerRadius)
-            {
-                bestMultiplier = Mathf.Max(bestMultiplier, gen.speedMultiplier);
-            }
+                best = Mathf.Max(best, gen.speedMultiplier);
         }
 
-        return bestMultiplier;
+        return best;
+    }
+
+    public override void WriteSave(BuildingSaveData save)
+    {
+        base.WriteSave(save);
+        if (save == null)
+            return;
+        save.stateFloat = remainingFuelTime;
+    }
+
+    public override void ReadSave(BuildingSaveData save)
+    {
+        base.ReadSave(save);
+        remainingFuelTime = save != null ? Mathf.Max(0f, save.stateFloat) : 0f;
+        isPowered = remainingFuelTime > 0f;
+    }
+
+    public void Interact(GameObject interactor)
+    {
+        if (MachineUI.Instance != null)
+            MachineUI.Instance.Open(this);
     }
 }

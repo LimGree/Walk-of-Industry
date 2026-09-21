@@ -5,7 +5,7 @@ using UnityEngine;
 /// Клетка ленты. Выход = transform.forward. Форма — таблица [[BeltRules]] по маске входов.
 /// Сокетов нет: соседство + ExitDir.
 /// </summary>
-public class Conveyor : BuildingBase
+public class Conveyor : BuildingBase, IInteractable
 {
     [Header("Belt")]
     public float speed = 2.5f;
@@ -29,6 +29,13 @@ public class Conveyor : BuildingBase
     public bool FromBack => BeltRules.Has(InMask, BeltInMask.Back);
     public bool FromLeft => BeltRules.Has(InMask, BeltInMask.Left);
     public bool FromRight => BeltRules.Has(InMask, BeltInMask.Right);
+    public ItemData Filter => filter;
+
+    ItemData filter;
+    SpriteRenderer filterChip;
+    static readonly int ColorId = Shader.PropertyToID("_Color");
+    static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
+    static readonly MaterialPropertyBlock TintBlock = new MaterialPropertyBlock();
 
     public struct Incoming
     {
@@ -63,6 +70,17 @@ public class Conveyor : BuildingBase
         EnsureSetup();
         RefreshExitFromTransform();
         ClearBeltSockets();
+    }
+
+    public void Interact(GameObject interactor)
+    {
+        BeltRide.TryInteract(this, interactor);
+    }
+
+    public void SetFilter(ItemData item)
+    {
+        filter = item;
+        ApplyFilterLook();
     }
 
     public override void OnPlaced()
@@ -220,9 +238,14 @@ public class Conveyor : BuildingBase
         return IsFedBy(source);
     }
 
+    protected bool MatchesFilter(ItemData item)
+    {
+        return filter == null || item == filter;
+    }
+
     protected virtual bool AcceptsItem(ItemData item)
     {
-        return item != null && !item.isFluid;
+        return item != null && !item.isFluid && MatchesFilter(item);
     }
 
     protected virtual bool ShowCargoVisual => true;
@@ -714,6 +737,7 @@ public class Conveyor : BuildingBase
             PresentVisual(form, true, extraYaw, mirrorX);
         if (shown == BeltShape.Tee)
             ApplyTeeArrowMaterial(form, UseTeeMirrorTexture(InMask));
+        ApplyFilterLook();
         InvalidateArrows();
         RefreshArrows();
     }
@@ -1107,11 +1131,104 @@ public class Conveyor : BuildingBase
         }
     }
 
+    void ApplyFilterLook()
+    {
+        Color tint = FilterTint(filter);
+        Renderer[] rends = GetComponentsInChildren<Renderer>(true);
+        int painted = 0;
+        for (int i = 0; i < rends.Length; i++)
+        {
+            Renderer r = rends[i];
+            if (r == null || r is SpriteRenderer)
+                continue;
+            if (!IsArrowRenderer(r))
+                continue;
+            PaintRenderer(r, tint);
+            painted++;
+        }
+
+        if (painted == 0)
+        {
+            for (int i = 0; i < rends.Length; i++)
+            {
+                Renderer r = rends[i];
+                if (r == null || r is SpriteRenderer)
+                    continue;
+                PaintRenderer(r, tint);
+            }
+        }
+
+        RefreshFilterChip();
+    }
+
+    static void PaintRenderer(Renderer r, Color tint)
+    {
+        r.GetPropertyBlock(TintBlock);
+        TintBlock.SetColor(ColorId, tint);
+        TintBlock.SetColor(BaseColorId, tint);
+        r.SetPropertyBlock(TintBlock);
+    }
+
+    static bool IsArrowRenderer(Renderer r)
+    {
+        Material mat = r.sharedMaterial;
+        if (mat == null)
+            return false;
+        return IsTeeArrowMaterial(mat);
+    }
+
+    static Color FilterTint(ItemData item)
+    {
+        if (item == null)
+            return Color.white;
+        string id = item.id != null ? item.id.ToLowerInvariant() : "";
+        if (id.IndexOf("iron") >= 0) return new Color(0.95f, 0.55f, 0.22f, 1f);
+        if (id.IndexOf("copper") >= 0 || id.IndexOf("cooper") >= 0) return new Color(0.95f, 0.38f, 0.18f, 1f);
+        if (id.IndexOf("coal") >= 0) return new Color(0.35f, 0.38f, 0.42f, 1f);
+        if (id.IndexOf("gear") >= 0) return new Color(1f, 0.85f, 0.2f, 1f);
+        if (id.IndexOf("water") >= 0) return new Color(0.25f, 0.65f, 1f, 1f);
+        if (id.IndexOf("oil") >= 0) return new Color(0.25f, 0.18f, 0.28f, 1f);
+        if (id.IndexOf("sulfur") >= 0) return new Color(0.95f, 0.9f, 0.25f, 1f);
+        if (id.IndexOf("stone") >= 0 || id.IndexOf("brick") >= 0) return new Color(0.7f, 0.62f, 0.5f, 1f);
+        if (id.IndexOf("sand") >= 0) return new Color(0.9f, 0.8f, 0.45f, 1f);
+        if (id.IndexOf("log") >= 0 || id.IndexOf("wood") >= 0 || id.IndexOf("plank") >= 0)
+            return new Color(0.65f, 0.42f, 0.22f, 1f);
+        int h = id.GetHashCode();
+        float hue = Mathf.Abs(h % 1000) / 1000f;
+        return Color.HSVToRGB(hue, 0.65f, 0.95f);
+    }
+
+    void RefreshFilterChip()
+    {
+        if (filter == null || filter.icon == null)
+        {
+            if (filterChip != null)
+                filterChip.enabled = false;
+            return;
+        }
+
+        if (filterChip == null)
+        {
+            var go = new GameObject("FilterChip");
+            go.transform.SetParent(transform, false);
+            go.transform.localPosition = new Vector3(0f, itemHeight + 0.22f, 0f);
+            go.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+            go.transform.localScale = Vector3.one * 0.35f;
+            filterChip = go.AddComponent<SpriteRenderer>();
+            filterChip.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            filterChip.receiveShadows = false;
+        }
+
+        filterChip.enabled = true;
+        filterChip.sprite = filter.icon;
+    }
+
     public override void WriteSave(BuildingSaveData save)
     {
         base.WriteSave(save);
         if (save == null)
             return;
+        save.filterItemId = filter != null ? filter.id : "";
         save.cargo = new List<BeltItemSave>(cargo.Count);
         for (int i = 0; i < cargo.Count; i++)
         {
@@ -1134,6 +1251,8 @@ public class Conveyor : BuildingBase
     {
         base.ReadSave(save);
         ClearCargo();
+        filter = save != null ? GameDatabase.FindItem(save.filterItemId) : null;
+        ApplyFilterLook();
         if (save == null || save.cargo == null)
             return;
 

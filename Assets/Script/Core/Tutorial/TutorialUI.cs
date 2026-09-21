@@ -19,6 +19,7 @@ public class TutorialUI : MonoBehaviour
     Label hudGoal;
     Label hudBody;
     Label hudSkipHint;
+    VisualElement hudActions;
 
     VisualElement lastGlow;
     string lastKey;
@@ -129,8 +130,14 @@ public class TutorialUI : MonoBehaviour
         hudBody = IndustryUi.Text("B", "", "tut-body");
         hudBody.style.whiteSpace = WhiteSpace.Normal;
         hudSkipHint = IndustryUi.Text("SkipHint", "", "tut-skip-hint");
+        hudActions = IndustryUi.El("HudAct", "row", "tut-hud-actions");
+        hudActions.pickingMode = PickingMode.Position;
+        hudActions.Add(IndustryUi.Btn(UiLocale.T("tut.repeat"), OnRepeat, "btn-small", "btn-ghost"));
+        hudActions.Add(IndustryUi.Btn(UiLocale.T("tut.skip_lab"), OnSkipLab, "btn-small", "btn-ghost"));
+        hudActions.Add(IndustryUi.Btn(UiLocale.T("tut.skip_belts"), OnSkipBelts, "btn-small", "btn-ghost"));
         hud.Add(hudGoal);
         hud.Add(hudBody);
+        hud.Add(hudActions);
         hud.Add(hudSkipHint);
         IndustryUi.Show(hud, false);
         root.Add(hud);
@@ -181,7 +188,7 @@ public class TutorialUI : MonoBehaviour
             IndustryUi.SetButtonLabel(modalStart, UiLocale.T("tut.start"));
             IndustryUi.SetButtonLabel(modalSkip, UiLocale.T("tut.skip"));
             if (modalHint != null)
-                modalHint.text = UiLocale.T("tut.skip_key", "F1", "F2");
+                modalHint.text = UiLocale.T("tut.skip_key", "F1", "F2", "F3");
         }
         else if (bye)
         {
@@ -190,13 +197,13 @@ public class TutorialUI : MonoBehaviour
             IndustryUi.SetButtonLabel(modalPlay, UiLocale.T("tut.play"));
             IndustryUi.SetButtonLabel(modalSkip, UiLocale.T("tut.skip"));
             if (modalHint != null)
-                modalHint.text = UiLocale.T("tut.skip_key", "F1", "F2");
+                modalHint.text = UiLocale.T("tut.skip_key", "F1", "F2", "F3");
         }
 
         hudGoal.text = GoalText(tut);
         hudBody.text = BodyText(tut);
         if (hudSkipHint != null)
-            hudSkipHint.text = UiLocale.T("tut.skip_key", "F1", "F2");
+            hudSkipHint.text = UiLocale.T("tut.skip_key", "F1", "F2", "F3");
     }
 
     static string GoalText(TutorialSystem tut)
@@ -481,6 +488,23 @@ public class TutorialUI : MonoBehaviour
 
         if (keyboard.f2Key.wasPressedThisFrame)
             tut.SkipStep();
+        if (keyboard.f3Key.wasPressedThisFrame)
+            tut.RepeatStep();
+    }
+
+    void OnRepeat()
+    {
+        TutorialSystem.Instance?.RepeatStep();
+    }
+
+    void OnSkipLab()
+    {
+        TutorialSystem.Instance?.SkipToLab();
+    }
+
+    void OnSkipBelts()
+    {
+        TutorialSystem.Instance?.SkipToBelts();
     }
 
     void HoldModalFocus()

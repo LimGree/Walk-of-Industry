@@ -25,6 +25,20 @@ public class ResearchSystem : MonoBehaviour
     };
 
     public const string UndergroundResearchId = "research_underground_conveyor";
+    public const string UndergroundRange2Id = "research_underground_range_2";
+    public const string UndergroundRange3Id = "research_underground_range_3";
+
+    public static int UndergroundMaxGap()
+    {
+        int gap = 5;
+        if (Instance == null)
+            return gap;
+        if (Instance.IsResearchIdUnlocked(UndergroundRange2Id))
+            gap = 7;
+        if (Instance.IsResearchIdUnlocked(UndergroundRange3Id))
+            gap = 9;
+        return gap;
+    }
 
     private readonly HashSet<ResearchNodeData> unlockedResearch = new HashSet<ResearchNodeData>();
     private readonly HashSet<BuildingData> unlockedBuildings = new HashSet<BuildingData>();
@@ -175,6 +189,29 @@ public class ResearchSystem : MonoBehaviour
         return true;
     }
 
+    public int SubmitBulk(ItemData item, int count)
+    {
+        if (item == null || count <= 0)
+            return 0;
+        eventHold++;
+        int n = 0;
+        try
+        {
+            for (int i = 0; i < count; i++)
+            {
+                TrySubmitItem(item);
+                n++;
+            }
+        }
+        finally
+        {
+            eventHold--;
+            FlushHeldEvents();
+        }
+
+        return n;
+    }
+
     static bool NeedsItem(ResearchNodeData node, ItemData item)
     {
         return RequiredAmount(node, item) > 0;
@@ -269,6 +306,7 @@ public class ResearchSystem : MonoBehaviour
                 UiLocale.T("hud.research_done"),
                 node.displayName,
                 UiStatus.Completed);
+            AchievementSystem.NotifyResearchLive();
         }
         else
         {

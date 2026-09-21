@@ -38,6 +38,9 @@ public class WorldMapUI : MonoBehaviour
     Label worldCompass;
     Label[] compass;
     Button measureBtn;
+    bool layerVeins = true;
+    bool layerBuildings = true;
+    bool layerBelts = true;
     Button teleportBtn;
     TextField waypointSearch;
     TextField editName;
@@ -46,6 +49,10 @@ public class WorldMapUI : MonoBehaviour
     Rect viewUv = new Rect(0f, 0f, 1f, 1f);
     Rect miniUv = new Rect(0f, 0f, 1f, 1f);
     bool dragging;
+    bool rmbHold;
+    bool rmbDragged;
+    bool rmbHasCell;
+    Vector2Int rmbCell;
     bool measuring;
     bool measureTool;
     bool measureOn;
@@ -285,6 +292,37 @@ public class WorldMapUI : MonoBehaviour
         MapSettingsUI.Fill(parent);
     }
 
+    public byte[] EncodePreviewPng(int maxSize = 256)
+    {
+        Rebuild();
+        if (mapTex == null)
+            return null;
+        int w = mapTex.width;
+        int h = mapTex.height;
+        int max = Mathf.Max(w, h);
+        if (max <= maxSize)
+            return mapTex.EncodeToPNG();
+        float s = maxSize / (float)max;
+        int nw = Mathf.Max(1, Mathf.RoundToInt(w * s));
+        int nh = Mathf.Max(1, Mathf.RoundToInt(h * s));
+        var small = new Texture2D(nw, nh, TextureFormat.RGBA32, false);
+        small.filterMode = FilterMode.Point;
+        for (int y = 0; y < nh; y++)
+        {
+            int sy = Mathf.Clamp(Mathf.FloorToInt(y / s), 0, h - 1);
+            for (int x = 0; x < nw; x++)
+            {
+                int sx = Mathf.Clamp(Mathf.FloorToInt(x / s), 0, w - 1);
+                small.SetPixel(x, y, mapTex.GetPixel(sx, sy));
+            }
+        }
+
+        small.Apply(false, false);
+        byte[] png = small.EncodeToPNG();
+        Destroy(small);
+        return png;
+    }
+
     public void Rebuild()
     {
         WorldBiomeMap map = WorldBiomeMap.Instance;
@@ -304,7 +342,7 @@ public class WorldMapUI : MonoBehaviour
 
         Color[] pixels = map.BiomeTexture.GetPixels();
         var scatter = WorldResourceScatterer.Instance;
-        if (scatter != null)
+        if (layerVeins && scatter != null)
         {
             var veins = scatter.Veins;
             for (int i = 0; i < veins.Count; i++)
@@ -328,7 +366,7 @@ public class WorldMapUI : MonoBehaviour
         }
     }
 
-    static void PaintBuildings(Color[] pixels, int w, int h)
+    void PaintBuildings(Color[] pixels, int w, int h)
     {
         var objects = new List<GameObject>(64);
         GridOccupancy.CollectAllOccupiedObjects(objects, new HashSet<int>());
@@ -338,7 +376,12 @@ public class WorldMapUI : MonoBehaviour
             GameObject go = objects[i];
             if (go == null)
                 continue;
-            Color color = go.GetComponent<Conveyor>() != null ? BeltColor : BuildingColor;
+            bool belt = go.GetComponent<Conveyor>() != null;
+            if (belt && !layerBelts)
+                continue;
+            if (!belt && !layerBuildings)
+                continue;
+            Color color = belt ? BeltColor : BuildingColor;
             if (!GridOccupancy.TryGetCells(go, cells))
                 continue;
             for (int c = 0; c < cells.Count; c++)
@@ -408,9 +451,9 @@ public class WorldMapUI : MonoBehaviour
         AddSwatch(legend, new Color(0.58f, 0.74f, 0.34f), UiLocale.T("map.field"));
         AddSwatch(legend, new Color(0.28f, 0.28f, 0.30f), UiLocale.T("map.mountain"));
         AddSwatch(legend, new Color(0.11f, 0.32f, 0.52f), UiLocale.T("map.water"));
-        AddSwatch(legend, new Color(0.72f, 0.24f, 0.18f), UiLocale.T("map.veins"));
-        AddSwatch(legend, BuildingColor, UiLocale.T("map.buildings"));
-        AddSwatch(legend, BeltColor, UiLocale.T("map.belts"));
+        AddLayerChip(legend, UiLocale.T("map.veins"), new Color(0.72f, 0.24f, 0.18f), () => layerVeins, v => layerVeins = v);
+        AddLayerChip(legend, UiLocale.T("map.buildings"), BuildingColor, () => layerBuildings, v => layerBuildings = v);
+        AddLayerChip(legend, UiLocale.T("map.belts"), BeltColor, () => layerBelts, v => layerBelts = v);
         chrome.Add(legend);
 
         fullWrap = IndustryUi.El("FullWrap", "map-frame", "map-full-wrap");
@@ -550,6 +593,26 @@ public class WorldMapUI : MonoBehaviour
         item.Add(sw);
         item.Add(IndustryUi.Text("N", name, "muted"));
         row.Add(item);
+    }
+
+    void AddLayerChip(VisualElement row, string name, Color color, System.Func<bool> get, System.Action<bool> set)
+    {
+        Button chip = IndustryUi.Btn(name, null, "map-layer");
+        var sw = IndustryUi.El("S", "map-swatch");
+        sw.style.backgroundColor = color;
+        chip.Insert(0, sw);
+        void Sync()
+        {
+            IndustryUi.SetOn(chip, !get(), "is-off");
+        }
+        chip.clicked += () =>
+        {
+            set(!get());
+            Sync();
+            Rebuild();
+        };
+        Sync();
+        row.Add(chip);
     }
 
     static MapView MakeMapImage(string name)
@@ -920,7 +983,7 @@ public class WorldMapUI : MonoBehaviour
     {
         if (IsOpen)
             return;
-        MiniZoom *= evt.delta.y > 0f ? 0.85f : 1.18f;
+        MiniZoom *= evt.delta.y > 0f ? 0.85f : 1.1764706f;
         evt.StopPropagation();
     }
 
@@ -928,7 +991,7 @@ public class WorldMapUI : MonoBehaviour
     {
         if (!IsOpen)
             return;
-        ZoomAt(fullImage, evt.localMousePosition, evt.delta.y > 0f ? 0.82f : 1.22f);
+        ZoomAt(fullImage, evt.localMousePosition, evt.delta.y > 0f ? 0.85f : 1.1764706f);
         RefreshZoomLabel();
         evt.StopPropagation();
     }
@@ -957,8 +1020,11 @@ public class WorldMapUI : MonoBehaviour
 
         if (evt.button == 1)
         {
-            if (LocalToCell(fullImage, viewUv, evt.localPosition, 0f, out Vector2Int cell))
-                BeginMarker(cell);
+            rmbHold = true;
+            rmbDragged = false;
+            lastMouse = (Vector2)evt.position;
+            rmbHasCell = LocalToCell(fullImage, viewUv, evt.localPosition, 0f, out rmbCell);
+            fullImage.CapturePointer(evt.pointerId);
             evt.StopPropagation();
             return;
         }
@@ -999,17 +1065,38 @@ public class WorldMapUI : MonoBehaviour
             return;
         }
 
+        if (rmbHold)
+        {
+            Vector2 deltaR = (Vector2)evt.position - lastMouse;
+            if (deltaR.sqrMagnitude > 36f)
+                rmbDragged = true;
+            if (rmbDragged)
+            {
+                lastMouse = (Vector2)evt.position;
+                PanView(deltaR);
+            }
+            evt.StopPropagation();
+            return;
+        }
+
         if (!dragging)
             return;
 
         Vector2 delta = (Vector2)evt.position - lastMouse;
         lastMouse = (Vector2)evt.position;
+        PanView(delta);
+        evt.StopPropagation();
+    }
+
+    void PanView(Vector2 delta)
+    {
+        if (fullImage == null)
+            return;
         float w = Mathf.Max(1f, fullImage.resolvedStyle.width);
         float h = Mathf.Max(1f, fullImage.resolvedStyle.height);
         viewUv.x -= delta.x / w * viewUv.width;
         viewUv.y += delta.y / h * viewUv.height;
         ClampView();
-        evt.StopPropagation();
     }
 
     void OnFullUp(PointerUpEvent evt)
@@ -1019,6 +1106,16 @@ public class WorldMapUI : MonoBehaviour
             measuring = false;
             if (fullImage.HasPointerCapture(evt.pointerId))
                 fullImage.ReleasePointer(evt.pointerId);
+            return;
+        }
+
+        if (rmbHold)
+        {
+            rmbHold = false;
+            if (fullImage.HasPointerCapture(evt.pointerId))
+                fullImage.ReleasePointer(evt.pointerId);
+            if (!rmbDragged && rmbHasCell)
+                BeginMarker(rmbCell);
             return;
         }
 

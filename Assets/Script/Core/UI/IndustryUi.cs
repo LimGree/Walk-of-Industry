@@ -449,10 +449,27 @@ public static class IndustryUi
 
     public static VisualElement StackChip(Sprite sprite, int amount)
     {
+        return StackChip(null, sprite, amount, -1);
+    }
+
+    public static VisualElement StackChip(ItemData item, int need, int have = -1)
+    {
+        return StackChip(item, item != null ? item.icon : null, need, have);
+    }
+
+    public static VisualElement StackChip(ItemData item, Sprite sprite, int need, int have)
+    {
         var chip = El("Chip", "stack-chip");
         chip.Add(Icon(sprite, "stack-icon"));
-        if (amount > 0)
-            chip.Add(Text("N", amount.ToString(), "stack-count"));
+        string count = have >= 0 ? have + "/" + need : (need > 0 ? need.ToString() : "");
+        if (!string.IsNullOrEmpty(count))
+            chip.Add(Text("N", count, "stack-count"));
+        if (item != null)
+        {
+            string qty = have >= 0 ? have + " / " + need : need.ToString();
+            UiTooltip.Bind(chip, item.displayName, string.IsNullOrEmpty(item.description) ? qty : item.description + "\n" + qty);
+        }
+
         return chip;
     }
 
@@ -468,7 +485,7 @@ public static class IndustryUi
                 ItemStack stack = stacks[i];
                 if (stack == null || stack.item == null)
                     continue;
-                row.Add(StackChip(stack.item.icon, stack.amount));
+                row.Add(StackChip(stack.item, stack.amount));
                 added++;
             }
         }
@@ -628,6 +645,22 @@ public static class IndustryUi
         row.Add(Text("N", name ?? "", "stat-name"));
         row.Add(Text("D", detail ?? "", "stat-value"));
         return row;
+    }
+
+    public static VisualElement RateBar(Sprite icon, string name, float plus, float minus, float max)
+    {
+        var col = El("Rate", "col", "rate-block");
+        col.Add(StatRow(icon, name, "+" + plus.ToString("0.#") + "/мин   −" + minus.ToString("0.#") + "/мин"));
+        var track = El("Track", "rate-track");
+        var up = El("Up", "rate-fill", "rate-fill-up");
+        var down = El("Dn", "rate-fill", "rate-fill-down");
+        float m = Mathf.Max(0.01f, max);
+        up.style.width = Length.Percent(Mathf.Clamp01(plus / m) * 100f);
+        down.style.width = Length.Percent(Mathf.Clamp01(minus / m) * 100f);
+        track.Add(up);
+        track.Add(down);
+        col.Add(track);
+        return col;
     }
 
     public static VisualElement BuildingChip(BuildingData building)

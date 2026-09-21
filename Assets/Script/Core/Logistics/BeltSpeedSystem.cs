@@ -14,7 +14,9 @@ public class BeltSpeedSystem : MonoBehaviour
     public int NextGearCost => IsMaxed ? 0 : Economy.BeltGearCost(Level + 1);
     public int NextCoinCost => IsMaxed ? 0 : Economy.BeltCoinCost(Level + 1);
     public int NextCost => NextGearCost;
-    public float Multiplier => Economy.BeltMultiplier(Level);
+    public float CheatMul { get; private set; } = 1f;
+
+    public float Multiplier => Economy.BeltMultiplier(Level) * Mathf.Max(0.05f, CheatMul);
     public float Progress01 => NextGearCost > 0 ? Mathf.Clamp01((float)GearsTowardNext / NextGearCost) : 1f;
     public bool GearsReady => !IsMaxed && GearsTowardNext >= NextGearCost;
 
@@ -50,6 +52,12 @@ public class BeltSpeedSystem : MonoBehaviour
     {
         Level = 0;
         GearsTowardNext = 0;
+        OnChanged?.Invoke();
+    }
+
+    public void SetCheatMul(float mul)
+    {
+        CheatMul = Mathf.Clamp(mul, 0.05f, 50f);
         OnChanged?.Invoke();
     }
 

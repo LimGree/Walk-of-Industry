@@ -70,6 +70,7 @@ public class BuildSelectionController : MonoBehaviour
         public float yaw;
         public int level;
         public RecipeData recipe;
+        public ItemData filter;
         public bool pairExit;
         public int pairId;
     }
@@ -81,6 +82,7 @@ public class BuildSelectionController : MonoBehaviour
         public float yaw;
         public int level;
         public RecipeData recipe;
+        public ItemData filter;
         public bool pairExit;
         public int pairId;
         public GameObject ghost;
@@ -141,6 +143,9 @@ public class BuildSelectionController : MonoBehaviour
             return;
         }
 
+        if (UiModal.IsOpen)
+            return;
+
         if (IsSelectionPanelOpen())
         {
             RefreshSelectedBuildings();
@@ -155,7 +160,8 @@ public class BuildSelectionController : MonoBehaviour
             return;
         }
 
-        if (selectionMode && (inventory == null || !inventory.HasEmptySlotSelected()))
+        if (selectionMode && (inventory == null || !inventory.HasEmptySlotSelected())
+            && !CanBulkPlaceExtractors())
             ExitAll();
 
         if (pasteActive || moveActive)
@@ -292,6 +298,7 @@ public class BuildSelectionController : MonoBehaviour
                 yaw = b.transform.eulerAngles.y,
                 level = b.ReadLevel(),
                 recipe = ReadRecipe(b),
+                filter = ReadFilter(b),
                 pairExit = tunnel != null && tunnel.isExit,
                 pairId = tunnel != null ? tunnel.PairId : 0
             });
@@ -343,7 +350,13 @@ public class BuildSelectionController : MonoBehaviour
         if (pasteActive || moveActive)
             return;
 
-        if (!selectionMode || !builder.TryGetAimCell(out Vector2Int cell, out _))
+        if (!selectionMode)
+            return;
+
+        if (CanBulkPlaceExtractors())
+            return;
+
+        if (!builder.TryGetAimCell(out Vector2Int cell, out _))
             return;
 
         boxSelecting = true;
@@ -362,6 +375,12 @@ public class BuildSelectionController : MonoBehaviour
             TickPreview();
             if (PreviewAllValid())
                 CommitPreview();
+            return;
+        }
+
+        if (selectionMode && CanBulkPlaceExtractors() && !boxSelecting)
+        {
+            PromptBulkExtractors();
             return;
         }
 
@@ -480,6 +499,108 @@ public class BuildSelectionController : MonoBehaviour
         }
     }
 
+    BuildingData HeldExtractor()
+    {
+        if (inventory == null)
+            return null;
+        BuildingData data = inventory.GetSelectedBuilding();
+        if (!PlayerBuilder.IsExtractorData(data))
+            return null;
+        if (ResearchSystem.Instance != null && !ResearchSystem.Instance.IsBuildingUnlocked(data))
+            return null;
+        return data;
+    }
+
+    bool CanBulkPlaceExtractors()
+    {
+        return selectionMode && HeldExtractor() != null && CountFreeSelectedVeins() > 0;
+    }
+
+    int CountFreeSelectedVeins()
+    {
+        int n = 0;
+        foreach (Vector2Int cell in selectedCells)
+        {
+            if (IsFreeVeinCell(cell))
+                n++;
+        }
+
+        return n;
+    }
+
+    static bool IsFreeVeinCell(Vector2Int cell)
+    {
+        if (!ResourceNode.HasNode(cell))
+            return false;
+        return BuildingLinker.GetBuildingAt(cell) == null;
+    }
+
+    Vector3 ExtractorWorldPos(Vector2Int cell)
+    {
+        float y = 0f;
+        if (builder != null && builder.HasPlacementTarget)
+            y = builder.CurrentPlacementPosition.y;
+        else if (GridSystem.Instance != null)
+            y = GridSystem.Instance.origin.y;
+        return GridFootprint.MinCellToCenter(cell, Vector2Int.one, y);
+    }
+
+    void PromptBulkExtractors()
+    {
+        BuildingData data = HeldExtractor();
+        int count = CountFreeSelectedVeins();
+        if (data == null || count <= 0)
+        {
+            if (builder != null)
+                GameAudio.World("world_invalid", builder.transform.position);
+            return;
+        }
+
+        int cost = Economy.BuildCost(data) * count;
+        UiModal.Confirm(
+            UiLocale.T("select.extractors_title"),
+            UiLocale.T("select.extractors_body", count, cost),
+            UiLocale.T("select.extractors_ok"),
+            PlaceExtractorsOnSelectedVeins,
+            danger: false);
+    }
+
+    void PlaceExtractorsOnSelectedVeins()
+    {
+        BuildingData data = HeldExtractor();
+        if (data == null || builder == null)
+            return;
+
+        var cells = new List<Vector2Int>();
+        foreach (Vector2Int cell in selectedCells)
+        {
+            if (IsFreeVeinCell(cell))
+                cells.Add(cell);
+        }
+
+        if (cells.Count == 0)
+            return;
+
+        float yaw = builder.PlacementYaw;
+        int placed = 0;
+        Vector3 sound = builder.transform.position;
+        for (int i = 0; i < cells.Count; i++)
+        {
+            Vector3 pos = ExtractorWorldPos(cells[i]);
+            if (!builder.TrySpawnBuilding(data, pos, yaw))
+                break;
+            placed++;
+            sound = pos;
+        }
+
+        if (placed > 0)
+            GameAudio.World("world_place", sound);
+        else
+            GameAudio.World("world_invalid", builder.transform.position);
+        RefreshSelectedBuildings();
+        RefreshSelectionVisuals();
+    }
+
     void BuildPreviewFromClipboard()
     {
         preview.Clear();
@@ -493,6 +614,7 @@ public class BuildSelectionController : MonoBehaviour
                 yaw = c.yaw,
                 level = c.level,
                 recipe = c.recipe,
+                filter = c.filter,
                 pairExit = c.pairExit,
                 pairId = c.pairId,
                 ghost = CreateGhost(c.data, c.pairExit)
@@ -548,6 +670,7 @@ public class BuildSelectionController : MonoBehaviour
                 yaw = b.transform.eulerAngles.y,
                 level = b.ReadLevel(),
                 recipe = ReadRecipe(b),
+                filter = ReadFilter(b),
                 ghost = CreateGhost(b.data)
             });
         }
@@ -700,6 +823,7 @@ public class BuildSelectionController : MonoBehaviour
                 b.OnPlaced();
                 b.ApplyLevel(item.level);
                 ApplyRecipe(b, item.recipe);
+                ApplyFilter(b, item.filter);
                 spawned.Add(b);
             }
             else
@@ -880,12 +1004,43 @@ public class BuildSelectionController : MonoBehaviour
         return crafter != null ? crafter.currentRecipe : null;
     }
 
+    static ItemData ReadFilter(BuildingBase b)
+    {
+        RoboticArm arm = b as RoboticArm;
+        if (arm != null)
+            return arm.Filter;
+        Conveyor belt = b as Conveyor;
+        return belt != null ? belt.Filter : null;
+    }
+
     static void ApplyRecipe(BuildingBase b, RecipeData recipe)
     {
         CrafterBuilding crafter = b as CrafterBuilding;
-        if (crafter == null)
+        if (crafter == null || recipe == null)
+            return;
+        if (ResearchSystem.Instance != null && !ResearchSystem.Instance.IsRecipeUnlocked(recipe))
             return;
         crafter.SetRecipe(recipe);
+    }
+
+    static void ApplyFilter(BuildingBase b, ItemData filter)
+    {
+        RoboticArm arm = b as RoboticArm;
+        if (arm != null)
+            arm.SetFilter(filter);
+        Conveyor belt = b as Conveyor;
+        if (belt != null)
+            belt.SetFilter(filter);
+    }
+
+    public bool TryRotateSelected()
+    {
+        if (!selectionMode || selectedBuildings.Count == 0)
+            return false;
+        RotateSelectionInPlace();
+        if (builder != null)
+            GameAudio.World("world_rotate", builder.transform.position);
+        return true;
     }
 
     GameObject CreateGhost(BuildingData data, bool pairExit = false)

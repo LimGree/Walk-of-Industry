@@ -48,6 +48,7 @@ public class DayNightCycle : MonoBehaviour
 
         float minutes = Mathf.Max(1f, GameSettings.DayLengthMinutes);
         DayNight.Advance(24f * Time.deltaTime / (minutes * 60f));
+        AchievementSystem.TickNight();
         SyncFromWorld();
     }
 

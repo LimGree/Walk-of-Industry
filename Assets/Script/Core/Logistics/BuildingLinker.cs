@@ -25,6 +25,7 @@ public static class BuildingLinker
     };
 
     static readonly List<Vector2Int> CellBuffer = new List<Vector2Int>(16);
+    static readonly List<Vector2Int> FrontCellBuffer = new List<Vector2Int>(16);
     static readonly List<BuildingBase> NeighborBuffer = new List<BuildingBase>(16);
     static readonly List<BuildingBase> AllBuffer = new List<BuildingBase>(256);
     static readonly List<GameObject> OccupantBuffer = new List<GameObject>(256);
@@ -77,10 +78,49 @@ public static class BuildingLinker
         if (socket == null)
             return Vector2Int.zero;
 
+        Vector2Int dir = SocketWorldCardinal(socket);
+        BuildingBase owner = socket.Owner;
+        if (owner != null && (dir.x != 0 || dir.y != 0))
+        {
+            CollectFootprintCells(owner, FrontCellBuffer);
+            Vector2Int best = Vector2Int.zero;
+            float bestDist = float.MaxValue;
+            bool found = false;
+            Vector3 socketPos = socket.transform.position;
+            for (int i = 0; i < FrontCellBuffer.Count; i++)
+            {
+                Vector2Int next = FrontCellBuffer[i] + dir;
+                if (OccupiesCell(owner, next))
+                    continue;
+                Vector3 center = CellCenter(next, socketPos.y);
+                float dx = center.x - socketPos.x;
+                float dz = center.z - socketPos.z;
+                float dist = dx * dx + dz * dz;
+                if (!found || dist < bestDist)
+                {
+                    found = true;
+                    bestDist = dist;
+                    best = next;
+                }
+            }
+
+            if (found)
+                return best;
+            return WorldToCell(owner.transform.position) + dir;
+        }
+
         float cell = GridFootprint.CellSize;
         Vector3 outward = socket.GetOutward();
         Vector3 probe = socket.transform.position + outward * (cell * 0.55f);
         return WorldToCell(probe);
+    }
+
+    static Vector3 CellCenter(Vector2Int cell, float y)
+    {
+        if (GridSystem.Instance != null)
+            return GridSystem.Instance.GetCellCenter(cell, y);
+        float size = GridFootprint.CellSize;
+        return new Vector3((cell.x + 0.5f) * size, y, (cell.y + 0.5f) * size);
     }
 
     public static bool FeedsInto(BuildingBase candidate, Vector2Int targetCell)
@@ -493,14 +533,30 @@ public static class BuildingLinker
 
     public static float MaybeSmartYaw(Vector2Int cell, float strokeYaw, HashSet<Vector2Int> strokeCells)
     {
-        Vector2Int exitDir = ExitDirFromYaw(strokeYaw);
-        Vector2Int left = Rotate90(exitDir, 1);
-        Vector2Int right = Rotate90(exitDir, -1);
-        bool leftOk = SmartYawCandidateValid(cell, left, strokeCells);
-        bool rightOk = SmartYawCandidateValid(cell, right, strokeCells);
-        if (leftOk == rightOk)
+        Vector2Int current = ExitDirFromYaw(strokeYaw);
+        if (SmartYawCandidateValid(cell, current, strokeCells))
             return strokeYaw;
-        return YawFromExitDir(leftOk ? left : right);
+
+        Vector2Int chosen = current;
+        int hits = 0;
+        Vector2Int[] dirs =
+        {
+            new Vector2Int(0, 1),
+            new Vector2Int(1, 0),
+            new Vector2Int(0, -1),
+            new Vector2Int(-1, 0)
+        };
+        for (int i = 0; i < dirs.Length; i++)
+        {
+            if (!SmartYawCandidateValid(cell, dirs[i], strokeCells))
+                continue;
+            hits++;
+            chosen = dirs[i];
+        }
+
+        if (hits == 1)
+            return YawFromExitDir(chosen);
+        return strokeYaw;
     }
 
     static bool SmartYawCandidateValid(Vector2Int cell, Vector2Int candidateExit, HashSet<Vector2Int> strokeCells)

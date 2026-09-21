@@ -57,7 +57,13 @@ public static class GameSettings
     public static bool DayNightEnabled
     {
         get => PlayerPrefs.GetInt("GfxDayNight", 1) != 0;
-        set { SetInt("GfxDayNight", value ? 1 : 0); Apply(); }
+        set
+        {
+            if (!value)
+                AchievementSystem.NotifyTimeCheat();
+            SetInt("GfxDayNight", value ? 1 : 0);
+            Apply();
+        }
     }
 
     public static float DayLengthMinutes
@@ -71,7 +77,10 @@ public static class GameSettings
         get => DayNight.Hour;
         set
         {
-            DayNight.Hour = DayNight.WrapHour(value);
+            float hour = DayNight.WrapHour(value);
+            if (Mathf.Abs(DayNight.Hour - hour) > 0.08f)
+                AchievementSystem.NotifyTimeCheat();
+            DayNight.Hour = hour;
             ApplyAtmosphere();
         }
     }
@@ -299,11 +308,11 @@ public static class GameSettings
         Shader.SetGlobalColor("_WalkLightTint", tint);
 
         RenderSettings.ambientMode = AmbientMode.Trilight;
-        RenderSettings.ambientIntensity = Mathf.Lerp(0.55f, 1f, sample.dayFactor) * Brightness;
-        RenderSettings.ambientSkyColor = sample.sky * Mathf.Lerp(0.45f, 0.85f, sample.dayFactor) * Brightness;
-        RenderSettings.ambientEquatorColor = sample.horizon * Mathf.Lerp(0.35f, 0.55f, sample.dayFactor) * Brightness;
-        RenderSettings.ambientGroundColor = sample.ground * 0.35f * Brightness;
-        RenderSettings.ambientLight = sample.horizon * 0.4f * Brightness;
+        RenderSettings.ambientIntensity = Mathf.Lerp(0.78f, 1f, sample.dayFactor) * Brightness;
+        RenderSettings.ambientSkyColor = sample.sky * Mathf.Lerp(0.70f, 0.90f, sample.dayFactor) * Brightness;
+        RenderSettings.ambientEquatorColor = sample.horizon * Mathf.Lerp(0.55f, 0.70f, sample.dayFactor) * Brightness;
+        RenderSettings.ambientGroundColor = sample.ground * 0.50f * Brightness;
+        RenderSettings.ambientLight = sample.horizon * 0.55f * Brightness;
 
         Color fogColor = sample.fog;
         if (FogEnabled)

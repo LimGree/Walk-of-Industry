@@ -16,7 +16,8 @@ public class DevConsole : MonoBehaviour
     VisualElement panel;
     ScrollView logView;
     TextField field;
-    Label hints;
+    Label ghost;
+    ScrollView suggest;
     readonly List<string> log = new List<string>(64);
     readonly List<string> history = new List<string>(16);
     readonly List<string> matches = new List<string>(16);
@@ -95,14 +96,21 @@ public class DevConsole : MonoBehaviour
         var head = IndustryUi.Text("Title", "DEV", "dev-console-title");
         logView = IndustryUi.Scroll("DevLog");
         logView.AddToClassList("dev-console-log");
+        var inputWrap = IndustryUi.El("CmdWrap", "dev-console-input-wrap");
+        ghost = IndustryUi.Text("Ghost", "", "dev-console-ghost");
+        ghost.pickingMode = PickingMode.Ignore;
         field = new TextField { name = "Cmd" };
         field.AddToClassList("dev-console-input");
         field.value = "/";
-        hints = IndustryUi.Text("Hints", "", "dev-console-hints");
+        inputWrap.Add(ghost);
+        inputWrap.Add(field);
+        suggest = IndustryUi.Scroll("Suggest");
+        suggest.AddToClassList("dev-console-suggest");
+        suggest.pickingMode = PickingMode.Position;
         panel.Add(head);
         panel.Add(logView);
-        panel.Add(field);
-        panel.Add(hints);
+        panel.Add(suggest);
+        panel.Add(inputWrap);
         host.Add(panel);
         IndustryUi.Show(panel, false);
 
@@ -188,20 +196,39 @@ public class DevConsole : MonoBehaviour
     void RefreshHints(string text)
     {
         DevCommands.Suggest(text, matches);
-        if (matches.Count == 0)
+        string typed = text ?? "";
+        string best = matches.Count > 0 ? matches[0] : "";
+        if (ghost != null)
         {
-            hints.text = "";
-            return;
+            bool show = best.Length > typed.Length
+                && best.StartsWith(typed, System.StringComparison.OrdinalIgnoreCase);
+            ghost.text = show ? best : "";
         }
-        int n = Mathf.Min(8, matches.Count);
-        var sb = new System.Text.StringBuilder();
+
+        if (suggest == null)
+            return;
+        suggest.Clear();
+        int n = Mathf.Min(12, matches.Count);
         for (int i = 0; i < n; i++)
         {
-            if (i > 0)
-                sb.Append("   ");
-            sb.Append(matches[i]);
+            string line = matches[i];
+            Label row = IndustryUi.Text("S", line, "dev-console-suggest-line");
+            if (i == 0)
+                row.AddToClassList("is-on");
+            string captured = line;
+            row.pickingMode = PickingMode.Position;
+            row.RegisterCallback<ClickEvent>(_ =>
+            {
+                field.value = captured;
+                field.cursorIndex = captured.Length;
+                field.selectIndex = captured.Length;
+                field.Focus();
+                RefreshHints(captured);
+            });
+            suggest.Add(row);
         }
-        hints.text = sb.ToString();
+
+        IndustryUi.Show(suggest, n > 0);
     }
 
     public void Print(string line)

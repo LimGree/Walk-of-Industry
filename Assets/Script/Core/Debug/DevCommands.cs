@@ -32,6 +32,9 @@ public static class DevCommands
         "/time set night",
         "/time set midnight",
         "/time set ",
+        "/timeskip ",
+        "/timeskip 0:01:00",
+        "/timeskip 1:00:00",
         "/stat cluster",
         "/stat veins",
         "/stat biome",
@@ -40,6 +43,9 @@ public static class DevCommands
         "/locate veins",
         "/regenWorldMap",
         "/belts",
+        "/conveer speed ",
+        "/conveyor speed ",
+        "/belt speed ",
         "/clearcargo",
         "/killitems",
         "/dump cell",
@@ -62,8 +68,115 @@ public static class DevCommands
         for (int i = 0; i < Catalog.Length; i++)
         {
             if (Catalog[i].StartsWith(q, true, CultureInfo.InvariantCulture))
-                into.Add(Catalog[i]);
+                AddUnique(into, Catalog[i]);
         }
+
+        AddPrefixed(into, q, "/spawn builder ", BuildingIds());
+        AddPrefixed(into, q, "/unlock build ", BuildingIds());
+        AddPrefixed(into, q, "/unlock recipe ", RecipeIds());
+        AddPrefixed(into, q, "/research skip ", ResearchIds());
+        AddPrefixed(into, q, "/spawn vein ", VeinIds());
+        AddPrefixed(into, q, "/tp veins ", VeinIds());
+        AddPrefixed(into, q, "/locate veins ", VeinIds());
+        AddPrefixed(into, q, "/tp biome ", BiomeIds());
+        AddPrefixed(into, q, "/locate biome ", BiomeIds());
+        AddPrefixed(into, q, "/tp cluster ", ClusterIds());
+        AddPrefixed(into, q, "/locate cluster ", ClusterIds());
+    }
+
+    static void AddPrefixed(List<string> into, string query, string prefix, IList<string> ids)
+    {
+        if (ids == null || string.IsNullOrEmpty(query) || string.IsNullOrEmpty(prefix))
+            return;
+        string stem = prefix.TrimEnd();
+        if (!query.StartsWith(stem, true, CultureInfo.InvariantCulture))
+            return;
+
+        for (int i = 0; i < ids.Count; i++)
+        {
+            if (string.IsNullOrEmpty(ids[i]))
+                continue;
+            string line = prefix + ids[i];
+            if (line.StartsWith(query, true, CultureInfo.InvariantCulture))
+                AddUnique(into, line);
+        }
+    }
+
+    static void AddUnique(List<string> into, string line)
+    {
+        if (string.IsNullOrEmpty(line) || into.Contains(line))
+            return;
+        into.Add(line);
+    }
+
+    static List<string> BuildingIds()
+    {
+        var list = new List<string>();
+        BuildingData[] all = GameDatabase.AllBuildings();
+        for (int i = 0; i < all.Length; i++)
+        {
+            if (all[i] != null && !string.IsNullOrEmpty(all[i].id))
+                list.Add(all[i].id);
+        }
+
+        return list;
+    }
+
+    static List<string> RecipeIds()
+    {
+        var list = new List<string>();
+        RecipeData[] all = GameDatabase.AllRecipes();
+        for (int i = 0; i < all.Length; i++)
+        {
+            if (all[i] != null && !string.IsNullOrEmpty(all[i].id))
+                list.Add(all[i].id);
+        }
+
+        return list;
+    }
+
+    static List<string> ResearchIds()
+    {
+        var list = new List<string>();
+        ResearchNodeData[] all = GameDatabase.AllResearches();
+        for (int i = 0; i < all.Length; i++)
+        {
+            if (all[i] != null && !string.IsNullOrEmpty(all[i].id))
+                list.Add(all[i].id);
+        }
+
+        return list;
+    }
+
+    static readonly string[] VeinNames =
+    {
+        "iron", "copper", "cooper", "coal", "stone", "sand", "sulfur", "tree", "log"
+    };
+
+    static readonly string[] BiomeNames =
+    {
+        "field", "woodland", "forest", "beach", "lake", "ocean", "peak", "slope", "mountain"
+    };
+
+    static IList<string> VeinIds()
+    {
+        return VeinNames;
+    }
+
+    static IList<string> BiomeIds()
+    {
+        return BiomeNames;
+    }
+
+    static IList<string> ClusterIds()
+    {
+        WorldResourceScatterer s = WorldResourceScatterer.Instance;
+        if (s == null || s.ClusterKindKeys == null || s.ClusterKindKeys.Count == 0)
+            return VeinNames;
+        var list = new List<string>();
+        for (int i = 0; i < s.ClusterKindKeys.Count; i++)
+            AddUnique(list, s.ClusterKindKeys[i]);
+        return list.Count > 0 ? list : VeinNames;
     }
 
     public static string Run(string raw)
@@ -97,6 +210,8 @@ public static class DevCommands
                 return Tp(a1, a2);
             if (a0 == "time")
                 return TimeSet(a1, a2);
+            if (a0 == "timeskip")
+                return Timeskip(p);
             if (a0 == "stat")
                 return Stat(a1);
             if (a0 == "locate")
@@ -105,6 +220,8 @@ public static class DevCommands
                 return Regen();
             if (a0 == "belts")
                 return Belts();
+            if (a0 == "conveer" || a0 == "conveyor" || a0 == "belt")
+                return BeltSpeed(a1, a2);
             if (a0 == "clearcargo")
                 return ClearCargo();
             if (a0 == "killitems")
@@ -142,9 +259,10 @@ public static class DevCommands
         sb.AppendLine("unlock build <id|all>");
         sb.AppendLine("tp biome <id> | cluster <type> | veins <type>");
         sb.AppendLine("time set morning|day|evening|night|midnight|HH[:MM[:SS]]");
+        sb.AppendLine("timeskip HH:MM:SS");
         sb.AppendLine("stat cluster|veins|biome");
         sb.AppendLine("locate biome|cluster|veins [id]");
-        sb.AppendLine("regenWorldMap | belts | clearcargo | killitems | dump cell");
+        sb.AppendLine("regenWorldMap | belts | conveer speed X | clearcargo | killitems | dump cell");
         sb.AppendLine("save | load | godsave | fps");
         sb.AppendLine("log on|off belts");
         sb.AppendLine("spawn vein <type> | spawn builder <id>");
@@ -334,9 +452,150 @@ public static class DevCommands
         float hour;
         if (!TryParseHour(value, out hour))
             return "time set morning|day|evening|night|midnight|HH[:MM[:SS]]";
+        AchievementSystem.NotifyTimeCheat();
         DayNight.Hour = DayNight.WrapHour(hour);
         GameSettings.ApplyAtmosphere();
         return "time " + DayNight.FormatHour(DayNight.Hour);
+    }
+
+    public static string Describe(string raw)
+    {
+        string q = Normalize(raw);
+        if (q.Length == 0)
+            q = "/";
+        string best = "";
+        for (int i = 0; i < Catalog.Length; i++)
+        {
+            if (!Catalog[i].StartsWith(q, true, CultureInfo.InvariantCulture))
+                continue;
+            best = Catalog[i];
+            break;
+        }
+
+        if (best.StartsWith("/timeskip", true, CultureInfo.InvariantCulture) || q.StartsWith("/timeskip", true, CultureInfo.InvariantCulture))
+            return "симуляция сдачи в лабу по текущим скоростям (монеты и жилы, рубины не трогать). синтаксис: /timeskip ЧЧ:ММ:СС";
+        if (best.StartsWith("/time", true, CultureInfo.InvariantCulture) || q.StartsWith("/time", true, CultureInfo.InvariantCulture))
+            return "поставить час мира. синтаксис: /time set morning|day|evening|night|midnight|ЧЧ[:ММ[:СС]]";
+        if (best.StartsWith("/money", true, CultureInfo.InvariantCulture))
+            return "монеты. синтаксис: /money add|remove N";
+        if (best.StartsWith("/ruby", true, CultureInfo.InvariantCulture))
+            return "рубины. синтаксис: /ruby add|remove N";
+        if (best.StartsWith("/research", true, CultureInfo.InvariantCulture))
+            return "исследования. синтаксис: /research list|skip <id>|skipall";
+        if (best.StartsWith("/unlock", true, CultureInfo.InvariantCulture))
+            return "открыть рецепт или здание. синтаксис: /unlock recipe|build <id|all>";
+        if (best.StartsWith("/tp", true, CultureInfo.InvariantCulture))
+            return "телепорт. синтаксис: /tp biome <id> | cluster <type> | veins <type>";
+        if (best.StartsWith("/spawn", true, CultureInfo.InvariantCulture))
+            return "заспавнить. синтаксис: /spawn vein <type> | spawn builder <id>";
+        if (best.StartsWith("/conveer", true, CultureInfo.InvariantCulture)
+            || best.StartsWith("/conveyor", true, CultureInfo.InvariantCulture)
+            || q.StartsWith("/conveer", true, CultureInfo.InvariantCulture)
+            || q.StartsWith("/conveyor", true, CultureInfo.InvariantCulture)
+            || q.StartsWith("/belt speed", true, CultureInfo.InvariantCulture))
+            return "множитель скорости лент. синтаксис: /conveer speed X";
+        if (best.StartsWith("/help", true, CultureInfo.InvariantCulture))
+            return "список команд. синтаксис: /help [research]";
+        if (string.IsNullOrEmpty(best))
+            return "";
+        return "Tab — подставить. синтаксис: " + best;
+    }
+
+    static string Timeskip(string[] p)
+    {
+        string spec = p.Length >= 2 ? p[1] : "";
+        if (p.Length >= 4)
+            spec = p[1] + ":" + p[2] + ":" + p[3];
+        float seconds;
+        if (!TryParseDuration(spec, out seconds) || seconds <= 0f)
+            return "timeskip HH:MM:SS";
+        AchievementSystem.NotifyTimeCheat();
+
+        float minutes = seconds / 60f;
+        ProductionStats stats = ProductionStats.Instance;
+        ResearchSystem rs = ResearchSystem.Instance;
+        var sb = new StringBuilder();
+        int coinGain = 0;
+        if (stats != null && PlayerWallet.Instance != null)
+        {
+            coinGain = Mathf.Max(0, Mathf.RoundToInt(stats.CoinsPerMinute() * minutes));
+            if (coinGain > 0)
+                PlayerWallet.Instance.AddCoins(coinGain);
+        }
+
+        int kinds = 0;
+        int submitted = 0;
+        ItemData[] items = GameDatabase.AllItems();
+        for (int i = 0; i < items.Length; i++)
+        {
+            ItemData item = items[i];
+            if (item == null || IsRubyItem(item) || stats == null)
+                continue;
+            float perMin = stats.ProducedPerMinute(item.id);
+            int amount = Mathf.Max(0, Mathf.RoundToInt(perMin * minutes));
+            if (amount <= 0)
+                continue;
+            kinds++;
+            if (rs != null)
+                submitted += rs.SubmitBulk(item, amount);
+        }
+
+        float dayMin = Mathf.Max(1f, GameSettings.DayLengthMinutes);
+        float gameHours = (seconds / 3600f) * (24f * 60f / dayMin);
+        DayNight.Advance(gameHours);
+        GameSettings.ApplyAtmosphere();
+
+        sb.Append("skip ").Append(spec);
+        sb.Append("  +").Append(coinGain).Append("c");
+        sb.Append("  items ").Append(submitted).Append(" / ").Append(kinds).Append(" kinds");
+        sb.Append("  clock ").Append(DayNight.FormatHour(DayNight.Hour));
+        return sb.ToString();
+    }
+
+    static bool IsRubyItem(ItemData item)
+    {
+        if (item == null || string.IsNullOrEmpty(item.id))
+            return true;
+        return item.id.IndexOf("ruby", System.StringComparison.OrdinalIgnoreCase) >= 0;
+    }
+
+    static bool TryParseDuration(string spec, out float seconds)
+    {
+        seconds = 0f;
+        if (string.IsNullOrEmpty(spec))
+            return false;
+        string[] parts = spec.Split(':');
+        if (parts.Length == 1)
+        {
+            float v;
+            if (!float.TryParse(parts[0], NumberStyles.Float, CultureInfo.InvariantCulture, out v))
+                return false;
+            seconds = v;
+            return seconds > 0f;
+        }
+
+        if (parts.Length == 2 || parts.Length == 3)
+        {
+            float h = 0f;
+            float m;
+            float s = 0f;
+            int i = 0;
+            if (parts.Length == 3)
+            {
+                if (!float.TryParse(parts[i++], NumberStyles.Float, CultureInfo.InvariantCulture, out h))
+                    return false;
+            }
+
+            if (!float.TryParse(parts[i++], NumberStyles.Float, CultureInfo.InvariantCulture, out m))
+                return false;
+            if (i < parts.Length
+                && !float.TryParse(parts[i], NumberStyles.Float, CultureInfo.InvariantCulture, out s))
+                return false;
+            seconds = h * 3600f + m * 60f + s;
+            return seconds > 0f;
+        }
+
+        return false;
     }
 
     static string Stat(string kind)
@@ -429,6 +688,22 @@ public static class DevCommands
         if (WorldResourceScatterer.Instance != null)
             WorldResourceScatterer.Instance.ScatterPreservingExtractorVeins();
         return "regen";
+    }
+
+    static string BeltSpeed(string op, string value)
+    {
+        if (op != "speed")
+            return "conveer speed X";
+        BeltSpeedSystem sys = BeltSpeedSystem.Instance;
+        if (sys == null)
+            return "no belts";
+        if (string.IsNullOrEmpty(value))
+            return "speed x" + sys.CheatMul.ToString("0.##") + "  total x" + sys.Multiplier.ToString("0.##");
+        float mul;
+        if (!float.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out mul))
+            return "conveer speed X";
+        sys.SetCheatMul(mul);
+        return "speed x" + sys.CheatMul.ToString("0.##") + "  total x" + sys.Multiplier.ToString("0.##");
     }
 
     static string Belts()

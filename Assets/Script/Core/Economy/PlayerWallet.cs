@@ -59,6 +59,7 @@ public class PlayerWallet : MonoBehaviour
         if (amount > 0)
             ProductionStats.Instance?.RecordCoinsGained(amount);
         OnChanged?.Invoke();
+        AchievementSystem.NotifyCoins(Coins);
     }
 
     public void AddRubies(int amount)

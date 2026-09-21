@@ -291,7 +291,7 @@ public class UndergroundConveyor : BuildingBase
     static UndergroundConveyor WalkUnpaired(UndergroundConveyor from, Vector2Int step)
     {
         Vector2Int cell = from.Cell;
-        int maxGap = from.data != null ? Mathf.Max(1, from.data.pairMaxGap) : 5;
+        int maxGap = ResearchSystem.UndergroundMaxGap();
         for (int n = 1; n <= maxGap + 1; n++)
         {
             BuildingBase found = BuildingLinker.GetBuildingAt(cell + step * n);

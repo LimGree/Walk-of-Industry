@@ -187,6 +187,27 @@ public class InventoryUI : MonoBehaviour
         slot.RegisterCallback<PointerDownEvent>(evt => OnSlotDown(evt, captured, empty));
         slot.RegisterCallback<PointerMoveEvent>(OnPointerMove);
         slot.RegisterCallback<PointerUpEvent>(OnPointerUp);
+        if (!empty)
+        {
+            UiTooltip.Bind(slot,
+                () =>
+                {
+                    BuildingData data = inventory != null && inventory.hotbar != null
+                        && captured >= 0 && captured < inventory.hotbar.Length
+                        ? inventory.hotbar[captured]
+                        : null;
+                    return data != null ? data.displayName : "";
+                },
+                () =>
+                {
+                    BuildingData data = inventory != null && inventory.hotbar != null
+                        && captured >= 0 && captured < inventory.hotbar.Length
+                        ? inventory.hotbar[captured]
+                        : null;
+                    return data != null ? data.description : "";
+                });
+        }
+
         return slot;
     }
 

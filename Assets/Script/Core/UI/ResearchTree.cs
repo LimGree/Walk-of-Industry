@@ -128,11 +128,7 @@ public static class ResearchTree
                 if (stack == null || stack.item == null)
                     continue;
                 int have = ResearchSystem.Instance.GetSubmitted(node, stack.item);
-                var chip = IndustryUi.El("Chip", "stack-chip");
-                chip.Add(IndustryUi.Icon(stack.item.icon, "stack-icon"));
-                chip.Add(IndustryUi.Text("N", have + "/" + stack.amount, "stack-count"));
-                UiTooltip.Bind(chip, stack.item.displayName, have + " / " + stack.amount);
-                need.Add(chip);
+                need.Add(IndustryUi.StackChip(stack.item, stack.amount, have));
             }
         }
         else
@@ -607,8 +603,8 @@ public sealed class ResearchTreeNav
 {
     const float MinZoom = 0.35f;
     const float MaxZoom = 1.85f;
-    const float ZoomOut = 0.86f;
-    const float ZoomIn = 1.16f;
+    const float ZoomOut = 0.85f;
+    const float ZoomIn = 1.1764706f;
 
     VisualElement view;
     VisualElement canvas;
@@ -670,7 +666,11 @@ public sealed class ResearchTreeNav
 
     void OnDown(PointerDownEvent evt)
     {
-        if (evt.button != 1 || view == null)
+        if (view == null)
+            return;
+        bool rmb = evt.button == 1;
+        bool lmbEmpty = evt.button == 0 && !HitsNode(evt.target);
+        if (!rmb && !lmbEmpty)
             return;
         panning = true;
         panPointer = evt.pointerId;
@@ -678,6 +678,21 @@ public sealed class ResearchTreeNav
         view.CapturePointer(evt.pointerId);
         view.AddToClassList("is-panning");
         evt.StopImmediatePropagation();
+    }
+
+    static bool HitsNode(IEventHandler target)
+    {
+        VisualElement el = target as VisualElement;
+        while (el != null && el != el.panel?.visualTree)
+        {
+            if (el is Button)
+                return true;
+            if (el.ClassListContains("research-tree-node") || el.ClassListContains("research-node"))
+                return true;
+            el = el.parent;
+        }
+
+        return false;
     }
 
     void OnMove(PointerMoveEvent evt)
