@@ -95,6 +95,9 @@ public static class KeybindSettingsUI
             case "ClearSelection":
             case "Copy":
             case "Paste":
+            case "Blueprints":
+            case "Undo":
+            case "Redo":
             case "MoveSelection":
             case "Modifier":
             case "Delete":

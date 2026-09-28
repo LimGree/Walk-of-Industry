@@ -163,9 +163,12 @@ public static class KeybindStore
         AddKeyboard(list, "BuildMode", UiLocale.T("bind.build_mode"));
         AddKeyboard(list, "Research", UiLocale.T("bind.research"));
         AddKeyboard(list, "SelectMode", UiLocale.T("bind.select"));
-        AddKeyboard(list, "ClearSelection", UiLocale.T("bind.clear"));
+        AddComposite(list, "ClearSelection", "button", UiLocale.T("bind.clear"));
         AddKeyboard(list, "Copy", UiLocale.T("bind.copy"));
         AddKeyboard(list, "Paste", UiLocale.T("bind.paste"));
+        AddKeyboard(list, "Blueprints", UiLocale.T("bind.blueprints"));
+        AddComposite(list, "Undo", "button", UiLocale.T("bind.undo"));
+        AddComposite(list, "Redo", "button", UiLocale.T("bind.redo"));
         AddKeyboard(list, "MoveSelection", UiLocale.T("bind.map"));
         AddKeyboard(list, "Modifier", UiLocale.T("bind.modifier"));
         AddKeyboard(list, "Delete", UiLocale.T("bind.delete"));
@@ -308,10 +311,19 @@ public static class KeybindStore
         {
             reference = new InputSystem_Actions();
             EnsureZoomAction(reference.asset);
+            EnsureBlueprintsAction(reference.asset);
+            EnsureUndoAction(reference.asset);
+            EnsureRedoAction(reference.asset);
             ApplySaved(reference.asset);
+            EnsureRedoAction(reference.asset);
         }
         else
+        {
             EnsureZoomAction(reference.asset);
+            EnsureBlueprintsAction(reference.asset);
+            EnsureUndoAction(reference.asset);
+            EnsureRedoAction(reference.asset);
+        }
 
         if (!sharedEnabled && !IsListening)
         {
@@ -336,6 +348,72 @@ public static class KeybindStore
         zoom.AddBinding("<Keyboard>/c", groups: KeyboardGroup);
         if (asset.enabled)
             zoom.Enable();
+    }
+
+    static void EnsureBlueprintsAction(InputActionAsset asset)
+    {
+        if (asset == null || asset.FindAction("Player/Blueprints", false) != null)
+            return;
+        InputActionMap map = asset.FindActionMap("Player", false);
+        if (map == null)
+            return;
+        InputAction action = map.AddAction("Blueprints", InputActionType.Button);
+        action.AddBinding("<Keyboard>/p", groups: KeyboardGroup);
+        if (asset.enabled)
+            action.Enable();
+    }
+
+    static void EnsureUndoAction(InputActionAsset asset)
+    {
+        if (asset == null || asset.FindAction("Player/Undo", false) != null)
+            return;
+        InputActionMap map = asset.FindActionMap("Player", false);
+        if (map == null)
+            return;
+        InputAction action = map.AddAction("Undo", InputActionType.Button);
+        action.AddCompositeBinding("ButtonWithOneModifier")
+            .With("Modifier", "<Keyboard>/leftCtrl", KeyboardGroup)
+            .With("Button", "<Keyboard>/z", KeyboardGroup);
+        if (asset.enabled)
+            action.Enable();
+    }
+
+    static void EnsureRedoAction(InputActionAsset asset)
+    {
+        if (asset == null)
+            return;
+        InputActionMap map = asset.FindActionMap("Player", false);
+        if (map == null)
+            return;
+        InputAction action = asset.FindAction("Player/Redo", false);
+        if (action == null)
+            action = map.AddAction("Redo", InputActionType.Button);
+        if (BindingHasPath(action, "<Keyboard>/y"))
+            return;
+        for (int i = action.bindings.Count - 1; i >= 0; i--)
+            action.ChangeBinding(i).Erase();
+        action.AddCompositeBinding("ButtonWithOneModifier")
+            .With("Modifier", "<Keyboard>/leftCtrl", KeyboardGroup)
+            .With("Button", "<Keyboard>/y", KeyboardGroup);
+        action.AddCompositeBinding("ButtonWithOneModifier")
+            .With("Modifier", "<Keyboard>/rightCtrl", KeyboardGroup)
+            .With("Button", "<Keyboard>/y", KeyboardGroup);
+        if (asset.enabled)
+            action.Enable();
+    }
+
+    static bool BindingHasPath(InputAction action, string path)
+    {
+        if (action == null || string.IsNullOrEmpty(path))
+            return false;
+        for (int i = 0; i < action.bindings.Count; i++)
+        {
+            string effective = action.bindings[i].effectivePath;
+            if (!string.IsNullOrEmpty(effective)
+                && effective.IndexOf(path, StringComparison.OrdinalIgnoreCase) >= 0)
+                return true;
+        }
+        return false;
     }
 
     static InputAction Find(string actionName)
@@ -389,11 +467,15 @@ public static class KeybindStore
         for (int i = 0; i < action.bindings.Count; i++)
         {
             InputBinding binding = action.bindings[i];
-            if (binding.isComposite || binding.isPartOfComposite)
+            if (binding.isComposite)
                 continue;
-            if (!IsKeyboardGroup(binding))
+            if (binding.isPartOfComposite
+                && !string.Equals(binding.name, "button", StringComparison.OrdinalIgnoreCase))
                 continue;
-            return i;
+            if (!binding.isPartOfComposite && !IsKeyboardGroup(binding))
+                continue;
+            if (binding.isPartOfComposite || IsKeyboardGroup(binding))
+                return i;
         }
         return -1;
     }

@@ -157,6 +157,13 @@ public class InputHintUI : MonoBehaviour
             return hints;
         }
 
+        if (BlueprintLibraryUI.Instance != null && BlueprintLibraryUI.Instance.IsOpen)
+        {
+            Add(hints, KeybindStore.Hint("Blueprints"), UiLocale.T("hint.close_library"));
+            Add(hints, KeybindStore.Hint("Pause"), UiLocale.T("hint.close"));
+            return hints;
+        }
+
         if (builder == null || !builder.isBuildMode)
         {
             Add(hints, KeybindStore.Hint("BuildMode"), UiLocale.T("hint.build_mode"));
@@ -209,9 +216,12 @@ public class InputHintUI : MonoBehaviour
                 Add(hints, KeybindStore.Hint("Delete"), UiLocale.T("hint.delete"));
                 Add(hints, SelectionHint(), UiLocale.T("hint.sel_settings"));
                 Add(hints, KeybindStore.Hint("ClearSelection"), UiLocale.T("hint.clear_sel"));
+                Add(hints, KeybindStore.Hint("Undo"), UiLocale.T("hint.undo"));
+                Add(hints, KeybindStore.Hint("Redo"), UiLocale.T("hint.redo"));
             }
             if (selection.HasClipboard)
                 Add(hints, KeybindStore.Hint("Paste"), UiLocale.T("hint.paste"));
+            Add(hints, KeybindStore.Hint("Blueprints"), UiLocale.T("hint.library"));
             Add(hints, KeybindStore.Hint("SelectMode"), UiLocale.T("hint.exit_edit"));
             Add(hints, KeybindStore.Hint("BuildMode"), UiLocale.T("hint.exit_build"));
             return hints;
@@ -228,6 +238,7 @@ public class InputHintUI : MonoBehaviour
         else
         {
             Add(hints, KeybindStore.Hint("SelectMode"), UiLocale.T("hint.edit_mode"));
+            Add(hints, KeybindStore.Hint("Blueprints"), UiLocale.T("hint.library"));
             if (selection != null && selection.HasClipboard)
                 Add(hints, KeybindStore.Hint("Paste"), UiLocale.T("hint.paste"));
         }

@@ -37,6 +37,8 @@
 - [[PlayerInventory]] — хотбар зданий
 - [[PlayerInteractor]] — кнопка «взаимодействие» по взгляду, интерфейс [[IInteractable]]
 - [[BuildSelectionController]] — выделение, копирование, вставка, перенос группы зданий
+- [[BlueprintLibrary]] / [[BlueprintLibraryUI]] — именованные чертежи, P в стройке
+- [[BuildUndo]] — Ctrl+Z / Ctrl+Y, до 50 шагов в папке мира
 - [[BuildGridVisualizer]] — сетка под ногами в режиме стройки (`BuildGridPlane`, не белый квадрат)
 - [[BuildIoArrowVisualizer]] — выключен; стрелки I/O только на префабах ([[SocketArrow]])
 

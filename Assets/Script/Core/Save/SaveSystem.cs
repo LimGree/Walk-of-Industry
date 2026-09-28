@@ -179,6 +179,7 @@ public class SaveSystem : MonoBehaviour
                 Weather.ResetToNewWorld();
             if (TutorialSystem.Instance != null)
                 TutorialSystem.Instance.OnWorldReady(false, null);
+            BuildUndo.Load();
             Report(1f);
             yield break;
         }
@@ -296,8 +297,19 @@ public class SaveSystem : MonoBehaviour
 
         AchievementSystem.Mute = false;
         nextAutoSave = Time.unscaledTime + Mathf.Max(30f, autoSaveInterval);
+        BuildUndo.Load();
         Debug.Log($"[Save] Загружено зданий: {count}  (файл v{data.version})");
         Report(1f);
+    }
+
+    public static BuildingBase RespawnFromSave(BuildingSaveData bsd)
+    {
+        BuildingBase building = SpawnBuilding(bsd, GameDatabase.AllBuildings());
+        if (building == null)
+            return null;
+        building.ApplyLevel(bsd.level);
+        building.ReadSave(bsd);
+        return building;
     }
 
     static BuildingData FindBuildingData(string id, BuildingData[] catalog)

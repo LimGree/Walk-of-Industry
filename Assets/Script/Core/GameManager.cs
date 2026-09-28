@@ -57,6 +57,8 @@ public class GameManager : MonoBehaviour
             gameObject.AddComponent<MachineIdleHud>();
         if (GetComponent<SelectionActionsUI>() == null)
             gameObject.AddComponent<SelectionActionsUI>();
+        if (GetComponent<BlueprintLibraryUI>() == null)
+            gameObject.AddComponent<BlueprintLibraryUI>();
         if (GetComponent<CrosshairHud>() == null)
             gameObject.AddComponent<CrosshairHud>();
         if (GetComponent<DayNightCycle>() == null)
@@ -144,6 +146,12 @@ public class GameManager : MonoBehaviour
             return;
         }
 
+        if (BlueprintLibraryUI.Instance != null && BlueprintLibraryUI.Instance.IsOpen)
+        {
+            BlueprintLibraryUI.Instance.SetOpen(false);
+            return;
+        }
+
         TogglePause();
     }
 
@@ -172,6 +180,8 @@ public class GameManager : MonoBehaviour
             ResearchUI.Instance.Close();
         if (paused && BuildMenuUI.Instance != null && BuildMenuUI.Instance.IsOpen)
             BuildMenuUI.Instance.CloseMenu(false);
+        if (paused && BlueprintLibraryUI.Instance != null && BlueprintLibraryUI.Instance.IsOpen)
+            BlueprintLibraryUI.Instance.SetOpen(false);
         if (paused && PhotoMode.Instance != null)
             PhotoMode.Instance.Cancel();
         if (paused && BeltRide.Instance != null && BeltRide.Instance.IsRiding)
@@ -194,10 +204,11 @@ public class GameManager : MonoBehaviour
         bool selectionOpen = SelectionActionsUI.Instance != null && SelectionActionsUI.Instance.IsOpen;
         bool researchOpen = ResearchUI.Instance != null && ResearchUI.Instance.IsOpen;
         bool buildOpen = BuildMenuUI.Instance != null && BuildMenuUI.Instance.IsOpen;
+        bool libraryOpen = BlueprintLibraryUI.Instance != null && BlueprintLibraryUI.Instance.IsOpen;
         bool tutorialOpen = TutorialSystem.Instance != null && TutorialSystem.Instance.IsModal;
         bool modalOpen = UiModal.IsOpen;
         bool consoleOpen = DevConsole.IsOpen;
-        bool menuOpen = uiOpen || mapOpen || bagOpen || shopOpen || selectionOpen || researchOpen || buildOpen || tutorialOpen || modalOpen || consoleOpen;
+        bool menuOpen = uiOpen || mapOpen || bagOpen || shopOpen || selectionOpen || researchOpen || buildOpen || libraryOpen || tutorialOpen || modalOpen || consoleOpen;
         if (PhotoMode.IsActive)
         {
             UnityEngine.Cursor.lockState = CursorLockMode.Locked;

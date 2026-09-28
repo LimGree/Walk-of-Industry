@@ -65,21 +65,38 @@ public class StorageContainer : BuildingBase, IInteractable
         EnsureSetup();
         EnsureSlots();
         base.OnPlaced();
+        if (PeekFirstItem() != null)
+            WorldSim.MarkFlush(this);
     }
 
-    void Update()
+    public override bool StayInFlushQueue => PeekFirstItem() != null;
+
+    public override void SimFlush()
     {
+        if (!IsPlaced)
+            return;
         ItemData item = PeekFirstItem();
         if (item == null)
             return;
-
         if (TryPushToConnections(item) && TryRemoveOne(item) && showDebug)
             Debug.Log($"[Storage] out {item.displayName}");
+    }
+
+    public override bool CanAcceptFrom(BuildingBase source)
+    {
+        if (source is Conveyor belt)
+            return BuildingLinker.FeedsInto(belt, BuildingLinker.WorldToCell(transform.position));
+        return base.CanAcceptFrom(source);
     }
 
     public virtual bool AcceptsCargo(ItemData item)
     {
         return item != null && !item.isFluid;
+    }
+
+    protected override bool TryPushToAdjacentBelts(ItemData item)
+    {
+        return false;
     }
 
     public override bool TryReceiveItem(ItemData item, BuildingSocket fromSocket)
@@ -90,6 +107,7 @@ public class StorageContainer : BuildingBase, IInteractable
         if (!TryAddOne(item))
             return false;
 
+        WorldSim.MarkFlush(this);
         if (showDebug)
             Debug.Log($"[Storage] in {item.displayName}");
         return true;
@@ -114,6 +132,7 @@ public class StorageContainer : BuildingBase, IInteractable
             if (stack.item == item && stack.amount > 0 && stack.amount < max)
             {
                 stack.amount++;
+                WorldSim.MarkFlush(this);
                 return true;
             }
         }
@@ -125,6 +144,7 @@ public class StorageContainer : BuildingBase, IInteractable
 
             slots[i].item = item;
             slots[i].amount = 1;
+            WorldSim.MarkFlush(this);
             return true;
         }
 

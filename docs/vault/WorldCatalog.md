@@ -5,7 +5,7 @@
 
 Список миров на диске компьютера игрока, не в сцене.
 
-Папка: `Application.persistentDataPath/worlds/` (у Windows это AppData). Один раз умеет перенести старые сейвы из папки «Walk to biome».
+Папка: `Application.persistentDataPath/worlds/` (у Windows это AppData). Один раз умеет перенести старые сейвы из папки «Walk to biome». Чертежи мира — `worlds/<id>/blueprints/`; общие — `persistentDataPath/blueprints/` ([[BlueprintLibrary]]).
 
 ## Типы
 

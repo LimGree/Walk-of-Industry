@@ -9,7 +9,7 @@
 
 ## Связи
 
-[[PlayerInventory]] (какое здание в руке) · [[BuildingData]] · [[GridSystem]] · [[GridOccupancy]] · [[GridFootprint]] · [[WorldBiomeMap]] (нельзя строить на воде, кроме насосов) · [[PlayerWallet]] / [[Economy]] · [[GameAudio]] · [[BuildMenuUI]] · [[ResearchSystem]] (здание должно быть открыто)
+[[PlayerInventory]] (какое здание в руке) · [[BuildingData]] · [[GridSystem]] · [[GridOccupancy]] · [[GridFootprint]] · [[WorldBiomeMap]] (нельзя строить на воде, кроме насосов) · [[PlayerWallet]] / [[Economy]] · [[GameAudio]] · [[BuildMenuUI]] · [[ResearchSystem]] (здание должно быть открыто) · [[BlueprintLibraryUI]] (P в стройке)
 
 ## Поля (главные)
 

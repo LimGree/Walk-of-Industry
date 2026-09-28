@@ -254,6 +254,8 @@ public class WorldMapUI : MonoBehaviour
         IndustryUi.Show(miniHost, !open && MapSettings.MiniVisible);
         if (open)
         {
+            if (BlueprintLibraryUI.Instance != null && BlueprintLibraryUI.Instance.IsOpen)
+                BlueprintLibraryUI.Instance.SetOpen(false);
             dragging = false;
             measuring = false;
             Rebuild();

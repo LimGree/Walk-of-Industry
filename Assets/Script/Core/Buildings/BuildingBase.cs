@@ -35,6 +35,7 @@ public abstract class BuildingBase : MonoBehaviour
 
     public int OutputBufferCount => outputBuffer.Count;
     public int OutputBufferFree => Mathf.Max(0, maxOutputBuffer - outputBuffer.Count);
+    public virtual bool StayInFlushQueue => outputBuffer.Count > 0;
     public bool IsPlaced => worldPlaced;
 
     public bool OutputContains(ItemData item)
@@ -243,7 +244,7 @@ public abstract class BuildingBase : MonoBehaviour
         return false;
     }
 
-    protected bool TryPushToAdjacentBelts(ItemData item)
+    protected virtual bool TryPushToAdjacentBelts(ItemData item)
     {
         if (item == null)
             return false;
@@ -272,6 +273,8 @@ public abstract class BuildingBase : MonoBehaviour
         {
             bool pipe = belt is Pipe;
             if (item.isFluid != pipe)
+                return false;
+            if (BuildingLinker.FeedsInto(belt, BuildingLinker.WorldToCell(transform.position)))
                 return false;
             if (fromSocket != null)
             {
@@ -370,6 +373,8 @@ public abstract class BuildingBase : MonoBehaviour
                 Renderer rend = cullRenderers[i];
                 if (rend == null || rend.GetComponentInParent<SocketArrow>() != null)
                     continue;
+                if (IsBeltItemRenderer(rend))
+                    continue;
                 rend.enabled = show;
             }
         }
@@ -384,6 +389,18 @@ public abstract class BuildingBase : MonoBehaviour
                     cullColliders[i].enabled = show && cullColliderOn[i];
             }
         }
+    }
+
+    static bool IsBeltItemRenderer(Renderer rend)
+    {
+        Transform t = rend != null ? rend.transform : null;
+        while (t != null)
+        {
+            if (t.name.IndexOf("BeltItem", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                return true;
+            t = t.parent;
+        }
+        return false;
     }
 
     void CaptureCull()

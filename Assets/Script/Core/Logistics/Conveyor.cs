@@ -32,10 +32,19 @@ public class Conveyor : BuildingBase, IInteractable
     public ItemData Filter => filter;
 
     ItemData filter;
-    SpriteRenderer filterChip;
     static readonly int ColorId = Shader.PropertyToID("_Color");
     static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
-    static readonly MaterialPropertyBlock TintBlock = new MaterialPropertyBlock();
+    static MaterialPropertyBlock tintBlock;
+
+    static MaterialPropertyBlock TintBlock
+    {
+        get
+        {
+            if (tintBlock == null)
+                tintBlock = new MaterialPropertyBlock();
+            return tintBlock;
+        }
+    }
 
     public struct Incoming
     {
@@ -248,6 +257,11 @@ public class Conveyor : BuildingBase, IInteractable
         return item != null && !item.isFluid && MatchesFilter(item);
     }
 
+    public bool WouldAcceptItem(ItemData item)
+    {
+        return AcceptsItem(item);
+    }
+
     protected virtual bool ShowCargoVisual => true;
 
     public override bool TryReceiveItem(ItemData item, BuildingSocket fromSocket)
@@ -268,7 +282,7 @@ public class Conveyor : BuildingBase, IInteractable
         if (!isLive || !AcceptsItem(item))
             return false;
         if (!IsValidEntry(entry))
-            entry = ExitDir;
+            entry = BeltRules.Travel(ExitDir, BeltInMask.Back);
         if (!IsValidEntry(entry) || !CanAccept(entry))
             return false;
         SpawnCargo(item, 0f, visual, entry);
@@ -483,27 +497,14 @@ public class Conveyor : BuildingBase, IInteractable
 
         Conveyor nextBelt = dest as Conveyor;
         if (nextBelt != null)
-        {
-            bool accepted = nextBelt.TryAcceptTransfer(item.item, item.visual, this);
-
-            if (accepted)
-                item.visual = null;
-
-            return accepted;
-        }
+            return nextBelt.TryAcceptTransfer(item.item, null, this);
 
         Splitter nextSplit = dest as Splitter;
         if (nextSplit != null)
         {
             if (!nextSplit.CanAcceptFrom(this))
                 return false;
-
-            bool accepted = nextSplit.TryAcceptTransfer(item.item, item.visual);
-
-            if (accepted)
-                item.visual = null;
-
-            return accepted;
+            return nextSplit.TryAcceptTransfer(item.item, null);
         }
 
         if (!dest.CanAcceptFrom(this))
@@ -526,7 +527,7 @@ public class Conveyor : BuildingBase, IInteractable
     void SpawnCargo(ItemData item, float progress, Transform existingVisual, Vector2Int entryDir)
     {
         if (!IsValidEntry(entryDir))
-            entryDir = ExitDir;
+            entryDir = BeltRules.Travel(ExitDir, BeltInMask.Back);
 
         BeltCargo cargoItem = new BeltCargo
         {
@@ -1157,8 +1158,6 @@ public class Conveyor : BuildingBase, IInteractable
                 PaintRenderer(r, tint);
             }
         }
-
-        RefreshFilterChip();
     }
 
     static void PaintRenderer(Renderer r, Color tint)
@@ -1196,31 +1195,6 @@ public class Conveyor : BuildingBase, IInteractable
         int h = id.GetHashCode();
         float hue = Mathf.Abs(h % 1000) / 1000f;
         return Color.HSVToRGB(hue, 0.65f, 0.95f);
-    }
-
-    void RefreshFilterChip()
-    {
-        if (filter == null || filter.icon == null)
-        {
-            if (filterChip != null)
-                filterChip.enabled = false;
-            return;
-        }
-
-        if (filterChip == null)
-        {
-            var go = new GameObject("FilterChip");
-            go.transform.SetParent(transform, false);
-            go.transform.localPosition = new Vector3(0f, itemHeight + 0.22f, 0f);
-            go.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
-            go.transform.localScale = Vector3.one * 0.35f;
-            filterChip = go.AddComponent<SpriteRenderer>();
-            filterChip.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            filterChip.receiveShadows = false;
-        }
-
-        filterChip.enabled = true;
-        filterChip.sprite = filter.icon;
     }
 
     public override void WriteSave(BuildingSaveData save)

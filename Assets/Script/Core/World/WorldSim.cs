@@ -155,7 +155,7 @@ public class WorldSim : MonoBehaviour
                 continue;
             }
             b.SimFlush();
-            if (b.OutputBufferCount <= 0)
+            if (!b.StayInFlushQueue)
                 flushQueue.RemoveAt(i);
         }
         CullVisible();

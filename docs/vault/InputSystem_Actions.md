@@ -8,7 +8,7 @@
 
 ## Что внутри
 
-Карта действий **Player**: Move, Look, Place, Demolish, Interact, Jump, Sprint, Pause, Rotate, BuildMode, HotbarScroll, Research, SelectMode, копипаст выделения, **MoveSelection (карта / перенос)**, Modifier, Delete, Inventory, Shop, SelectionPanel, **Zoom**.
+Карта действий **Player**: Move, Look, Place, Demolish, Interact, Jump, Sprint, Pause, Rotate, BuildMode, HotbarScroll, Research, SelectMode, копипаст выделения, **MoveSelection (карта / перенос)**, Modifier, Delete, Inventory, Shop, SelectionPanel, **Zoom**, **Blueprints** (P, библиотека чертежей), **Undo** (Ctrl+Z), **Redo** (Ctrl+Y), **ClearSelection** (Ctrl+D).
 
 Карта **UI**: Navigate, Submit, Click, **ScrollWheel** (нужен UITK), tracked-device заготовки.
 

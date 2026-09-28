@@ -289,6 +289,8 @@ public class MachineUI : MonoBehaviour
         BindLiveEvents();
         if (building == null)
             return;
+        if (building is Conveyor && !ResearchSystem.BeltFilterUnlocked())
+            return;
         if (!gameObject.activeSelf)
             gameObject.SetActive(true);
         if (overlay == null)

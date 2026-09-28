@@ -14,9 +14,13 @@ public class PlayerInteractor : MonoBehaviour
         get
         {
             if (currentInteractable is Conveyor || currentInteractable is Splitter)
-                return BeltRide.BuildModeOn()
-                    ? UiLocale.T("hint.belt_menu")
-                    : UiLocale.T("hint.ride_belt");
+            {
+                if (!BeltRide.BuildModeOn())
+                    return UiLocale.T("hint.ride_belt");
+                if (currentInteractable is Conveyor && !ResearchSystem.BeltFilterUnlocked())
+                    return "";
+                return UiLocale.T("hint.belt_menu");
+            }
             if (currentInteractable is BuildingBase building && building.data != null
                 && !string.IsNullOrEmpty(building.data.displayName))
                 return building.data.displayName;
@@ -80,6 +84,8 @@ public class PlayerInteractor : MonoBehaviour
         if (SelectionActionsUI.Instance != null && SelectionActionsUI.Instance.IsOpen)
             return;
         if (WorldMapUI.Instance != null && WorldMapUI.Instance.IsOpen)
+            return;
+        if (BlueprintLibraryUI.Instance != null && BlueprintLibraryUI.Instance.IsOpen)
             return;
         if (currentInteractable != null)
             currentInteractable.Interact(gameObject);

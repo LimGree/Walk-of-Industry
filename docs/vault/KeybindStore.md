@@ -14,7 +14,7 @@ JSON переназначений в PlayerPrefs `InputBindingOverrides`.
 
 ## Методы
 
-- `BuildEntries` — что показать в UI
+- `BuildEntries` — что показать в UI (включая `Blueprints` P, `Undo` Ctrl+Z, `Redo` Ctrl+Y)
 - `StartRebind` — «нажмите новую клавишу», Esc отмена
 - `ResetBinding` / `ResetAll`
 - `Hint("Jump")` — текст для подсказок внизу экрана

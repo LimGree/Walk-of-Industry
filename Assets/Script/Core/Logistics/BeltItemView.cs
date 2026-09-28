@@ -6,13 +6,32 @@ public static class BeltItemView
 {
     static readonly Dictionary<int, Stack<Transform>> pool = new Dictionary<int, Stack<Transform>>(16);
     static readonly HashSet<Transform> pooled = new HashSet<Transform>();
+    static readonly HashSet<Transform> live = new HashSet<Transform>();
+    static readonly HashSet<Transform> drawn = new HashSet<Transform>();
+    static readonly List<Transform> flushScratch = new List<Transform>(64);
 
     public static void BeginFrame()
     {
+        drawn.Clear();
     }
 
     public static void Flush()
     {
+        flushScratch.Clear();
+        foreach (Transform visual in live)
+        {
+            if (visual == null || !drawn.Contains(visual))
+                flushScratch.Add(visual);
+        }
+
+        for (int i = 0; i < flushScratch.Count; i++)
+        {
+            Transform visual = flushScratch[i];
+            live.Remove(visual);
+            if (visual == null)
+                continue;
+            Release(visual, null);
+        }
     }
 
     public static void ClearPool()
@@ -51,22 +70,29 @@ public static class BeltItemView
             if (recycled != null)
             {
                 pooled.Remove(recycled);
+                live.Add(recycled);
                 recycled.gameObject.SetActive(true);
+                EnableRenderers(recycled.gameObject);
                 Prepare(recycled);
                 return recycled;
             }
         }
-        return Create(item, itemScale);
+        Transform created = Create(item, itemScale);
+        if (created != null)
+            live.Add(created);
+        return created;
     }
 
     public static void Release(Transform visual, ItemData item)
     {
         if (visual == null)
             return;
-        if (!pooled.Add(visual))
-            return;
+        live.Remove(visual);
+        drawn.Remove(visual);
         visual.SetParent(null, false);
         visual.gameObject.SetActive(false);
+        if (!pooled.Add(visual))
+            return;
         int key = item != null ? item.GetInstanceID() : 0;
         Stack<Transform> stack;
         if (!pool.TryGetValue(key, out stack))
@@ -102,6 +128,10 @@ public static class BeltItemView
     {
         if (visual == null)
             return;
+        drawn.Add(visual);
+        live.Add(visual);
+        visual.gameObject.SetActive(true);
+        EnableRenderers(visual.gameObject);
 
         visual.position = position;
 
@@ -125,8 +155,24 @@ public static class BeltItemView
 
     public static void Destroy(Transform visual)
     {
-        if (visual != null)
-            Object.Destroy(visual.gameObject);
+        if (visual == null)
+            return;
+        live.Remove(visual);
+        drawn.Remove(visual);
+        pooled.Remove(visual);
+        Object.Destroy(visual.gameObject);
+    }
+
+    static void EnableRenderers(GameObject go)
+    {
+        if (go == null)
+            return;
+        Renderer[] rends = go.GetComponentsInChildren<Renderer>(true);
+        for (int i = 0; i < rends.Length; i++)
+        {
+            if (rends[i] != null)
+                rends[i].enabled = true;
+        }
     }
 
     static bool TryAttachWorldModel(GameObject root, ItemData item, float itemScale)

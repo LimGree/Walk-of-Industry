@@ -40,6 +40,14 @@ public class ResearchSystem : MonoBehaviour
         return gap;
     }
 
+    public static bool BeltFilterUnlocked()
+    {
+        if (Instance == null)
+            return true;
+        BuildingData splitter = GameDatabase.FindBuilding("splitter");
+        return splitter != null && Instance.IsBuildingUnlocked(splitter);
+    }
+
     private readonly HashSet<ResearchNodeData> unlockedResearch = new HashSet<ResearchNodeData>();
     private readonly HashSet<BuildingData> unlockedBuildings = new HashSet<BuildingData>();
     private readonly HashSet<RecipeData> unlockedRecipes = new HashSet<RecipeData>();

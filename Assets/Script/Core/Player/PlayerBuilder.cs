@@ -201,6 +201,8 @@ public class PlayerBuilder : MonoBehaviour
             return true;
         if (WorldMapUI.Instance != null && WorldMapUI.Instance.IsOpen)
             return true;
+        if (BlueprintLibraryUI.Instance != null && BlueprintLibraryUI.Instance.IsOpen)
+            return true;
         if (TutorialSystem.Instance != null && TutorialSystem.Instance.IsModal)
             return true;
         if (UiModal.IsOpen)
@@ -227,6 +229,8 @@ public class PlayerBuilder : MonoBehaviour
     void OnDemolish(InputAction.CallbackContext ctx)
     {
         if (!isBuildMode || IsGameplayBuildInputBlocked() || BlocksBuildInput)
+            return;
+        if (selection != null && selection.IsSelectionMode)
             return;
         EndStroke();
         TryDemolish();
@@ -267,6 +271,7 @@ public class PlayerBuilder : MonoBehaviour
             return false;
 
         float prevYaw = building.transform.eulerAngles.y;
+        Vector3 prevPos = building.transform.position;
         float newYaw = prevYaw + 90f;
         building.transform.rotation = Quaternion.Euler(0f, newYaw, 0f);
 
@@ -292,6 +297,7 @@ public class PlayerBuilder : MonoBehaviour
         }
 
         building.OnRotated();
+        BuildUndo.NoteEdit(building, prevPos, prevYaw);
         GameAudio.World("world_rotate", building.transform.position);
         return true;
     }
@@ -1200,6 +1206,7 @@ public class PlayerBuilder : MonoBehaviour
     {
         if (!strokeActive)
             return;
+        BuildUndo.Begin();
 
         bool lineOk = strokeSlots.Count > 0;
         for (int i = 0; i < strokeSlots.Count; i++)
@@ -1215,6 +1222,7 @@ public class PlayerBuilder : MonoBehaviour
         {
             if (playerCamera != null)
                 GameAudio.World("world_invalid", playerCamera.transform.position);
+            BuildUndo.End();
             EndStroke();
             return;
         }
@@ -1222,6 +1230,7 @@ public class PlayerBuilder : MonoBehaviour
         int lineCost = LineStrokeCost();
         if (PlayerWallet.Instance != null && !PlayerWallet.Instance.CanAfford(lineCost))
         {
+            BuildUndo.End();
             EndStroke();
             return;
         }
@@ -1240,6 +1249,7 @@ public class PlayerBuilder : MonoBehaviour
                 GameAudio.World("world_place", soundPos);
         }
 
+        BuildUndo.End();
         EndStroke();
     }
 
@@ -1327,6 +1337,11 @@ public class PlayerBuilder : MonoBehaviour
         UndergroundConveyor.BindPair(entranceBelt, exitBelt);
         entranceBelt.OnPlaced();
         exitBelt.OnPlaced();
+        BuildUndo.Begin();
+        BuildUndo.NoteCoins(-cost);
+        BuildUndo.NotePlaced(entranceBelt);
+        BuildUndo.NotePlaced(exitBelt);
+        BuildUndo.End();
     }
 
     void SpawnAt(Vector3 placePos, Quaternion placeRot)
@@ -1364,6 +1379,10 @@ public class PlayerBuilder : MonoBehaviour
         {
             buildingBase.data = data;
             buildingBase.OnPlaced();
+            BuildUndo.Begin();
+            BuildUndo.NoteCoins(-cost);
+            BuildUndo.NotePlaced(buildingBase);
+            BuildUndo.End();
         }
         else
         {
@@ -1396,6 +1415,7 @@ public class PlayerBuilder : MonoBehaviour
             return;
 
         GameAudio.World("world_demolish", building.transform.position);
+        BuildUndo.NoteRemoved(building);
         Economy.PayRefund(building);
         building.OnRemoved();
         Destroy(building.gameObject);

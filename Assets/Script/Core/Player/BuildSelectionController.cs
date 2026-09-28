@@ -36,10 +36,14 @@ public class BuildSelectionController : MonoBehaviour
     PlayerBuilder builder;
     PlayerInventory inventory;
     InputSystem_Actions input;
+    InputAction undoAction;
+    InputAction redoAction;
+    int lastHistoryFrame = -1;
 
     bool selectionMode;
     bool boxSelecting;
     Vector2Int boxStart;
+    Vector2Int lastBoxEnd;
     readonly HashSet<Vector2Int> selectedCells = new HashSet<Vector2Int>();
     readonly List<BuildingBase> selectedBuildings = new List<BuildingBase>();
 
@@ -118,6 +122,7 @@ public class BuildSelectionController : MonoBehaviour
         input.Player.Place.started += OnPlaceStarted;
         input.Player.Place.canceled += OnPlaceCanceled;
         input.Player.Rotate.performed += OnRotate;
+        BindUndoAction();
     }
 
     void OnDisable()
@@ -131,17 +136,41 @@ public class BuildSelectionController : MonoBehaviour
         input.Player.Place.started -= OnPlaceStarted;
         input.Player.Place.canceled -= OnPlaceCanceled;
         input.Player.Rotate.performed -= OnRotate;
+        if (undoAction != null)
+            undoAction.performed -= OnUndo;
+        if (redoAction != null)
+            redoAction.performed -= OnRedo;
         CancelPreview();
+    }
+
+    void BindUndoAction()
+    {
+        if (undoAction == null)
+        {
+            undoAction = input != null ? input.asset.FindAction("Player/Undo", false) : null;
+            if (undoAction != null)
+                undoAction.performed += OnUndo;
+        }
+        if (redoAction == null)
+        {
+            redoAction = input != null ? input.asset.FindAction("Player/Redo", false) : null;
+            if (redoAction != null)
+                redoAction.performed += OnRedo;
+        }
     }
 
     void Update()
     {
         if (builder == null || !builder.isBuildMode)
         {
-            if (selectionMode || pasteActive || moveActive)
+            if (!boxSelecting && (selectionMode || pasteActive || moveActive))
                 ExitAll();
             return;
         }
+
+        PollBoxSelect();
+        PollUndoHotkey();
+        PollClearHotkey();
 
         if (UiModal.IsOpen)
             return;
@@ -155,27 +184,87 @@ public class BuildSelectionController : MonoBehaviour
 
         if (IsBlocked())
         {
-            if (selectionMode || pasteActive || moveActive)
-                ExitAll();
+            if (boxSelecting)
+            {
+                RefreshSelectedBuildings();
+                RefreshSelectionVisuals();
+                return;
+            }
+
+            if (pasteActive || moveActive)
+                return;
+            RefreshSelectedBuildings();
+            RefreshSelectionVisuals();
             return;
         }
-
-        if (selectionMode && (inventory == null || !inventory.HasEmptySlotSelected())
-            && !CanBulkPlaceExtractors())
-            ExitAll();
 
         if (pasteActive || moveActive)
         {
             if (!builder.TryGetAimCell(out _, out _))
-            {
-                CancelPreview();
                 return;
-            }
             TickPreview();
         }
 
         RefreshSelectedBuildings();
         RefreshSelectionVisuals();
+    }
+
+    void PollBoxSelect()
+    {
+        if (!boxSelecting)
+            return;
+        if (builder != null && builder.TryGetAimCell(out Vector2Int cell, out _))
+            lastBoxEnd = cell;
+        if (PlaceHeld())
+            return;
+        FinishBoxSelect();
+    }
+
+    void PollUndoHotkey()
+    {
+        if (KeybindStore.BlocksGameplayInput)
+            return;
+        Keyboard kb = Keyboard.current;
+        if (kb == null)
+            return;
+        bool ctrl = kb.leftCtrlKey.isPressed || kb.rightCtrlKey.isPressed;
+        if (!ctrl)
+            return;
+        if (kb.yKey.wasPressedThisFrame)
+        {
+            TryRedo();
+            return;
+        }
+        if (undoAction == null && kb.zKey.wasPressedThisFrame
+            && !kb.leftShiftKey.isPressed && !kb.rightShiftKey.isPressed)
+            TryUndo();
+    }
+
+    void PollClearHotkey()
+    {
+        if (KeybindStore.BlocksGameplayInput)
+            return;
+        Keyboard kb = Keyboard.current;
+        if (kb == null)
+            return;
+        if ((kb.leftCtrlKey.isPressed || kb.rightCtrlKey.isPressed) && kb.dKey.wasPressedThisFrame)
+            ClearSelectionKeepMode();
+    }
+
+    bool PlaceHeld()
+    {
+        if (input != null && input.Player.Place.IsPressed())
+            return true;
+        Mouse mouse = Mouse.current;
+        return mouse != null && mouse.rightButton.isPressed;
+    }
+
+    void FinishBoxSelect()
+    {
+        if (!boxSelecting)
+            return;
+        boxSelecting = false;
+        AddBoxToSelection(boxStart, lastBoxEnd);
     }
 
     bool IsBlocked()
@@ -211,6 +300,8 @@ public class BuildSelectionController : MonoBehaviour
     {
         if (builder == null || !builder.isBuildMode || IsBlocked())
             return;
+        if (boxSelecting)
+            return;
         if (inventory == null)
             return;
 
@@ -223,18 +314,79 @@ public class BuildSelectionController : MonoBehaviour
 
     void OnClearSelection(InputAction.CallbackContext ctx)
     {
-        if (IsBlocked())
+        ClearSelectionKeepMode();
+    }
+
+    void ClearSelectionKeepMode()
+    {
+        if (builder == null || !builder.isBuildMode)
             return;
-        CancelPreview();
+        if (KeybindStore.BlocksGameplayInput)
+            return;
+        boxSelecting = false;
+        if (pasteActive || moveActive)
+            CancelPreview();
         ClearSelectionOnly();
+    }
+
+    void OnUndo(InputAction.CallbackContext ctx)
+    {
+        if (ShiftHeld())
+            return;
+        TryUndo();
+    }
+
+    void OnRedo(InputAction.CallbackContext ctx)
+    {
+        TryRedo();
+    }
+
+    static bool ShiftHeld()
+    {
+        Keyboard kb = Keyboard.current;
+        return kb != null && (kb.leftShiftKey.isPressed || kb.rightShiftKey.isPressed);
+    }
+
+    void TryUndo()
+    {
+        ApplyHistory(undo: true);
+    }
+
+    void TryRedo()
+    {
+        ApplyHistory(undo: false);
+    }
+
+    void ApplyHistory(bool undo)
+    {
+        if (builder == null || !builder.isBuildMode)
+            return;
+        if (KeybindStore.BlocksGameplayInput || UiModal.IsOpen)
+            return;
+        if (boxSelecting)
+            return;
+        if (pasteActive || moveActive)
+            CancelPreview();
+        if (lastHistoryFrame == Time.frameCount)
+            return;
+        bool ok = undo ? BuildUndo.Undo() : BuildUndo.Redo();
+        if (!ok)
+            return;
+        lastHistoryFrame = Time.frameCount;
+        ClearSelectionOnly();
+        GameAudio.World("world_copy", builder.transform.position);
     }
 
     void OnDelete(InputAction.CallbackContext ctx)
     {
-        if (!selectionMode || IsBlocked() || pasteActive || moveActive)
+        if (!selectionMode || IsBlocked() || pasteActive || moveActive || boxSelecting)
             return;
 
         RefreshSelectedBuildings();
+        if (selectedBuildings.Count == 0)
+            return;
+
+        BuildUndo.Begin();
         var skip = new HashSet<int>();
         for (int i = 0; i < selectedBuildings.Count; i++)
         {
@@ -247,10 +399,12 @@ public class BuildSelectionController : MonoBehaviour
             UndergroundConveyor tunnel = b as UndergroundConveyor;
             if (tunnel != null && tunnel.Paired != null)
                 skip.Add(tunnel.Paired.GetInstanceID());
+            BuildUndo.NoteRemoved(b);
             Economy.PayRefund(b);
             b.OnRemoved();
             Destroy(b.gameObject);
         }
+        BuildUndo.End();
 
         ClearSelectionOnly();
     }
@@ -263,16 +417,78 @@ public class BuildSelectionController : MonoBehaviour
         TrimHighlights();
     }
 
-    void OnCopy(InputAction.CallbackContext ctx)
+    public bool TrySnapshotSelection(List<BlueprintBuilding> dest)
     {
-        if (!selectionMode || IsBlocked())
-            return;
+        if (dest == null)
+            return false;
+        dest.Clear();
         RefreshSelectedBuildings();
         ExpandUndergroundPairs();
         if (selectedBuildings.Count == 0)
-            return;
+            return false;
 
+        Vector2Int origin = SelectionOrigin();
+        for (int i = 0; i < selectedBuildings.Count; i++)
+        {
+            BuildingBase b = selectedBuildings[i];
+            if (b == null || b.data == null || string.IsNullOrEmpty(b.data.id))
+                continue;
+            Vector2Int min = GridFootprint.GetMinCell(b.transform.position, b.FootprintSize);
+            UndergroundConveyor tunnel = b as UndergroundConveyor;
+            RecipeData recipe = ReadRecipe(b);
+            ItemData filter = ReadFilter(b);
+            dest.Add(new BlueprintBuilding
+            {
+                buildingId = b.data.id,
+                ox = min.x - origin.x,
+                oy = min.y - origin.y,
+                yaw = b.transform.eulerAngles.y,
+                level = b.ReadLevel(),
+                recipeId = recipe != null ? recipe.id : "",
+                filterItemId = filter != null ? filter.id : "",
+                pairExit = tunnel != null && tunnel.isExit,
+                pairId = tunnel != null ? tunnel.PairId : 0
+            });
+        }
+
+        return dest.Count > 0;
+    }
+
+    public bool LoadBlueprint(IList<BlueprintBuilding> buildings)
+    {
+        if (pasteActive || moveActive)
+            CancelPreview();
         clipboard.Clear();
+        clipOrigin = Vector2Int.zero;
+        if (buildings == null)
+            return false;
+
+        for (int i = 0; i < buildings.Count; i++)
+        {
+            BlueprintBuilding piece = buildings[i];
+            if (piece == null || string.IsNullOrEmpty(piece.buildingId))
+                continue;
+            BuildingData data = GameDatabase.FindBuilding(piece.buildingId);
+            if (data == null)
+                continue;
+            clipboard.Add(new ClipItem
+            {
+                data = data,
+                minOffset = new Vector2Int(piece.ox, piece.oy),
+                yaw = piece.yaw,
+                level = piece.level,
+                recipe = GameDatabase.FindRecipe(piece.recipeId),
+                filter = GameDatabase.FindItem(piece.filterItemId),
+                pairExit = piece.pairExit,
+                pairId = piece.pairId
+            });
+        }
+
+        return clipboard.Count > 0;
+    }
+
+    Vector2Int SelectionOrigin()
+    {
         Vector2Int origin = new Vector2Int(int.MaxValue, int.MaxValue);
         for (int i = 0; i < selectedBuildings.Count; i++)
         {
@@ -283,6 +499,22 @@ public class BuildSelectionController : MonoBehaviour
             origin.y = Mathf.Min(origin.y, min.y);
         }
 
+        return origin;
+    }
+
+    void OnCopy(InputAction.CallbackContext ctx)
+    {
+        if (!selectionMode || IsBlocked())
+            return;
+        if (BlueprintLibraryUI.Instance != null && BlueprintLibraryUI.Instance.IsOpen)
+            return;
+        RefreshSelectedBuildings();
+        ExpandUndergroundPairs();
+        if (selectedBuildings.Count == 0)
+            return;
+
+        clipboard.Clear();
+        Vector2Int origin = SelectionOrigin();
         clipOrigin = origin;
         for (int i = 0; i < selectedBuildings.Count; i++)
         {
@@ -311,6 +543,8 @@ public class BuildSelectionController : MonoBehaviour
 
     void OnPaste(InputAction.CallbackContext ctx)
     {
+        if (BlueprintLibraryUI.Instance != null && BlueprintLibraryUI.Instance.IsOpen)
+            return;
         if (builder == null || !builder.isBuildMode || IsBlocked())
             return;
         if (clipboard.Count == 0 || !builder.TryGetAimCell(out Vector2Int cell, out _))
@@ -361,6 +595,7 @@ public class BuildSelectionController : MonoBehaviour
 
         boxSelecting = true;
         boxStart = cell;
+        lastBoxEnd = cell;
     }
 
     void OnPlaceCanceled(InputAction.CallbackContext ctx)
@@ -368,10 +603,7 @@ public class BuildSelectionController : MonoBehaviour
         if (pasteActive || moveActive)
         {
             if (!builder.TryGetAimCell(out _, out _))
-            {
-                CancelPreview();
                 return;
-            }
             TickPreview();
             if (PreviewAllValid())
                 CommitPreview();
@@ -386,12 +618,9 @@ public class BuildSelectionController : MonoBehaviour
 
         if (!selectionMode || !boxSelecting)
             return;
-
-        boxSelecting = false;
-        if (!builder.TryGetAimCell(out Vector2Int end, out _))
+        if (PlaceHeld())
             return;
-
-        AddBoxToSelection(boxStart, end);
+        FinishBoxSelect();
     }
 
     void OnRotate(InputAction.CallbackContext ctx)
@@ -584,6 +813,7 @@ public class BuildSelectionController : MonoBehaviour
         float yaw = builder.PlacementYaw;
         int placed = 0;
         Vector3 sound = builder.transform.position;
+        BuildUndo.Begin();
         for (int i = 0; i < cells.Count; i++)
         {
             Vector3 pos = ExtractorWorldPos(cells[i]);
@@ -592,6 +822,7 @@ public class BuildSelectionController : MonoBehaviour
             placed++;
             sound = pos;
         }
+        BuildUndo.End();
 
         if (placed > 0)
             GameAudio.World("world_place", sound);
@@ -774,6 +1005,7 @@ public class BuildSelectionController : MonoBehaviour
         if (moveActive)
         {
             selectedCells.Clear();
+            BuildUndo.Begin();
             for (int i = 0; i < preview.Count && i < moveRecords.Count; i++)
             {
                 PreviewItem item = preview[i];
@@ -782,18 +1014,22 @@ public class BuildSelectionController : MonoBehaviour
                     continue;
                 Vector2Int size = GridFootprint.GetRotatedSize(item.data.size, item.yaw);
                 Vector2Int min = origin + item.minOffset;
+                Vector3 oldPos = rec.pos;
+                float oldYaw = rec.yaw;
                 rec.building.transform.SetPositionAndRotation(
                     GridFootprint.MinCellToCenter(min, size, rec.pos.y),
                     Quaternion.Euler(0f, item.yaw, 0f));
                 RestoreRenderers(rec);
                 rec.building.ReRegisterOnGrid();
                 rec.building.OnRotated();
+                BuildUndo.NoteEdit(rec.building, oldPos, oldYaw);
                 for (int x = 0; x < size.x; x++)
                 {
                     for (int z = 0; z < size.y; z++)
                         selectedCells.Add(min + new Vector2Int(x, z));
                 }
             }
+            BuildUndo.End();
             moveActive = false;
             moveRecords.Clear();
             CancelPreview(keepSelection: true);
@@ -801,6 +1037,7 @@ public class BuildSelectionController : MonoBehaviour
         }
 
         var spawned = new List<BuildingBase>(preview.Count);
+        BuildUndo.Begin();
         for (int i = 0; i < preview.Count; i++)
         {
             PreviewItem item = preview[i];
@@ -824,6 +1061,7 @@ public class BuildSelectionController : MonoBehaviour
                 b.ApplyLevel(item.level);
                 ApplyRecipe(b, item.recipe);
                 ApplyFilter(b, item.filter);
+                BuildUndo.NotePlaced(b);
                 spawned.Add(b);
             }
             else
@@ -831,6 +1069,7 @@ public class BuildSelectionController : MonoBehaviour
         }
 
         BindPastedTunnels(spawned);
+        BuildUndo.End();
         CancelPreview(keepSelection: false);
         ClearSelectionOnly();
     }
@@ -973,21 +1212,26 @@ public class BuildSelectionController : MonoBehaviour
     void ApplyPlanned(List<Planned> planned)
     {
         selectedCells.Clear();
+        BuildUndo.Begin();
         for (int i = 0; i < planned.Count; i++)
             GridOccupancy.Unregister(planned[i].building.gameObject);
 
         for (int i = 0; i < planned.Count; i++)
         {
             Planned p = planned[i];
+            Vector3 oldPos = p.building.transform.position;
+            float oldYaw = p.building.transform.eulerAngles.y;
             p.building.transform.SetPositionAndRotation(p.pos, Quaternion.Euler(0f, p.yaw, 0f));
             p.building.ReRegisterOnGrid();
             p.building.OnRotated();
+            BuildUndo.NoteEdit(p.building, oldPos, oldYaw);
             for (int x = 0; x < p.size.x; x++)
             {
                 for (int z = 0; z < p.size.y; z++)
                     selectedCells.Add(p.min + new Vector2Int(x, z));
             }
         }
+        BuildUndo.End();
     }
 
     int LabCapacity()

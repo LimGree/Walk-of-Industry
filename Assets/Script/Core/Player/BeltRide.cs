@@ -50,6 +50,8 @@ public class BeltRide : MonoBehaviour
 
         if (BuildModeOn())
         {
+            if (building is Conveyor && !ResearchSystem.BeltFilterUnlocked())
+                return;
             if (MachineUI.Instance != null)
                 MachineUI.Instance.Open(building);
             return;

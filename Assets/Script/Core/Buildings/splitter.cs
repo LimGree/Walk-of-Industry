@@ -129,8 +129,11 @@ public class Splitter : BuildingBase, IInteractable
             Cargo entry = cargo[i];
             if (entry == null || entry.progress < 0.999f)
                 continue;
-            if (entry.exitDir == dir)
-                return true;
+            if (entry.exitDir != dir)
+                continue;
+            if (!DestinationAcceptsItem(dir, entry.item))
+                continue;
+            return true;
         }
 
         return false;
@@ -239,7 +242,10 @@ public class Splitter : BuildingBase, IInteractable
                 cargo.RemoveAt(front);
             }
             else
+            {
                 cargo[front].progress = 1f;
+                TryReleasePastBlocker(cargo[front]);
+            }
         }
 
         SimDraw();
@@ -271,7 +277,9 @@ public class Splitter : BuildingBase, IInteractable
         Vector2Int preferred = item.exitDir;
         if (preferred.x != 0 || preferred.y != 0)
         {
-            if (preferred != Opposite(entry) && TryGive(item, preferred))
+            if (preferred != Opposite(entry)
+                && DestinationAcceptsItem(preferred, item.item)
+                && TryGive(item, preferred))
             {
                 AdvanceOutput(preferred);
                 return true;
@@ -280,7 +288,7 @@ public class Splitter : BuildingBase, IInteractable
 
         int count = outputSockets != null ? outputSockets.Length : 0;
         if (count <= 0)
-            return TryGive(item, preferred);
+            return DestinationAcceptsItem(preferred, item.item) && TryGive(item, preferred);
 
         int start = nextOutput;
         for (int n = 0; n < count; n++)
@@ -297,6 +305,8 @@ public class Splitter : BuildingBase, IInteractable
                 continue;
             if (dir == preferred)
                 continue;
+            if (!DestinationAcceptsItem(dir, item.item))
+                continue;
             if (!TryGive(item, dir))
                 continue;
 
@@ -306,6 +316,69 @@ public class Splitter : BuildingBase, IInteractable
         }
 
         return false;
+    }
+
+    void TryReleasePastBlocker(Cargo blocker)
+    {
+        if (blocker == null || blocker.item == null)
+            return;
+
+        EnsureSetup();
+        int count = outputSockets != null ? outputSockets.Length : 0;
+        if (count <= 0)
+            return;
+
+        for (int n = 0; n < count; n++)
+        {
+            int index = (nextOutput + n) % count;
+            BuildingSocket socket = outputSockets[index];
+            if (socket == null)
+                continue;
+
+            Vector2Int dir = BuildingLinker.ToCardinal(socket.GetOutward());
+            if (dir.x == 0 && dir.y == 0)
+                continue;
+            if (dir == Opposite(blocker.entryDir))
+                continue;
+            if (DestinationAcceptsItem(dir, blocker.item))
+                continue;
+            if (!CanOutputTo(dir))
+                continue;
+
+            int stolen = FindCargoForOutput(dir, blocker);
+            if (stolen < 0)
+                continue;
+
+            Cargo item = cargo[stolen];
+            if (!TryGive(item, dir))
+                continue;
+
+            if (item.visual != null)
+                ReleaseCargoVisual(item);
+            cargo.RemoveAt(stolen);
+            nextOutput = (index + 1) % count;
+            return;
+        }
+    }
+
+    int FindCargoForOutput(Vector2Int dir, Cargo blocker)
+    {
+        int best = -1;
+        float bestProgress = -1f;
+        for (int i = 0; i < cargo.Count; i++)
+        {
+            Cargo entry = cargo[i];
+            if (entry == null || entry == blocker || entry.item == null)
+                continue;
+            if (!DestinationAcceptsItem(dir, entry.item))
+                continue;
+            if (entry.progress <= bestProgress)
+                continue;
+            best = i;
+            bestProgress = entry.progress;
+        }
+
+        return best;
     }
 
     bool TryGive(Cargo item, Vector2Int dir)
@@ -331,9 +404,8 @@ public class Splitter : BuildingBase, IInteractable
             if (!nextBelt.AcceptsFromCell(Cell))
                 return false;
 
-            if (!nextBelt.TryAcceptTransfer(item.item, item.visual, this))
+            if (!nextBelt.TryAcceptTransfer(item.item, null, this))
                 return false;
-            item.visual = null;
             return true;
         }
 
@@ -343,9 +415,8 @@ public class Splitter : BuildingBase, IInteractable
             if (!nextSplit.CanAcceptFrom(this))
                 return false;
 
-            if (!nextSplit.TryAcceptTransfer(item.item, item.visual))
+            if (!nextSplit.TryAcceptTransfer(item.item, null))
                 return false;
-            item.visual = null;
             return true;
         }
 
@@ -413,6 +484,32 @@ public class Splitter : BuildingBase, IInteractable
         return dest.HasOutputSpace();
     }
 
+    bool DestinationAcceptsItem(Vector2Int dir, ItemData item)
+    {
+        if (item == null || (dir.x == 0 && dir.y == 0))
+            return false;
+
+        BuildingBase dest = BuildingLinker.GetBuildingAt(Cell + dir);
+        if (dest == null || dest == this)
+            return false;
+
+        Conveyor nextBelt = dest as Conveyor;
+        if (nextBelt != null)
+        {
+            if (nextBelt is Pipe)
+                return false;
+            if (!nextBelt.AcceptsFromCell(Cell))
+                return false;
+            return nextBelt.WouldAcceptItem(item);
+        }
+
+        Splitter nextSplit = dest as Splitter;
+        if (nextSplit != null)
+            return nextSplit.CanAcceptFrom(this);
+
+        return dest.CanAcceptFrom(this);
+    }
+
     static void ReleaseCargoVisual(Cargo item)
     {
         if (item == null || item.visual == null)
@@ -427,7 +524,7 @@ public class Splitter : BuildingBase, IInteractable
             entryDir = Opposite(InputOutward());
 
         if (exitDir.x == 0 && exitDir.y == 0)
-            exitDir = ChooseExitDir(entryDir);
+            exitDir = ChooseExitDir(entryDir, item);
 
         Cargo cargoItem = new Cargo
         {
@@ -499,7 +596,7 @@ public class Splitter : BuildingBase, IInteractable
         return Opposite(InputOutward());
     }
 
-    Vector2Int ChooseExitDir(Vector2Int entryDir)
+    Vector2Int ChooseExitDir(Vector2Int entryDir, ItemData item = null)
     {
         EnsureSetup();
         if (outputSockets == null || outputSockets.Length == 0)
@@ -508,6 +605,7 @@ public class Splitter : BuildingBase, IInteractable
                 : entryDir;
 
         Vector2Int fallback = Vector2Int.zero;
+        Vector2Int accepting = Vector2Int.zero;
         int count = outputSockets.Length;
         for (int n = 0; n < count; n++)
         {
@@ -523,6 +621,12 @@ public class Splitter : BuildingBase, IInteractable
             if (fallback.x == 0 && fallback.y == 0)
                 fallback = dir;
 
+            if (item != null && !DestinationAcceptsItem(dir, item))
+                continue;
+
+            if (accepting.x == 0 && accepting.y == 0)
+                accepting = dir;
+
             if (!CanOutputTo(dir))
                 continue;
 
@@ -530,10 +634,11 @@ public class Splitter : BuildingBase, IInteractable
             return dir;
         }
 
-        if (fallback.x != 0 || fallback.y != 0)
+        Vector2Int chosen = accepting.x != 0 || accepting.y != 0 ? accepting : fallback;
+        if (chosen.x != 0 || chosen.y != 0)
         {
             nextOutput = (nextOutput + 1) % count;
-            return fallback;
+            return chosen;
         }
 
         return entryDir;
