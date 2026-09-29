@@ -21,6 +21,8 @@ public class PlayerInteractor : MonoBehaviour
                     return "";
                 return UiLocale.T("hint.belt_menu");
             }
+            if (currentInteractable is BuildingBase broken && broken.IsBroken)
+                return UiLocale.T("hint.repair", broken.data != null ? broken.data.displayName : "");
             if (currentInteractable is BuildingBase building && building.data != null
                 && !string.IsNullOrEmpty(building.data.displayName))
                 return building.data.displayName;
@@ -76,6 +78,8 @@ public class PlayerInteractor : MonoBehaviour
         if (GameManager.Instance != null && GameManager.Instance.IsPaused)
             return;
         if (MachineUI.Instance != null && MachineUI.Instance.IsOpen)
+            return;
+        if (RepairUI.Instance != null && RepairUI.Instance.IsOpen)
             return;
         if (ResearchUI.Instance != null && ResearchUI.Instance.IsOpen)
             return;

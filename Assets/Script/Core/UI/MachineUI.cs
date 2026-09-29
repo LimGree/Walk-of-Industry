@@ -1151,16 +1151,33 @@ public class MachineUI : MonoBehaviour
         if (idleList == null)
             return;
         idleList.Clear();
+        bool canTp = MapSettings.AllowTeleport;
+        var broken = new List<BuildingBase>();
+        BreakdownSystem.CollectBroken(broken);
+        for (int i = 0; i < broken.Count; i++)
+        {
+            BuildingBase b = broken[i];
+            Vector2Int cell = BuildingLinker.WorldToCell(b.transform.position);
+            string sub = UiLocale.T(b.BreakMode == 2 ? "idle.broken_weak" : "idle.broken") + "  ·  " + cell.x + "," + cell.y;
+            VisualElement card = IndustryUi.ActionCard(
+                b.data != null ? b.data.displayName : "Building",
+                canTp ? sub + "  ·  " + UiLocale.T("map.teleport") : sub,
+                canTp,
+                canTp ? () => JumpIdle(cell) : null);
+            card.style.borderLeftColor = new Color(0.95f, 0.25f, 0.2f);
+            card.style.borderLeftWidth = 3;
+            idleList.Add(card);
+        }
+
         MachineIdleHud watch = MachineIdleHud.Instance;
-        if (watch == null || watch.Rows.Count == 0)
+        if ((watch == null || watch.Rows.Count == 0) && broken.Count == 0)
         {
             idleList.Add(IndustryUi.Text("Empty", UiLocale.T("idle.empty"), "muted"));
             nextStatsRefresh = Time.unscaledTime + 0.8f;
             return;
         }
 
-        bool canTp = MapSettings.AllowTeleport;
-        for (int i = 0; i < watch.Rows.Count; i++)
+        for (int i = 0; watch != null && i < watch.Rows.Count; i++)
         {
             MachineIdleHud.IdleRow row = watch.Rows[i];
             if (row.building == null)

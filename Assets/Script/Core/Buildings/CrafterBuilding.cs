@@ -74,8 +74,11 @@ public abstract class CrafterBuilding : BuildingBase, IInteractable
         float dt = simCarry;
         simCarry = 0f;
 
-        bool working = currentRecipe != null && HasEnoughInputs() && HasSpaceForRecipeOutputs();
+        float breakMul = BreakWorkMul;
+        bool working = breakMul > 0f && currentRecipe != null && HasEnoughInputs() && HasSpaceForRecipeOutputs();
         GameAudio.Loop(this, WorkClip, working && WorldView.InRange(transform.position));
+        if (breakMul <= 0f)
+            return;
 
         if (currentRecipe == null)
             return;
@@ -90,7 +93,7 @@ public abstract class CrafterBuilding : BuildingBase, IInteractable
             return;
         }
 
-        craftProgress += dt * CraftSpeed;
+        craftProgress += dt * CraftSpeed * breakMul;
 
         if (craftProgress >= need)
         {
@@ -169,6 +172,8 @@ public abstract class CrafterBuilding : BuildingBase, IInteractable
 
     public void Interact(GameObject interactor)
     {
+        if (RepairUI.TryOpen(this))
+            return;
         if (MachineUI.Instance != null)
             MachineUI.Instance.Open(this);
         else

@@ -135,6 +135,9 @@ public static class SettingsHub
             (UiLocale.T("settings.clock_hms"), () => GameSettings.ClockFormat == 2, () => GameSettings.ClockFormat = 2)));
         parent.Add(SettingsControls.Toggle("settings.clock_day", () => GameSettings.ClockShowDay, v => GameSettings.ClockShowDay = v));
 
+        parent.Add(IndustryUi.Text("G1d", UiLocale.T("settings.breakdowns"), "settings-group"));
+        parent.Add(SettingsControls.Toggle("settings.breakdowns_on", () => GameSettings.BreakdownsEnabled, v => GameSettings.BreakdownsEnabled = v));
+
         parent.Add(IndustryUi.Text("G1c", UiLocale.T("settings.weather"), "settings-group"));
         parent.Add(SettingsControls.Toggle("settings.weather_auto", () => GameSettings.WeatherAuto, v => GameSettings.WeatherAuto = v));
         parent.Add(SettingsControls.ChipRow("settings.weather_kind",

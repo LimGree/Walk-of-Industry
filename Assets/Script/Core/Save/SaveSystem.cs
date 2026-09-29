@@ -117,6 +117,8 @@ public class SaveSystem : MonoBehaviour
             TutorialSystem.Instance.CaptureSave(data);
         if (AchievementSystem.Instance != null)
             AchievementSystem.Instance.CaptureSave(data);
+        if (BreakdownSystem.Instance != null)
+            BreakdownSystem.Instance.CaptureSave(data);
 
         PlayerInventory inv = Object.FindFirstObjectByType<PlayerInventory>();
         if (inv != null)
@@ -177,6 +179,8 @@ public class SaveSystem : MonoBehaviour
                 WeatherCycle.Instance.ResetToNewWorld();
             else
                 Weather.ResetToNewWorld();
+            if (BreakdownSystem.Instance != null)
+                BreakdownSystem.Instance.ResetToNewWorld();
             if (TutorialSystem.Instance != null)
                 TutorialSystem.Instance.OnWorldReady(false, null);
             BuildUndo.Load();
@@ -270,6 +274,8 @@ public class SaveSystem : MonoBehaviour
             TutorialSystem.Instance.PrepareFromSave(true, data);
         if (AchievementSystem.Instance != null)
             AchievementSystem.Instance.ApplySave(data);
+        if (BreakdownSystem.Instance != null)
+            BreakdownSystem.Instance.ApplySave(data);
 
         PlayerInventory inv = Object.FindFirstObjectByType<PlayerInventory>();
         if (inv != null)

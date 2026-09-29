@@ -215,11 +215,12 @@ public class Extractor : BuildingBase, IInteractable
             return;
         }
 
-        bool working = boundNode != null && HasOutputSpace(1);
+        float breakMul = BreakWorkMul;
+        bool working = breakMul > 0f && boundNode != null && HasOutputSpace(1);
         GameAudio.Loop(this, "bld_extractor_loop", working && WorldView.InRange(transform.position));
 
         float interval = CurrentInterval;
-        timer += dt;
+        timer += dt * breakMul;
         if (timer < interval) return;
         timer -= interval;
 
@@ -333,6 +334,8 @@ public class Extractor : BuildingBase, IInteractable
 
     public void Interact(GameObject interactor)
     {
+        if (RepairUI.TryOpen(this))
+            return;
         if (MachineUI.Instance != null)
             MachineUI.Instance.Open(this);
     }

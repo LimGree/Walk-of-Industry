@@ -72,6 +72,38 @@ public class PlayerWallet : MonoBehaviour
         OnChanged?.Invoke();
     }
 
+    public bool TrySpendRubies(int amount)
+    {
+        if (amount <= 0)
+            return true;
+        if (Rubies < amount)
+            return false;
+        Rubies -= amount;
+        OnChanged?.Invoke();
+        return true;
+    }
+
+    /// <summary>
+    /// Штраф рубинами: чего не хватает — добирается монетами по двойному курсу, ниже нуля не уходит.
+    /// Возвращает сколько рубинов реально списано.
+    /// </summary>
+    public int PayRubyPenalty(int amount)
+    {
+        if (amount <= 0)
+            return 0;
+        int fromRubies = Mathf.Min(Rubies, amount);
+        Rubies -= fromRubies;
+        int missing = amount - fromRubies;
+        if (missing > 0)
+        {
+            int coins = Mathf.Min(Coins, missing * Economy.CoinsPerRuby * 2);
+            Coins -= coins;
+            ProductionStats.Instance?.RecordCoinsSpent(coins);
+        }
+        OnChanged?.Invoke();
+        return fromRubies;
+    }
+
     public bool TryExchangeRubies(int rubies)
     {
         if (rubies <= 0 || Rubies < rubies)

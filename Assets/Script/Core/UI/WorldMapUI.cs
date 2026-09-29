@@ -12,6 +12,7 @@ public class WorldMapUI : MonoBehaviour
 
     static readonly Color BuildingColor = new Color(0.55f, 1f, 0.82f, 1f);
     static readonly Color BeltColor = new Color(0.82f, 0.62f, 0.28f, 1f);
+    static readonly Color BrokenColor = new Color(1f, 0.22f, 0.16f, 1f);
 
     InputSystem_Actions input;
     VisualElement fullRoot;
@@ -117,6 +118,8 @@ public class WorldMapUI : MonoBehaviour
         if (input != null)
             input.Player.MoveSelection.performed += OnMapToggle;
         BindMarkers();
+        BreakdownSystem.Changed -= RefreshPins;
+        BreakdownSystem.Changed += RefreshPins;
     }
 
     void OnDisable()
@@ -125,6 +128,7 @@ public class WorldMapUI : MonoBehaviour
             input.Player.MoveSelection.performed -= OnMapToggle;
         if (MapMarkerSystem.Instance != null)
             MapMarkerSystem.Instance.OnChanged -= RefreshPins;
+        BreakdownSystem.Changed -= RefreshPins;
     }
 
     void Start()
@@ -213,6 +217,8 @@ public class WorldMapUI : MonoBehaviour
         if (GameManager.Instance != null && GameManager.Instance.IsPaused)
             return;
         if (MachineUI.Instance != null && MachineUI.Instance.IsOpen)
+            return;
+        if (RepairUI.Instance != null && RepairUI.Instance.IsOpen)
             return;
         if (BuildMenuUI.Instance != null && BuildMenuUI.Instance.IsOpen)
             return;
@@ -384,6 +390,8 @@ public class WorldMapUI : MonoBehaviour
             if (!belt && !layerBuildings)
                 continue;
             Color color = belt ? BeltColor : BuildingColor;
+            if (!belt && BreakdownSystem.IsBrokenBuilding(go))
+                color = BrokenColor;
             if (!GridOccupancy.TryGetCells(go, cells))
                 continue;
             for (int c = 0; c < cells.Count; c++)
@@ -1177,6 +1185,27 @@ public class WorldMapUI : MonoBehaviour
                 miniPins.Add(MakePin(miniOverlay, marker, false));
             fullPins.Add(MakePin(fullOverlay, marker, true));
         }
+
+        // Сломанные здания: временные красные метки (не в сейве, id < 0), всегда и на миникарте.
+        var broken = new List<BuildingBase>();
+        BreakdownSystem.CollectBroken(broken);
+        for (int i = 0; i < broken.Count; i++)
+        {
+            BuildingBase b = broken[i];
+            Vector2Int cell = BuildingLinker.WorldToCell(b.transform.position);
+            var mark = new MapMarkerSave
+            {
+                id = -1 - i,
+                x = cell.x,
+                z = cell.y,
+                label = UiLocale.T("map.broken", b.data != null ? b.data.displayName : "?"),
+                r = BrokenColor.r,
+                g = BrokenColor.g,
+                b = BrokenColor.b
+            };
+            miniPins.Add(MakePin(miniOverlay, mark, false));
+            fullPins.Add(MakePin(fullOverlay, mark, true));
+        }
         LayoutPins();
         if (IsOpen)
             RebuildWaypointList();
@@ -1197,6 +1226,12 @@ public class WorldMapUI : MonoBehaviour
             pin.RegisterCallback<PointerDownEvent>(evt =>
             {
                 evt.StopImmediatePropagation();
+                if (captured.id < 0)
+                {
+                    if (evt.button == 0)
+                        TeleportTo(captured);
+                    return;
+                }
                 if (evt.button == 1)
                     AskDelete(captured);
                 else if (evt.button == 0)

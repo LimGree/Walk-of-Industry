@@ -33,6 +33,29 @@ public abstract class BuildingBase : MonoBehaviour
     bool worldPlaced;
     bool worldShown = true;
 
+    // Поломка ([[BreakdownSystem]]): 0 цел, 1 стоит, 2 работает в четверть силы.
+    public int BreakMode { get; private set; }
+    public float BrokenAtClock { get; private set; }
+    public int BreakGame { get; private set; }
+    public bool BreakEscalated { get; set; }
+    public bool IsBroken => BreakMode != 0;
+    public float BreakWorkMul => BreakMode == 0 ? 1f : BreakMode == 2 ? 0.25f : 0f;
+
+    public void SetBroken(int mode, float clock, int game)
+    {
+        BreakMode = Mathf.Clamp(mode, 0, 2);
+        BrokenAtClock = clock;
+        BreakGame = game;
+        BreakEscalated = false;
+    }
+
+    public void ClearBroken()
+    {
+        BreakMode = 0;
+        BrokenAtClock = 0f;
+        BreakEscalated = false;
+    }
+
     public int OutputBufferCount => outputBuffer.Count;
     public int OutputBufferFree => Mathf.Max(0, maxOutputBuffer - outputBuffer.Count);
     public virtual bool StayInFlushQueue => outputBuffer.Count > 0;
@@ -73,6 +96,7 @@ public abstract class BuildingBase : MonoBehaviour
     public virtual void OnRemoved()
     {
         worldPlaced = false;
+        BreakdownSystem.Forget(this);
         WorldSim.UnregisterBuilding(this);
         var around = new List<Vector2Int>(8);
         BuildingLinker.CollectFootprintCells(this, around);
@@ -89,6 +113,7 @@ public abstract class BuildingBase : MonoBehaviour
 
     protected virtual void OnDestroy()
     {
+        BreakdownSystem.Forget(this);
         WorldSim.UnregisterBuilding(this);
         GridOccupancy.Unregister(gameObject);
     }
@@ -334,6 +359,15 @@ public abstract class BuildingBase : MonoBehaviour
         if (save == null)
             return;
         save.outputBuffer = SaveItems.FromQueue(outputBuffer);
+        if (BreakMode == 0)
+            return;
+        if (save.extras == null)
+            save.extras = new List<SaveKeyValue>();
+        var inv = System.Globalization.CultureInfo.InvariantCulture;
+        save.extras.Add(new SaveKeyValue { key = "broken", value = BreakMode.ToString(inv) });
+        save.extras.Add(new SaveKeyValue { key = "brokenAt", value = BrokenAtClock.ToString("0.###", inv) });
+        save.extras.Add(new SaveKeyValue { key = "brokenGame", value = BreakGame.ToString(inv) });
+        save.extras.Add(new SaveKeyValue { key = "brokenEsc", value = BreakEscalated ? "1" : "0" });
     }
 
     public virtual void ReadSave(BuildingSaveData save)
@@ -341,6 +375,38 @@ public abstract class BuildingBase : MonoBehaviour
         if (save == null)
             return;
         SaveItems.ToQueue(save.outputBuffer, outputBuffer);
+        ReadBrokenSave(save);
+    }
+
+    void ReadBrokenSave(BuildingSaveData save)
+    {
+        ClearBroken();
+        if (save.extras == null)
+            return;
+        var inv = System.Globalization.CultureInfo.InvariantCulture;
+        int mode = 0, game = 0;
+        float at = 0f;
+        bool esc = false;
+        for (int i = 0; i < save.extras.Count; i++)
+        {
+            SaveKeyValue row = save.extras[i];
+            if (row == null)
+                continue;
+            if (row.key == "broken")
+                int.TryParse(row.value, System.Globalization.NumberStyles.Integer, inv, out mode);
+            else if (row.key == "brokenAt")
+                float.TryParse(row.value, System.Globalization.NumberStyles.Float, inv, out at);
+            else if (row.key == "brokenGame")
+                int.TryParse(row.value, System.Globalization.NumberStyles.Integer, inv, out game);
+            else if (row.key == "brokenEsc")
+                esc = row.value == "1";
+        }
+
+        if (mode == 0)
+            return;
+        SetBroken(mode, at, game);
+        BreakEscalated = esc;
+        BreakdownSystem.Track(this);
     }
 
     public virtual void SimFlush()

@@ -26,7 +26,8 @@ public class AchievementSystem : MonoBehaviour
         new Def { id = "coins_5000", titleKey = "ach.coins_5000", bodyKey = "ach.coins_5000_body" },
         new Def { id = "night_watch", titleKey = "ach.night_watch", bodyKey = "ach.night_watch_body" },
         new Def { id = "first_generator", titleKey = "ach.first_generator", bodyKey = "ach.first_generator_body" },
-        new Def { id = "factory_25", titleKey = "ach.factory_25", bodyKey = "ach.factory_25_body" }
+        new Def { id = "factory_25", titleKey = "ach.factory_25", bodyKey = "ach.factory_25_body" },
+        new Def { id = "mechanic", titleKey = "ach.mechanic", bodyKey = "ach.mechanic_body" }
     };
 
     readonly HashSet<string> unlocked = new HashSet<string>();

@@ -46,9 +46,10 @@ public class WaterExtractor : BuildingBase, IInteractable
             return;
         }
 
-        GameAudio.Loop(this, "bld_water_loop", HasOutputSpace(1));
+        float breakMul = BreakWorkMul;
+        GameAudio.Loop(this, "bld_water_loop", breakMul > 0f && HasOutputSpace(1));
 
-        timer += Time.deltaTime;
+        timer += Time.deltaTime * breakMul;
         if (timer < CurrentInterval)
             return;
         timer -= CurrentInterval;
@@ -87,6 +88,8 @@ public class WaterExtractor : BuildingBase, IInteractable
 
     public void Interact(GameObject interactor)
     {
+        if (RepairUI.TryOpen(this))
+            return;
         if (MachineUI.Instance != null)
             MachineUI.Instance.Open(this);
     }

@@ -56,7 +56,15 @@ public static class DevCommands
         "/log on belts",
         "/log off belts",
         "/spawn vein ",
-        "/spawn builder "
+        "/spawn builder ",
+        "/break ",
+        "/break 5",
+        "/break here",
+        "/repair ",
+        "/repair all",
+        "/repair here",
+        "/breakdown info",
+        "/breakdown now"
     };
 
     public static void Suggest(string raw, List<string> into)
@@ -240,12 +248,100 @@ public static class DevCommands
                 return Log(a1, a2);
             if (a0 == "spawn")
                 return Spawn(a1, a2);
+            if (a0 == "break")
+                return Break(a1);
+            if (a0 == "repair")
+                return Repair(a1);
+            if (a0 == "breakdown")
+                return Breakdown(a1);
             return "unknown: /" + line;
         }
         catch (System.Exception e)
         {
             return e.GetType().Name + ": " + e.Message;
         }
+    }
+
+    static string Break(string arg)
+    {
+        BreakdownSystem sys = BreakdownSystem.Instance;
+        if (sys == null)
+            return "no breakdown system";
+        if (arg == "here")
+        {
+            BuildingBase b = AimedBuilding();
+            if (b == null || !BreakdownSystem.CanBreak(b))
+                return "не станок/добыча под прицелом";
+            if (b.IsBroken)
+                return "уже сломан";
+            sys.BreakNow(b, true);
+            return "сломан: " + (b.data != null ? b.data.id : b.name) + (b.BreakMode == 2 ? " (1/4 силы)" : "");
+        }
+
+        if (!TryPercent(arg, out float pct))
+            return "break N | break here";
+        int n = sys.BreakPercent(pct);
+        return "сломано " + n + " (всего сломано " + BreakdownSystem.BrokenCount + " / " + BreakdownSystem.EligibleCount() + ")";
+    }
+
+    static string Repair(string arg)
+    {
+        BreakdownSystem sys = BreakdownSystem.Instance;
+        if (sys == null)
+            return "no breakdown system";
+        if (arg == "here")
+        {
+            BuildingBase b = AimedBuilding();
+            if (b == null || !b.IsBroken)
+                return "под прицелом нет сломанного";
+            sys.Repair(b, false);
+            return "починен: " + (b.data != null ? b.data.id : b.name);
+        }
+
+        float pct = 100f;
+        if (arg != "all" && !TryPercent(arg, out pct))
+            return "repair N | repair all | repair here";
+        int n = sys.RepairPercent(pct);
+        return "починено " + n + ", осталось " + BreakdownSystem.BrokenCount;
+    }
+
+    static string Breakdown(string arg)
+    {
+        BreakdownSystem sys = BreakdownSystem.Instance;
+        if (sys == null)
+            return "no breakdown system";
+        if (arg == "now")
+        {
+            int before = BreakdownSystem.BrokenCount;
+            sys.ForceOne();
+            return BreakdownSystem.BrokenCount > before ? "одна поломка" : "некого ломать (или лимит 25%)";
+        }
+
+        return sys.Describe();
+    }
+
+    static bool TryPercent(string arg, out float pct)
+    {
+        pct = 0f;
+        if (string.IsNullOrEmpty(arg))
+            return false;
+        return float.TryParse(arg.TrimEnd('%').Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out pct)
+            && pct > 0f;
+    }
+
+    static BuildingBase AimedBuilding()
+    {
+        Camera cam = Camera.main;
+        if (cam == null)
+            return null;
+        if (Physics.Raycast(cam.transform.position, cam.transform.forward, out RaycastHit hit, 12f))
+        {
+            BuildingBase b = hit.collider.GetComponentInParent<BuildingBase>();
+            if (b != null)
+                return b;
+        }
+
+        return null;
     }
 
     static string Help()
@@ -266,6 +362,7 @@ public static class DevCommands
         sb.AppendLine("save | load | godsave | fps");
         sb.AppendLine("log on|off belts");
         sb.AppendLine("spawn vein <type> | spawn builder <id>");
+        sb.AppendLine("break N% | break here | repair N% | repair all|here | breakdown info|now");
         sb.Append("help research");
         return sb.ToString();
     }
@@ -494,6 +591,12 @@ public static class DevCommands
             || q.StartsWith("/conveyor", true, CultureInfo.InvariantCulture)
             || q.StartsWith("/belt speed", true, CultureInfo.InvariantCulture))
             return "множитель скорости лент. синтаксис: /conveer speed X";
+        if (best.StartsWith("/breakdown", true, CultureInfo.InvariantCulture) || q.StartsWith("/breakdown", true, CultureInfo.InvariantCulture))
+            return "поломки: info — сводка, now — одна ночная поломка сейчас (с тостом). синтаксис: /breakdown info|now";
+        if (best.StartsWith("/break", true, CultureInfo.InvariantCulture) || q.StartsWith("/break", true, CultureInfo.InvariantCulture))
+            return "сломать процент ломаемых зданий (станки и добыча) или здание под прицелом. синтаксис: /break N | /break here";
+        if (best.StartsWith("/repair", true, CultureInfo.InvariantCulture) || q.StartsWith("/repair", true, CultureInfo.InvariantCulture))
+            return "починить процент сломанных, все или под прицелом (без мини-игры). синтаксис: /repair N | all | here";
         if (best.StartsWith("/help", true, CultureInfo.InvariantCulture))
             return "список команд. синтаксис: /help [research]";
         if (string.IsNullOrEmpty(best))

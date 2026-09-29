@@ -79,6 +79,8 @@ public class MachineIdleHud : MonoBehaviour
     {
         if (building == null || !building.IsPlaced || string.IsNullOrEmpty(reason))
             return;
+        if (building.IsBroken)
+            return;
         int id = building.GetInstanceID();
         seen.Add(id);
         if (!idleSince.ContainsKey(id))

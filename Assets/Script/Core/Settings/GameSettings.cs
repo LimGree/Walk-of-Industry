@@ -66,6 +66,12 @@ public static class GameSettings
         }
     }
 
+    public static bool BreakdownsEnabled
+    {
+        get => PlayerPrefs.GetInt("GameBreakdowns", 1) != 0;
+        set { SetInt("GameBreakdowns", value ? 1 : 0); }
+    }
+
     public static float DayLengthMinutes
     {
         get => Mathf.Clamp(PlayerPrefs.GetFloat("GfxDayMinutes", 16f), 6f, 48f);

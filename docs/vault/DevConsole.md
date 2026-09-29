@@ -10,4 +10,6 @@
 
 `/conveer speed X` (`/conveyor`, `/belt`) — множитель скорости лент поверх уровня.
 
+`/break N|here`, `/repair N|all|here`, `/breakdown info|now` — поломки ([[BreakdownSystem]]).
+
 `/help` — список. `/money add N`, `/research skipall`, `/tp biome forest`, `/dump cell`, `/godsave` и остальные — в `DevCommands`.
