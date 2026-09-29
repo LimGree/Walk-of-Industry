@@ -18,7 +18,7 @@ MonoBehaviour:
   prefab: {fileID: 8355325514519471134, guid: a8cbb2b60694e584ab12722b1bb2a641, type: 3}
   ghostPrefab: {fileID: 4070584201672440629, guid: 07a677b75905f394d8cfbbc68fa82f7a, type: 3}
   cornerPrefab: {fileID: 0}
-  icon: {fileID: -431311597, guid: 122abf928cb191048b8300d27f4a2d21, type: 3}
+  icon: {fileID: 21300000, guid: 4dfca53da53548a3a765797a8a81dc36, type: 3}
   size: {x: 2, y: 2}
   canRotate: 1
   buildCost: 120

@@ -83,32 +83,112 @@ public class RoboticArm : BuildingBase, IInteractable
             Hold(held, null);
     }
 
+    // Цикл руки: взяла спереди → несёт (полвзмаха) → кладёт назад → возвращается пустой.
+    // Позу задаёт клип arm_Swing (Animator, состояние Swing): 0 — над забором, 0.5 — над сбросом, 1 — снова над забором.
+    enum Phase { Idle, Carry, Wait, Back }
+
+    static readonly int SwingState = Animator.StringToHash("Swing");
+    Phase phase;
+    float phaseT;
+    Animator anim;
+    Transform turret;
+
+    float Half => Mathf.Max(0.1f, transferInterval * 0.5f);
+
+    [Tooltip("Точка предмета в захвате, в осях башни (WiVisual/Anim_Turret/Move).")]
+    public Vector3 GripLocal = new Vector3(0f, 0.15f, -0.36f);
+
     void Update()
     {
         if (!isLive)
             return;
 
+        float dt = Time.deltaTime;
+        switch (phase)
+        {
+            case Phase.Idle:
+                SetPose(0f);
+                cooldown -= dt;
+                if (cooldown > 0f)
+                    break;
+                if (heldItem != null)
+                {
+                    // Предмет уже в захвате (сейв, отказ сброса) — сразу к точке сброса.
+                    phase = Phase.Carry;
+                    phaseT = 0f;
+                }
+                else if (TryPickFromFront())
+                {
+                    phase = Phase.Carry;
+                    phaseT = 0f;
+                }
+                break;
+
+            case Phase.Carry:
+                phaseT += dt;
+                SetPose(0.5f * Mathf.Clamp01(phaseT / Half));
+                if (phaseT >= Half)
+                    phase = Phase.Wait;
+                break;
+
+            case Phase.Wait:
+                SetPose(0.5f);
+                if (heldItem == null || TryDropToBack())
+                {
+                    phase = Phase.Back;
+                    phaseT = 0f;
+                }
+                break;
+
+            case Phase.Back:
+                phaseT += dt;
+                SetPose(0.5f + 0.5f * Mathf.Clamp01(phaseT / Half));
+                if (phaseT >= Half)
+                {
+                    phase = Phase.Idle;
+                    cooldown = 0f;
+                    SetPose(0f);
+                }
+                break;
+        }
+    }
+
+    void LateUpdate()
+    {
+        // После Animator: предмет висит в захвате в текущей позе руки.
+        if (!isLive)
+            return;
         if (WorldView.InRange(transform.position))
             UpdateHeldVisual();
         else if (heldVisual != null)
             heldVisual.gameObject.SetActive(false);
+    }
 
-        cooldown -= Time.deltaTime;
-        if (cooldown > 0f)
-            return;
-
-        if (heldItem == null)
+    void SetPose(float t)
+    {
+        if (anim == null)
+            anim = GetComponent<Animator>();
+        if (anim != null && anim.isActiveAndEnabled && anim.runtimeAnimatorController != null)
         {
-            if (TryStealFromFront())
-                cooldown = transferInterval;
+            anim.speed = 0f;
+            anim.Play(SwingState, 0, Mathf.Clamp(t, 0f, 0.999f));
             return;
         }
 
-        if (TryDropToBack())
-            cooldown = transferInterval;
+        // Без Animator (старый префаб) — крутим башню сами.
+        Transform move = Turret();
+        if (move != null)
+            move.localRotation = Quaternion.Euler(0f, 180f * Mathf.Sin(t * Mathf.PI), 0f);
     }
 
-    bool TryStealFromFront()
+    Transform Turret()
+    {
+        if (turret == null)
+            turret = transform.Find("WiVisual/Anim_Turret/Move");
+        return turret;
+    }
+
+    bool TryPickFromFront()
     {
         BuildingBase source = Neighbor(FrontDir());
         BuildingBase dest = Neighbor(BackDir());
@@ -120,16 +200,11 @@ public class RoboticArm : BuildingBase, IInteractable
         if (!TrySteal(source, filter, out stolen, out visual))
             return false;
 
-        if (TryDeliver(dest, stolen, visual))
-        {
-            if (showDebug)
-                Debug.Log($"[Arm] {stolen.displayName}: {source.name} → {dest.name}");
-            return true;
-        }
-
         if (CanEventuallyTake(dest, stolen))
         {
             Hold(stolen, visual);
+            if (showDebug)
+                Debug.Log($"[Arm] взяла {stolen.displayName} у {source.name}");
             return true;
         }
 
@@ -285,8 +360,12 @@ public class RoboticArm : BuildingBase, IInteractable
         if (!heldVisual.gameObject.activeSelf)
             heldVisual.gameObject.SetActive(true);
 
-        Vector3 pos = transform.position + Vector3.up * itemHeight;
-        Vector3 look = BuildingLinker.CardinalToWorld(BackDir());
+        // Захват модели: башня (ось на 0.15 м) → кисть на 0.36 м в сторону забора, предмет под когтями.
+        Transform move = Turret();
+        Vector3 pos = move != null
+            ? move.TransformPoint(GripLocal)
+            : transform.position + Vector3.up * itemHeight;
+        Vector3 look = move != null ? move.TransformDirection(Vector3.back) : BuildingLinker.CardinalToWorld(BackDir());
         BeltItemView.Update(heldVisual, pos, look);
     }
 

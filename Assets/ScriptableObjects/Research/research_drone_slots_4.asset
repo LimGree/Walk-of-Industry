@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 943e43c1941a13b46bc200ba529369b4, type: 3}
+  m_Name: research_drone_slots_4
+  m_EditorClassIdentifier:
+  id: research_drone_slots_4
+  displayName: "\u0410\u043D\u0433\u0430\u0440: 4 \u0434\u0440\u043E\u043D\u0430"
+  description: "\u0427\u0435\u0442\u0432\u0451\u0440\u0442\u044B\u0439 \u0434\u0440\u043E\u043D \u2014 \u0432\u0441\u0435 \u043F\u043B\u043E\u0449\u0430\u0434\u043A\u0438 \u0437\u0430\u043D\u044F\u0442\u044B (\u043F\u043E\u043A\u0443\u043F\u0430\u0435\u0442\u0441\u044F \u0437\u0430 \u0440\u0443\u0431\u0438\u043D\u044B)."
+  icon: {fileID: 21300000, guid: 1fc30b6230684e42bdcd548bbc8a3009, type: 3}
+  requiredItems:
+  - item: {fileID: 11400000, guid: 7071727374757677787970a1b2c3d4eb, type: 2}
+    amount: 400
+  - item: {fileID: 11400000, guid: 61b810ccecfea014ebb50eda1ac4dcf9, type: 2}
+    amount: 400
+  requiredResearches:
+  - {fileID: 11400000, guid: 1a2b3c4d5e6f47a8b9c0d1e2f3a4b503, type: 2}
+  - {fileID: 11400000, guid: 1a2b3c4d5e6f47a8b9c0d1e2f3a4b505, type: 2}
+  - {fileID: 11400000, guid: 1a2b3c4d5e6f47a8b9c0d1e2f3a4b506, type: 2}
+  - {fileID: 11400000, guid: 1a2b3c4d5e6f47a8b9c0d1e2f3a4b507, type: 2}
+  unlockedBuildings: []
+  unlockedRecipes: []
+  rubyReward: 0

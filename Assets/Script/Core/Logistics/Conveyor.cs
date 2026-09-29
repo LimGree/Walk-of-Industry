@@ -736,6 +736,7 @@ public class Conveyor : BuildingBase, IInteractable
         GameObject form = EnsureForm(shown);
         if (shown != BeltShape.Straight)
             PresentVisual(form, true, extraYaw, mirrorX);
+        BuildingRestyle.SyncBelt(this, form, shown, InMask);
         if (shown == BeltShape.Tee)
             ApplyTeeArrowMaterial(form, UseTeeMirrorTexture(InMask));
         ApplyFilterLook();
@@ -1055,7 +1056,14 @@ public class Conveyor : BuildingBase, IInteractable
         if (src == null)
             src = livePrefab;
         if (src == null)
-            return null;
+        {
+            // Формы без префаба (у трубы T/бока/тройник): пустой держатель, модель даёт BuildingRestyle.SyncBelt.
+            var holder = new GameObject(visualName);
+            holder.layer = gameObject.layer;
+            holder.transform.SetParent(transform, false);
+            holder.SetActive(false);
+            return holder;
+        }
 
         GameObject visual = Instantiate(src, transform);
         visual.name = visualName;
@@ -1134,6 +1142,12 @@ public class Conveyor : BuildingBase, IInteractable
 
     void ApplyFilterLook()
     {
+        if (BuildingRestyle.HasWiBelt(this))
+        {
+            BuildingRestyle.PaintBeltEdges(this, filter != null ? FilterTint(filter) : (Color?)null, TintBlock, ColorId, BaseColorId);
+            return;
+        }
+
         Color tint = FilterTint(filter);
         Renderer[] rends = GetComponentsInChildren<Renderer>(true);
         int painted = 0;
@@ -1176,7 +1190,7 @@ public class Conveyor : BuildingBase, IInteractable
         return IsTeeArrowMaterial(mat);
     }
 
-    static Color FilterTint(ItemData item)
+    public static Color FilterTint(ItemData item)
     {
         if (item == null)
             return Color.white;

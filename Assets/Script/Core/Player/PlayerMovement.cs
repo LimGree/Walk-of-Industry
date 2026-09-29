@@ -202,7 +202,7 @@ public class PlayerMovement : MonoBehaviour
             return true;
         if (WorldMapUI.Instance != null && WorldMapUI.Instance.IsOpen)
             return true;
-        if (MachineUI.Instance != null && MachineUI.Instance.IsOpen)
+        if ((MachineUI.Instance != null && MachineUI.Instance.IsOpen) || WorldOverlayGate.IsOpen)
             return true;
         if (InventoryUI.Instance != null && InventoryUI.Instance.IsBagOpen)
             return true;

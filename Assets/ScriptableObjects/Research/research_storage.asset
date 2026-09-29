@@ -15,7 +15,7 @@ MonoBehaviour:
   id: research_storage
   displayName: "Склад"
   description: "Хранение предметов."
-  icon: {fileID: 1818225706, guid: 596b420f5547bbe448be86e376cc3ec5, type: 3}
+  icon: {fileID: 21300000, guid: 6a19b0a221ab4bb2bfd7738123316ad4, type: 3}
   requiredItems:
   - item: {fileID: 11400000, guid: 02edf08369bf87047ac1ac3d815c2513, type: 2}
     amount: 400

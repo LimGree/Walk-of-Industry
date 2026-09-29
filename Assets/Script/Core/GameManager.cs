@@ -59,6 +59,8 @@ public class GameManager : MonoBehaviour
             gameObject.AddComponent<BreakdownSystem>();
         if (GetComponent<RepairUI>() == null)
             gameObject.AddComponent<RepairUI>();
+        if (GetComponent<DroneStationUI>() == null)
+            gameObject.AddComponent<DroneStationUI>();
         if (GetComponent<SelectionActionsUI>() == null)
             gameObject.AddComponent<SelectionActionsUI>();
         if (GetComponent<BlueprintLibraryUI>() == null)
@@ -132,6 +134,12 @@ public class GameManager : MonoBehaviour
             return;
         }
 
+        if (DroneStationUI.Instance != null && DroneStationUI.Instance.IsOpen)
+        {
+            DroneStationUI.Instance.Close();
+            return;
+        }
+
         if (MachineUI.Instance != null && MachineUI.Instance.IsOpen)
         {
             MachineUI.Instance.Close();
@@ -196,6 +204,8 @@ public class GameManager : MonoBehaviour
             PhotoMode.Instance.Cancel();
         if (paused && RepairUI.Instance != null && RepairUI.Instance.IsOpen)
             RepairUI.Instance.Close();
+        if (paused && DroneStationUI.Instance != null && DroneStationUI.Instance.IsOpen)
+            DroneStationUI.Instance.Close();
         if (paused && BeltRide.Instance != null && BeltRide.Instance.IsRiding)
             BeltRide.Instance.Stop();
 
@@ -210,7 +220,7 @@ public class GameManager : MonoBehaviour
     public void RestoreGameplayFocus()
     {
         bool uiOpen = (MachineUI.Instance != null && MachineUI.Instance.IsOpen)
-            || (RepairUI.Instance != null && RepairUI.Instance.IsOpen);
+            || WorldOverlayGate.IsOpen;
         bool mapOpen = WorldMapUI.Instance != null && WorldMapUI.Instance.IsOpen;
         bool bagOpen = InventoryUI.Instance != null && InventoryUI.Instance.IsBagOpen;
         bool shopOpen = WalletHud.Instance != null && WalletHud.Instance.IsShopOpen;

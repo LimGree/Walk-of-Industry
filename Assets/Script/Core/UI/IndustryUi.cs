@@ -322,7 +322,8 @@ public static class IndustryUi
         if (hay.IndexOf("lab", StringComparison.Ordinal) >= 0
             || hay.IndexOf("research", StringComparison.Ordinal) >= 0)
             return "Research";
-        if (hay.IndexOf("splitter", StringComparison.Ordinal) >= 0
+        if (hay.IndexOf("drone", StringComparison.Ordinal) >= 0
+            || hay.IndexOf("splitter", StringComparison.Ordinal) >= 0
             || hay.IndexOf("arm", StringComparison.Ordinal) >= 0)
             return "Logistics";
         return "Production";

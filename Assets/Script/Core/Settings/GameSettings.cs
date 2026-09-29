@@ -66,6 +66,13 @@ public static class GameSettings
         }
     }
 
+    /// <summary>Эффекты зданий: 0 — выкл, 1 — мало, 2 — полные.</summary>
+    public static int BuildingFxQuality
+    {
+        get => Mathf.Clamp(PlayerPrefs.GetInt("GfxBuildingFx", 2), 0, 2);
+        set { SetInt("GfxBuildingFx", Mathf.Clamp(value, 0, 2)); }
+    }
+
     public static bool BreakdownsEnabled
     {
         get => PlayerPrefs.GetInt("GameBreakdowns", 1) != 0;

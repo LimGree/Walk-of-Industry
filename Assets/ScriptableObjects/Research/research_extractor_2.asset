@@ -15,7 +15,7 @@ MonoBehaviour:
   id: research_extractor_2
   displayName: "Экстрактор II"
   description: "Апгрейд экстрактора (тот же id)."
-  icon: {fileID: 818366592, guid: f3df4166d9c47924fa78ccde9cd03248, type: 3}
+  icon: {fileID: 21300000, guid: c3e9323050f642ba9cad22428f40265f, type: 3}
   requiredItems:
   - item: {fileID: 11400000, guid: 61b810ccecfea014ebb50eda1ac4dcf9, type: 2}
     amount: 1200

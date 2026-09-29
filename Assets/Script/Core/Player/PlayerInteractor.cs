@@ -79,7 +79,7 @@ public class PlayerInteractor : MonoBehaviour
             return;
         if (MachineUI.Instance != null && MachineUI.Instance.IsOpen)
             return;
-        if (RepairUI.Instance != null && RepairUI.Instance.IsOpen)
+        if (WorldOverlayGate.IsOpen)
             return;
         if (ResearchUI.Instance != null && ResearchUI.Instance.IsOpen)
             return;

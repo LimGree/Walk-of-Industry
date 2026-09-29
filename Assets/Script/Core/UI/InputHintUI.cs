@@ -127,7 +127,7 @@ public class InputHintUI : MonoBehaviour
             return hints;
         }
 
-        if (MachineUI.Instance != null && MachineUI.Instance.IsOpen)
+        if ((MachineUI.Instance != null && MachineUI.Instance.IsOpen) || WorldOverlayGate.IsOpen)
         {
             Add(hints, KeybindStore.Hint("Pause"), UiLocale.T("hint.close"));
             return hints;

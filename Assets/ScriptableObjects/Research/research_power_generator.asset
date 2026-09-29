@@ -17,7 +17,7 @@ MonoBehaviour:
   description: "\u0421\u0436\u0438\u0433\u0430\u0435\u0442 \u0443\u0433\u043E\u043B\u044C,
     \u0443\u0441\u043A\u043E\u0440\u044F\u0435\u0442 \u0441\u0442\u0430\u043D\u043A\u0438
     \u0438 \u0434\u043E\u0431\u044B\u0447\u0443 \u0432\u043E\u043A\u0440\u0443\u0433."
-  icon: {fileID: -1902545934, guid: 3f035131d36a1684886e850f61ac94d7, type: 3}
+  icon: {fileID: 21300000, guid: b78761435b0d40df9d104b349d209059, type: 3}
   requiredItems:
   - item: {fileID: 11400000, guid: 140c74c92837782438a56add0c025c4d, type: 2}
     amount: 200

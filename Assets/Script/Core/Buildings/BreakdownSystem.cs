@@ -139,7 +139,8 @@ public class BreakdownSystem : MonoBehaviour
     public static bool CanBreak(BuildingBase b)
     {
         return b != null && b.IsPlaced
-            && (b is CrafterBuilding || b is Extractor || b is OilExtractor || b is WaterExtractor);
+            && (b is CrafterBuilding || b is Extractor || b is OilExtractor || b is WaterExtractor
+                || b is DroneLoadStation || b is DroneUnloadStation);
     }
 
     static void CollectEligible(List<BuildingBase> into, bool includeBroken)
@@ -166,6 +167,8 @@ public class BreakdownSystem : MonoBehaviour
         AllScratch.AddRange(FindObjectsByType<Extractor>(FindObjectsSortMode.None));
         AllScratch.AddRange(FindObjectsByType<OilExtractor>(FindObjectsSortMode.None));
         AllScratch.AddRange(FindObjectsByType<WaterExtractor>(FindObjectsSortMode.None));
+        AllScratch.AddRange(FindObjectsByType<DroneLoadStation>(FindObjectsSortMode.None));
+        AllScratch.AddRange(FindObjectsByType<DroneUnloadStation>(FindObjectsSortMode.None));
         return AllScratch;
     }
 
@@ -438,6 +441,10 @@ public class BreakdownSystem : MonoBehaviour
             return c.currentRecipe != null && c.IdleReason() == null;
         if (b is Extractor e)
             return e.resource != null && !e.IsOutputJammed;
+        if (b is DroneLoadStation ls)
+            return ls.FlyingCount() > 0 || ls.ReadyCount > 0;
+        if (b is DroneUnloadStation us)
+            return us.Total > 0 || us.IncomingDrones() > 0;
         return b.HasOutputSpace(1);
     }
 
@@ -774,11 +781,20 @@ public class BreakdownSystem : MonoBehaviour
         rend.receiveShadows = false;
         if (smokeMat == null)
         {
-            smokeMat = RuntimeMaterials.Create(BuildPuff(), new Color(0.5f, 0.5f, 0.52f, 0.8f));
-            if (smokeMat.HasProperty("_WalkLightTint"))
-                smokeMat.SetColor("_WalkLightTint", Color.white);
-            if (smokeMat.HasProperty("_LightTint"))
-                smokeMat.SetColor("_LightTint", Color.white);
+            // Свой шейдер частиц: общий Unlit пишет глубину и не читает цвет частицы —
+            // края дыма затирали небо и значок «!».
+            Shader particle = Resources.Load<Shader>("WalkToBiomeParticle");
+            if (particle == null)
+                particle = Shader.Find("Hidden/WalkToBiome/Particle");
+            if (particle != null)
+            {
+                smokeMat = new Material(particle) { name = "BreakSmoke" };
+                smokeMat.SetTexture("_MainTex", BuildPuff());
+                smokeMat.SetColor("_Color", new Color(0.5f, 0.5f, 0.52f, 0.85f));
+                RuntimeMaterials.ApplyWorldGfx(smokeMat);
+            }
+            else
+                smokeMat = RuntimeMaterials.Create(BuildPuff(), new Color(0.5f, 0.5f, 0.52f, 0.8f));
         }
 
         rend.sharedMaterial = smokeMat;

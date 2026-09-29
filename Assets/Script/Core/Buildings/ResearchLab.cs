@@ -31,7 +31,10 @@ public class ResearchLab : BuildingBase, IInteractable
         if (ResearchSystem.Instance == null)
             return false;
 
-        return ResearchSystem.Instance.TrySubmitItem(item);
+        if (!ResearchSystem.Instance.TrySubmitItem(item))
+            return false;
+        BuildingFx.Burst(this, item, 6);
+        return true;
     }
 
     public void Interact(GameObject interactor)

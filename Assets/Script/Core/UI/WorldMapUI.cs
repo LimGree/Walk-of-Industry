@@ -65,6 +65,9 @@ public class WorldMapUI : MonoBehaviour
     string waypointFilter = "";
     readonly List<VisualElement> miniPins = new List<VisualElement>();
     readonly List<VisualElement> fullPins = new List<VisualElement>();
+    readonly List<VisualElement> miniDrones = new List<VisualElement>();
+    readonly List<VisualElement> fullDrones = new List<VisualElement>();
+    static readonly Color DroneDotColor = new Color(0.45f, 0.95f, 1f, 1f);
     float nextMiniTick;
 
     public static bool MiniRoundPref
@@ -192,6 +195,12 @@ public class WorldMapUI : MonoBehaviour
             LayoutPins();
         }
 
+        LayoutDrones(miniDrones, miniOverlay, miniUv, MiniFollow ? PlayerYaw() : 0f);
+        if (IsOpen)
+            LayoutDrones(fullDrones, fullOverlay, viewUv, 0f);
+        else
+            HideDots(fullDrones);
+
         if (IsOpen)
         {
             if (fullImage != null)
@@ -218,7 +227,7 @@ public class WorldMapUI : MonoBehaviour
             return;
         if (MachineUI.Instance != null && MachineUI.Instance.IsOpen)
             return;
-        if (RepairUI.Instance != null && RepairUI.Instance.IsOpen)
+        if (WorldOverlayGate.IsOpen)
             return;
         if (BuildMenuUI.Instance != null && BuildMenuUI.Instance.IsOpen)
             return;
@@ -1311,6 +1320,55 @@ public class WorldMapUI : MonoBehaviour
                     IndustryUi.Show(dist, false);
             }
         }
+    }
+
+    /// <summary>Летающие дроны — голубые точки (стоящие на площадке не рисуем).</summary>
+    void LayoutDrones(List<VisualElement> dots, VisualElement overlay, Rect uv, float yaw)
+    {
+        if (overlay == null)
+            return;
+        float w = overlay.resolvedStyle.width;
+        float h = overlay.resolvedStyle.height;
+        int used = 0;
+        List<Drone> all = DroneNetwork.AllDrones;
+        for (int i = 0; i < all.Count; i++)
+        {
+            Drone d = all[i];
+            if (d == null || !d.IsBusy || w < 1f || h < 1f)
+                continue;
+            Vector2 local = UvToLocal(overlay, uv, CellUv(BuildingLinker.WorldToCell(d.transform.position)), yaw);
+            if (!InView(local, w, h, overlay == miniOverlay && MiniRound))
+                continue;
+            if (used >= dots.Count)
+            {
+                var dot = IndustryUi.El("DroneDot");
+                dot.pickingMode = PickingMode.Ignore;
+                dot.style.position = Position.Absolute;
+                dot.style.width = 6;
+                dot.style.height = 6;
+                dot.style.borderTopLeftRadius = 3;
+                dot.style.borderTopRightRadius = 3;
+                dot.style.borderBottomLeftRadius = 3;
+                dot.style.borderBottomRightRadius = 3;
+                dot.style.backgroundColor = DroneDotColor;
+                overlay.Add(dot);
+                dots.Add(dot);
+            }
+
+            VisualElement el = dots[used++];
+            IndustryUi.Show(el, true);
+            el.style.left = local.x - 3f;
+            el.style.top = local.y - 3f;
+        }
+
+        for (int i = used; i < dots.Count; i++)
+            IndustryUi.Show(dots[i], false);
+    }
+
+    static void HideDots(List<VisualElement> dots)
+    {
+        for (int i = 0; i < dots.Count; i++)
+            IndustryUi.Show(dots[i], false);
     }
 
     bool InView(Vector2 p, float w, float h, bool round)

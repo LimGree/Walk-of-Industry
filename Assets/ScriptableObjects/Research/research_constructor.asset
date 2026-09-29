@@ -15,7 +15,7 @@ MonoBehaviour:
   id: research_constructor
   displayName: "Конструктор"
   description: "Станок с двумя входами."
-  icon: {fileID: -431311597, guid: 122abf928cb191048b8300d27f4a2d21, type: 3}
+  icon: {fileID: 21300000, guid: 4dfca53da53548a3a765797a8a81dc36, type: 3}
   requiredItems:
   - item: {fileID: 11400000, guid: 9d495ae5fdb87d6479f40cd1e73fed53, type: 2}
     amount: 400

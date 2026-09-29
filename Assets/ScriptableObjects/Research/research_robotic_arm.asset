@@ -15,7 +15,7 @@ MonoBehaviour:
   id: research_robotic_arm
   displayName: "Роборука"
   description: "Автозагрузка зданий."
-  icon: {fileID: 2037161120, guid: c2dac12b7315e8d4cbc004d035294401, type: 3}
+  icon: {fileID: 21300000, guid: aac7b83067234e92b4f891d2971b4218, type: 3}
   requiredItems:
   - item: {fileID: 11400000, guid: 7071727374757677787970a1b2c3d4eb, type: 2}
     amount: 200

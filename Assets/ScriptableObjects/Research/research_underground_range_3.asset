@@ -16,7 +16,7 @@ MonoBehaviour:
   displayName: "\u041F\u043E\u0434\u0437\u0435\u043C\u043A\u0430 \u0434\u0430\u043B\u044C\u043D\u0430\u044F"
   description: "\u0417\u0430\u0437\u043E\u0440 \u043F\u043E\u0434\u0437\u0435\u043C\u043D\u043E\u0433\u043E
     \u043A\u043E\u043D\u0432\u0435\u0439\u0435\u0440\u0430 \u0434\u043E 9 \u043A\u043B\u0435\u0442\u043E\u043A."
-  icon: {fileID: 21300000, guid: ff51556fed59a0944b6a0d632f66fe27, type: 3}
+  icon: {fileID: 21300000, guid: c2deda65da524a6aab4057810611ae1c, type: 3}
   requiredItems:
   - item: {fileID: 11400000, guid: 9d495ae5fdb87d6479f40cd1e73fed53, type: 2}
     amount: 500

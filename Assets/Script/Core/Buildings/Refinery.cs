@@ -80,6 +80,12 @@ public class Refinery : CrafterBuilding
         }
 
         BuildingLinker.RelinkAround(this);
+        BuildingRestyle.RefreshPorts(this);
+    }
+
+    public bool IsPipeSocket(BuildingSocket socket)
+    {
+        return socket != null && socket == pipeSocket;
     }
 
     static bool RecipeOutputsFluid(RecipeData recipe)

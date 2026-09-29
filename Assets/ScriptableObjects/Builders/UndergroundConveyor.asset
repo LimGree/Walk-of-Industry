@@ -30,7 +30,7 @@ MonoBehaviour:
   isPipe: 0
   pairExitPrefab: {fileID: 6831677357745987852, guid: f141852d15596a04282c08ddbaa8589d, type: 3}
   pairMaxGap: 5
-  icon: {fileID: 21300000, guid: ff51556fed59a0944b6a0d632f66fe27, type: 3}
+  icon: {fileID: 21300000, guid: c2deda65da524a6aab4057810611ae1c, type: 3}
   size: {x: 1, y: 1}
   canRotate: 1
   buildCost: 25

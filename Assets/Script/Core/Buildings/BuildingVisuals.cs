@@ -6,6 +6,7 @@ public static class BuildingVisuals
     {
         if (building == null)
             return;
+        BuildingRestyle.Apply(building);
         Transform root = building.transform;
         Transform ghost = BuildingPrefabLayout.FindGhost(root);
         if (ghost != null)
@@ -41,6 +42,7 @@ public static class BuildingVisuals
                 cols[i].enabled = false;
         }
 
+        BuildingRestyle.Apply(instance.GetComponent<BuildingBase>());
         Transform root = instance.transform;
         Transform ghost = BuildingPrefabLayout.FindGhost(root);
         Transform visual = root.Find(BuildingPrefabLayout.Visual);

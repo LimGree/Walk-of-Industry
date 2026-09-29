@@ -227,6 +227,8 @@ public abstract class CrafterBuilding : BuildingBase, IInteractable
             if (output.item == null)
                 continue;
             ProductionStats.Instance?.RecordProduced(output.item, output.amount);
+            if (i == 0)
+                BuildingFx.Burst(this, output.item);
             for (int n = 0; n < output.amount; n++)
             {
                 if (!TryOutputToAny(output.item) && showDebug)

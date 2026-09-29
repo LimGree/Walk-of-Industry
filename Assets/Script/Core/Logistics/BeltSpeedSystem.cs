@@ -42,6 +42,18 @@ public class BeltSpeedSystem : MonoBehaviour
         ResetToNewWorld();
     }
 
+    static readonly int BeltOffsetId = Shader.PropertyToID("_WiBeltOffset");
+    float beltOffset;
+
+    void Update()
+    {
+        // Рёбра полотна (шейдер WalkToBiome/BeltScroll) бегут со скоростью лент.
+        // Смещение копим здесь, чтобы при смене скорости узор не прыгал.
+        float speed = 2.5f * Multiplier / Mathf.Max(0.05f, GridFootprint.CellSize);
+        beltOffset = Mathf.Repeat(beltOffset + speed * Time.deltaTime, 1000f);
+        Shader.SetGlobalFloat(BeltOffsetId, beltOffset);
+    }
+
     void OnDestroy()
     {
         if (Instance == this)

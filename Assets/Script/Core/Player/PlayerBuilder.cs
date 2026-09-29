@@ -189,7 +189,7 @@ public class PlayerBuilder : MonoBehaviour
             return true;
         if (GameManager.Instance != null && GameManager.Instance.IsPaused)
             return true;
-        if (MachineUI.Instance != null && MachineUI.Instance.IsOpen)
+        if ((MachineUI.Instance != null && MachineUI.Instance.IsOpen) || WorldOverlayGate.IsOpen)
             return true;
         if (ResearchUI.Instance != null && ResearchUI.Instance.IsOpen)
             return true;

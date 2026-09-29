@@ -23,7 +23,7 @@ MonoBehaviour:
   cornerPrefab: {fileID: 0}
   cornerGhostPrefab: {fileID: 0}
   isPipe: 0
-  icon: {fileID: 1135645421, guid: 6dccd2373c25c8c449890c6d0994e76b, type: 3}
+  icon: {fileID: 21300000, guid: 815eab4e98e041f8928146d24a71ac5f, type: 3}
   size: {x: 3, y: 3}
   canRotate: 1
   buildCost: 350

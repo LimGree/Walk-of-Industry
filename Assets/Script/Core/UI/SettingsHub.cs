@@ -122,6 +122,11 @@ public static class SettingsHub
         parent.Add(SettingsControls.SliderRow("settings.brightness", 0.35f, 2f,
             () => GameSettings.Brightness, v => GameSettings.Brightness = v, v => v.ToString("0.00")));
 
+        parent.Add(SettingsControls.ChipRow("settings.building_fx",
+            (UiLocale.T("settings.fx_off"), () => GameSettings.BuildingFxQuality == 0, () => GameSettings.BuildingFxQuality = 0),
+            (UiLocale.T("settings.fx_low"), () => GameSettings.BuildingFxQuality == 1, () => GameSettings.BuildingFxQuality = 1),
+            (UiLocale.T("settings.fx_full"), () => GameSettings.BuildingFxQuality == 2, () => GameSettings.BuildingFxQuality = 2)));
+
         parent.Add(IndustryUi.Text("G1b", UiLocale.T("settings.daynight"), "settings-group"));
         parent.Add(SettingsControls.Toggle("settings.daynight_on", () => GameSettings.DayNightEnabled, v => GameSettings.DayNightEnabled = v));
         parent.Add(SettingsControls.SliderRow("settings.day_length", 6f, 48f,

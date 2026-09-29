@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5e80bec2d6738574d9e628019f2441e3, type: 3}
+  m_Name: DroneLoadStation
+  m_EditorClassIdentifier:
+  id: drone_load_station
+  displayName: "Станция загрузки дронов"
+  description: "5x5. Ленты сзади, цех пакует предметы в ящики, дроны везут их на станцию выгрузки."
+  prefab: {fileID: 8200000001, guid: 9c5e1a3b7d4f4c8e0a2b3c5d7e9f1a32, type: 3}
+  ghostPrefab: {fileID: 0}
+  cornerPrefab: {fileID: 0}
+  cornerGhostPrefab: {fileID: 0}
+  isPipe: 0
+  icon: {fileID: 21300000, guid: 1fc30b6230684e42bdcd548bbc8a3009, type: 3}
+  size: {x: 5, y: 5}
+  canRotate: 1
+  buildCost: 1200
+  requiresResourceNode: 0
+  allowOnWater: 0
+  requiresWater: 0

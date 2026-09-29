@@ -24,6 +24,7 @@ public class Splitter : BuildingBase, IInteractable
     int nextOutput;
     float resolvedHeight;
     readonly List<Cargo> cargo = new List<Cargo>(4);
+    public int CargoCount => cargo.Count;
 
     class Cargo
     {

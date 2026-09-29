@@ -246,6 +246,8 @@ public class Extractor : BuildingBase, IInteractable
                 break;
 
             ProductionStats.Instance?.RecordProduced(resource, 1);
+            if (i == 0)
+                BuildingFx.Burst(this, resource, 5);
 
             if (showDebug)
                 Debug.Log($"[Extractor] Выдал {resource.displayName}");

@@ -15,7 +15,7 @@ MonoBehaviour:
   id: research_chemical_plant
   displayName: "Химзавод"
   description: "Жидкость и твёрдое."
-  icon: {fileID: 1135645421, guid: 6dccd2373c25c8c449890c6d0994e76b, type: 3}
+  icon: {fileID: 21300000, guid: 815eab4e98e041f8928146d24a71ac5f, type: 3}
   requiredItems:
   - item: {fileID: 11400000, guid: c4d5e6f708193a4b5c6d7e8f901a2b4d, type: 2}
     amount: 400

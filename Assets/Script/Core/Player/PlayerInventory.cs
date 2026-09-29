@@ -104,7 +104,7 @@ public class PlayerInventory : MonoBehaviour
             return;
         if (GameManager.Instance != null && GameManager.Instance.IsPaused)
             return;
-        if (MachineUI.Instance != null && MachineUI.Instance.IsOpen)
+        if ((MachineUI.Instance != null && MachineUI.Instance.IsOpen) || WorldOverlayGate.IsOpen)
             return;
         if (WalletHud.Instance != null && WalletHud.Instance.IsShopOpen)
             return;
@@ -136,7 +136,7 @@ public class PlayerInventory : MonoBehaviour
     {
         if (KeybindStore.BlocksGameplayInput)
             return false;
-        if (MachineUI.Instance != null && MachineUI.Instance.IsOpen)
+        if ((MachineUI.Instance != null && MachineUI.Instance.IsOpen) || WorldOverlayGate.IsOpen)
             return false;
         if (WalletHud.Instance != null && WalletHud.Instance.IsShopOpen)
             return false;
