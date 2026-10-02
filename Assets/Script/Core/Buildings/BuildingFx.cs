@@ -15,13 +15,24 @@ public class BuildingFx : MonoBehaviour
     static readonly int WorkingId = Animator.StringToHash("Working");
     static readonly int SpeedId = Animator.StringToHash("Speed");
     static readonly int TransferId = Animator.StringToHash("Transfer");
+    const float CheckInterval = 0.25f;
+
+    // Один тикер на все здания: проверки размазаны по кадрам (раньше все здания,
+    // загруженные в одном кадре, проверялись синхронно — пик раз в 0.25 с).
+    static readonly List<BuildingFx> all = new List<BuildingFx>(256);
+    // Новые (только что поставленные/включённые) — первая проверка в ближайшем кадре, без очереди.
+    static readonly List<BuildingFx> fresh = new List<BuildingFx>(16);
+    static int cursor;
+    static float sliceDebt;
+    static int qualityFrame = -1;
+    static int quality;
 
     BuildingBase building;
     Animator anim;
     readonly List<ParticleSystem> loops = new List<ParticleSystem>();
     readonly List<float> loopRates = new List<float>();
     readonly List<ParticleSystem> bursts = new List<ParticleSystem>();
-    float nextCheck;
+    int index = -1;
     bool lastWork;
     int lastQuality = -1;
     float nextBurst;
@@ -55,13 +66,80 @@ public class BuildingFx : MonoBehaviour
             anim.Rebind();
     }
 
-    void Update()
+    void OnEnable()
     {
-        if (Time.unscaledTime < nextCheck)
+        if (index >= 0)
             return;
-        nextCheck = Time.unscaledTime + 0.25f;
+        index = all.Count;
+        all.Add(this);
+        fresh.Add(this);
+        Ticker.Ensure();
+    }
 
-        int quality = GameSettings.BuildingFxQuality;
+    void OnDisable()
+    {
+        if (index < 0)
+            return;
+        int last = all.Count - 1;
+        BuildingFx moved = all[last];
+        all[index] = moved;
+        moved.index = index;
+        all.RemoveAt(last);
+        index = -1;
+    }
+
+    /// <summary>Настройка «Эффекты зданий»: PlayerPrefs (реестр) читаем раз в кадр, а не на каждом здании.</summary>
+    static int Quality
+    {
+        get
+        {
+            if (qualityFrame != Time.frameCount)
+            {
+                qualityFrame = Time.frameCount;
+                quality = GameSettings.BuildingFxQuality;
+            }
+            return quality;
+        }
+    }
+
+    static void TickAll()
+    {
+        if (fresh.Count > 0)
+        {
+            int fq = Quality;
+            for (int i = 0; i < fresh.Count; i++)
+            {
+                BuildingFx fx = fresh[i];
+                if (fx != null && fx.index >= 0)
+                    fx.Check(fq);
+            }
+            fresh.Clear();
+        }
+
+        int count = all.Count;
+        if (count == 0)
+            return;
+        // Каждое здание — раз в CheckInterval, за кадр — соответствующая доля списка.
+        sliceDebt += count * Time.unscaledDeltaTime / CheckInterval;
+        int budget = Mathf.Min(count, (int)sliceDebt);
+        sliceDebt -= budget;
+        if (sliceDebt > count)
+            sliceDebt = count;
+        int q = Quality;
+        for (int i = 0; i < budget; i++)
+        {
+            if (cursor >= all.Count)
+                cursor = 0;
+            if (all.Count == 0)
+                return;
+            BuildingFx fx = all[cursor++];
+            if (fx != null)
+                fx.Check(q);
+        }
+    }
+
+    void Check(int quality)
+    {
         bool placed = building != null && building.IsPlaced;
         bool near = placed && quality > 0 && WorldView.InRange(transform.position);
         bool work = near && IsWorking();
@@ -170,7 +248,7 @@ public class BuildingFx : MonoBehaviour
     {
         if (bursts.Count == 0 || Time.time < nextBurst)
             return;
-        int quality = GameSettings.BuildingFxQuality;
+        int quality = Quality;
         if (quality <= 0 || !WorldView.InRange(transform.position))
             return;
         nextBurst = Time.time + 0.15f;
@@ -185,6 +263,26 @@ public class BuildingFx : MonoBehaviour
             else if (!ps.gameObject.name.StartsWith("FX_BurstBlue"))
                 p.startColor = Color.Lerp(new Color(1f, 0.75f, 0.35f), tint, 0.5f);
             ps.Emit(p, n);
+        }
+    }
+
+    /// <summary>Скрытый объект, который раз в кадр двигает общий тикер.</summary>
+    sealed class Ticker : MonoBehaviour
+    {
+        static Ticker instance;
+
+        public static void Ensure()
+        {
+            if (instance != null || !Application.isPlaying)
+                return;
+            var go = new GameObject("BuildingFxTicker") { hideFlags = HideFlags.HideAndDontSave };
+            DontDestroyOnLoad(go);
+            instance = go.AddComponent<Ticker>();
+        }
+
+        void Update()
+        {
+            TickAll();
         }
     }
 }

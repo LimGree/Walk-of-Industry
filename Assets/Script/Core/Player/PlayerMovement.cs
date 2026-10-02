@@ -52,8 +52,50 @@ public class PlayerMovement : MonoBehaviour
     float bobPhase;
     float bobWeight;
 
+    // Вид камеры (F6): от первого лица → третье сзади (сдвиг вбок — настройка) → третье спереди.
+    public enum CameraView { First, ThirdBack, ThirdFront }
+    const string CameraViewPref = "CamView";
+    const float ThirdDistance = 3.2f;
+    const float ThirdHeight = 0.25f;
+    static readonly RaycastHit[] camHits = new RaycastHit[8];
+    CameraView view;
+    float camDistance;
+
+    public CameraView View => view;
+
+    /// <summary>
+    /// На сколько камера отъехала от головы. Добавляется к дальности стройки и взаимодействия:
+    /// лучи идут из камеры, и в третьем лице иначе «съедались» бы эти метры.
+    /// </summary>
+    public static float ReachBonus { get; private set; }
+
+    static Transform playerRoot;
+    static readonly RaycastHit[] aimHits = new RaycastHit[16];
+
+    /// <summary>Луч прицела, который не упирается в самого игрока (в 3-м лице он идёт сквозь тело).</summary>
+    public static bool AimRaycast(Ray ray, out RaycastHit hit, float distance, int mask, QueryTriggerInteraction triggers)
+    {
+        int n = Physics.RaycastNonAlloc(ray, aimHits, distance, mask, triggers);
+        hit = default;
+        float best = float.MaxValue;
+        bool found = false;
+        for (int i = 0; i < n; i++)
+        {
+            Collider c = aimHits[i].collider;
+            if (c == null || aimHits[i].distance >= best)
+                continue;
+            if (playerRoot != null && c.transform.IsChildOf(playerRoot))
+                continue;
+            best = aimHits[i].distance;
+            hit = aimHits[i];
+            found = true;
+        }
+        return found;
+    }
+
     void Awake()
     {
+        playerRoot = transform;
         inputActions = KeybindStore.Shared;
     }
 
@@ -96,8 +138,11 @@ public class PlayerMovement : MonoBehaviour
         BindCamera();
         if (GetComponent<BeltRide>() == null)
             gameObject.AddComponent<BeltRide>();
+        if (GetComponent<PlayerAvatar>() == null)
+            gameObject.AddComponent<PlayerAvatar>();
         EnsureFlashlight();
         zoomStrength = Mathf.Clamp(PlayerPrefs.GetFloat("CamZoom", 0.55f), 0.2f, 0.85f);
+        view = (CameraView)Mathf.Clamp(PlayerPrefs.GetInt(CameraViewPref, 0), 0, 2);
 
         // Подписка на события
         inputActions.Player.Move.performed += ctx => moveInput = ctx.ReadValue<Vector2>();
@@ -161,6 +206,10 @@ public class PlayerMovement : MonoBehaviour
         if (autoRunAction != null && autoRunAction.WasPressedThisFrame())
             autoRun = !autoRun;
 
+        InputAction viewAction = KeybindStore.GetAction("CameraView");
+        if (viewAction != null && viewAction.WasPressedThisFrame() && !PhotoMode.IsActive)
+            CycleView();
+
         if (canLook) HandleMouseLook();
         if (canMove) HandleMovement();
         HandleZoom();
@@ -183,8 +232,56 @@ public class PlayerMovement : MonoBehaviour
         float amp = GameSettings.HeadBob * bobWeight;
         Vector3 bob = new Vector3(Mathf.Cos(bobPhase * 0.5f) * 0.035f, Mathf.Abs(Mathf.Sin(bobPhase * 0.5f)) * 0.055f - 0.0275f, 0f) * amp;
         CameraFx.Sample(out Vector3 shake, out float roll);
+        if (view != CameraView.First)
+        {
+            ApplyThirdPerson(shake, roll);
+            return;
+        }
+        ReachBonus = 0f;
         cameraTransform.localPosition = camBase + bob + shake;
         cameraTransform.localRotation = Quaternion.Euler(pitch, 0f, roll + Mathf.Cos(bobPhase * 0.5f) * 0.5f * amp);
+    }
+
+    void CycleView()
+    {
+        view = (CameraView)(((int)view + 1) % 3);
+        PlayerPrefs.SetInt(CameraViewPref, (int)view);
+        camDistance = 0f; // выезжать плавно от головы, а не прыгать
+    }
+
+    /// <summary>Камера за плечом или спереди; не проходит сквозь здания и рельеф.</summary>
+    void ApplyThirdPerson(Vector3 shake, float roll)
+    {
+        bool front = view == CameraView.ThirdFront;
+        Quaternion rot = Quaternion.Euler(pitch, front ? 180f : 0f, roll);
+        Vector3 pivot = camBase + Vector3.up * ThirdHeight;
+        Vector3 offset = rot * new Vector3(front ? 0f : GameSettings.ThirdPersonSide, 0f, -ThirdDistance);
+
+        Vector3 pivotWorld = transform.TransformPoint(pivot);
+        Vector3 dirWorld = transform.TransformDirection(offset);
+        float want = dirWorld.magnitude;
+        float allowed = want;
+        if (want > 0.001f)
+        {
+            Vector3 dir = dirWorld / want;
+            int n = Physics.SphereCastNonAlloc(pivotWorld, 0.2f, dir, camHits, want, ~0, QueryTriggerInteraction.Ignore);
+            for (int i = 0; i < n; i++)
+            {
+                Collider c = camHits[i].collider;
+                if (c == null || c.transform.IsChildOf(transform) || camHits[i].distance <= 0f)
+                    continue;
+                allowed = Mathf.Min(allowed, Mathf.Max(0.3f, camHits[i].distance - 0.05f));
+            }
+        }
+
+        // Внутрь — сразу (не видеть сквозь стену), наружу — плавно.
+        camDistance = allowed < camDistance
+            ? allowed
+            : Mathf.Lerp(camDistance, allowed, 1f - Mathf.Exp(-8f * Time.deltaTime));
+        float k = want > 0.001f ? camDistance / want : 0f;
+        cameraTransform.localPosition = pivot + offset * k + shake;
+        cameraTransform.localRotation = rot;
+        ReachBonus = front ? 0f : camDistance;
     }
 
     Vector2 EffectiveMove()

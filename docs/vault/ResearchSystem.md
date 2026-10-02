@@ -26,3 +26,5 @@
 ## Связи
 
 [[ResearchLab]] · [[ResearchUI]] · [[MachineUI]] · [[ResearchTree]] · [[ResearchNodeData]] · [[PlayerWallet]] · [[BeltSpeedSystem]] · [[Economy]] · [[SaveData]]
+
+Цена сданного предмета — `LabMarket.Sell` ([[LabMarket]]): от сложности производства, с насыщением рынка; дробные монеты копятся. Монеты идут с источником `LabSale` ([[EconomyLedger]]).

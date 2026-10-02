@@ -32,3 +32,5 @@
 **Там же в файле.** Это не класс, а **договор**: «у меня есть метод Interact». Любое здание, которое можно открыть руками, подписывает этот договор.
 
 Связанные реализации: [[CrafterBuilding]], [[Extractor]], [[OilExtractor]], [[WaterExtractor]], [[StorageContainer]], [[RoboticArm]], [[ResearchLab]].
+
+Луч — `PlayerMovement.AimRaycast` (мимо тела игрока), дальность `interactDistance + PlayerMovement.ReachBonus` — в 3-м лице досягаемость не теряется.

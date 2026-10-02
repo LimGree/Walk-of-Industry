@@ -33,6 +33,9 @@ public static partial class GameSettings
     public static float HeadBob { get => GetF("GfxHeadBob", 0.3f, 0f, 1f); set => SetF("GfxHeadBob", value, 0f, 1f); }
     public static float CameraShake { get => GetF("GfxShake", 1f, 0f, 1f); set => SetF("GfxShake", value, 0f, 1f); }
 
+    /// <summary>Сдвиг камеры от 3-го лица вбок, м: минус — влево, плюс — вправо (за плечом).</summary>
+    public static float ThirdPersonSide { get => GetF("CamThirdSide", 0.75f, -1.5f, 1.5f); set => SetF("CamThirdSide", value, -1.5f, 1.5f); }
+
     /// <summary>Номер монитора из Screen.GetDisplayLayout.</summary>
     public static int Monitor { get => GetI("GfxMonitor", 0, 0, 8); set => SetI("GfxMonitor", value, 0, 8, false); }
 

@@ -274,7 +274,7 @@ public class RepairUI : MonoBehaviour
             return;
         BreakdownSystem sys = BreakdownSystem.Instance;
         int cost = RushBaseCost + (sys != null ? sys.RepairSurcharge(target) : 0);
-        if (!PlayerWallet.Instance.TrySpendRubies(cost))
+        if (!PlayerWallet.Instance.TrySpendRubies(cost, MoneySource.Repair))
         {
             UiAudio.PlayError();
             return;
@@ -286,6 +286,10 @@ public class RepairUI : MonoBehaviour
     void Finish(BuildingBase done, int paid)
     {
         string name = done.data != null ? done.data.Title : "Building";
+        // Кроме мини-игры ремонт стоит 3–5% баланса (процент растёт с балансом).
+        int fee = PlayerWallet.Instance != null ? Economy.RepairFee(PlayerWallet.Instance.Coins) : 0;
+        if (fee > 0)
+            PlayerWallet.Instance.AddCoins(-fee, MoneySource.Repair);
         if (BreakdownSystem.Instance != null)
             BreakdownSystem.Instance.Repair(done, true);
         else
@@ -293,7 +297,8 @@ public class RepairUI : MonoBehaviour
         UiAudio.PlayNotify();
         UiNotification.Push(NotifyKind.Breakdown,
             UiLocale.T("repair.done_title"),
-            paid > 0 ? UiLocale.T("repair.done_paid", name, paid) : UiLocale.T("repair.done_body", name),
+            (paid > 0 ? UiLocale.T("repair.done_paid", name, paid) : UiLocale.T("repair.done_body", name))
+                + (fee > 0 ? "  " + UiLocale.T("repair.fee", IndustryUi.Money(fee)) : ""),
             UiStatus.Completed);
         Close();
     }

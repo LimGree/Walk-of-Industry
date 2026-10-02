@@ -169,6 +169,7 @@ public static class KeybindStore
         AddKeyboard(list, "Sprint", UiLocale.T("bind.sprint"));
         AddKeyboard(list, "AutoRun", UiLocale.T("bind.autorun"));
         AddKeyboard(list, "Zoom", UiLocale.T("bind.zoom"));
+        AddKeyboard(list, "CameraView", UiLocale.T("bind.camera_view"));
         AddKeyboard(list, "Pause", UiLocale.T("bind.pause"));
         AddKeyboard(list, "Rotate", UiLocale.T("bind.rotate"));
         AddKeyboard(list, "BuildMode", UiLocale.T("bind.build_mode"));
@@ -328,6 +329,7 @@ public static class KeybindStore
             EnsureAutoRunAction(reference.asset);
             EnsureUndoAction(reference.asset);
             EnsureRedoAction(reference.asset);
+            EnsureCameraViewAction(reference.asset);
             ApplySaved(reference.asset);
             EnsureRedoAction(reference.asset);
         }
@@ -339,6 +341,7 @@ public static class KeybindStore
             EnsureAutoRunAction(reference.asset);
             EnsureUndoAction(reference.asset);
             EnsureRedoAction(reference.asset);
+            EnsureCameraViewAction(reference.asset);
         }
 
         if (!sharedEnabled && !IsListening)
@@ -388,6 +391,19 @@ public static class KeybindStore
             return;
         InputAction action = map.AddAction("AutoRun", InputActionType.Button);
         action.AddBinding("<Keyboard>/x", groups: KeyboardGroup);
+        if (asset.enabled)
+            action.Enable();
+    }
+
+    static void EnsureCameraViewAction(InputActionAsset asset)
+    {
+        if (asset == null || asset.FindAction("Player/CameraView", false) != null)
+            return;
+        InputActionMap map = asset.FindActionMap("Player", false);
+        if (map == null)
+            return;
+        InputAction action = map.AddAction("CameraView", InputActionType.Button);
+        action.AddBinding("<Keyboard>/f6", groups: KeyboardGroup);
         if (asset.enabled)
             action.Enable();
     }

@@ -8,6 +8,7 @@ public class IndustryPause
     VisualElement home;
     VisualElement settings;
     VisualElement achievements;
+    VisualElement character;
     ScrollView achieveList;
     Label sessionStats;
     bool listening;
@@ -44,6 +45,7 @@ public class IndustryPause
         home.Add(sessionStats);
         home.Add(IndustryUi.El("Div1", "divider"));
         home.Add(IndustryUi.Btn(UiLocale.T("pause.achievements"), ShowAchievements));
+        home.Add(IndustryUi.Btn(UiLocale.T("avatar.title"), ShowCharacter));
         home.Add(IndustryUi.Btn(UiLocale.T("menu.settings"), () => ShowSettings(null)));
         home.Add(IndustryUi.El("Div2", "divider"));
         home.Add(IndustryUi.Btn(UiLocale.T("pause.exit"), () =>
@@ -63,6 +65,9 @@ public class IndustryPause
         achievements.Add(achieveList);
         achievements.Add(IndustryUi.Btn(UiLocale.T("menu.back"), ShowHome, "btn-ghost"));
         root.Add(achievements);
+
+        character = IndustryUi.El("Character", "panel", "panel-menu");
+        root.Add(character);
 
         settings = IndustryUi.El("Settings", "panel", "panel-menu");
         settings.AddToClassList("settings-shell");
@@ -85,6 +90,23 @@ public class IndustryPause
         IndustryUi.Show(root, on);
         if (on)
             ShowHome();
+        else
+            HideCharacter();
+    }
+
+    void ShowCharacter()
+    {
+        IndustryUi.Show(home, false);
+        IndustryUi.Show(settings, false);
+        IndustryUi.Show(achievements, false);
+        CharacterScreen.Fill(character, ShowHome);
+        IndustryUi.Show(character, true);
+    }
+
+    void HideCharacter()
+    {
+        IndustryUi.Show(character, false);
+        CharacterScreen.Release(character);
     }
 
     void RefreshSessionStats()
@@ -112,6 +134,7 @@ public class IndustryPause
         IndustryUi.Show(home, true);
         IndustryUi.Show(settings, false);
         IndustryUi.Show(achievements, false);
+        HideCharacter();
         RefreshSessionStats();
     }
 
@@ -120,6 +143,7 @@ public class IndustryPause
         FillAchievements();
         IndustryUi.Show(home, false);
         IndustryUi.Show(settings, false);
+        HideCharacter();
         IndustryUi.Show(achievements, true);
     }
 
@@ -177,9 +201,11 @@ public class IndustryPause
 
     void RebuildNow(MonoBehaviour owner, bool vis, bool onSettings, string tab)
     {
+        HideCharacter();
         root = null;
         home = null;
         settings = null;
+        character = null;
         Build(owner);
         IndustryUi.Show(root, vis);
         if (!vis)

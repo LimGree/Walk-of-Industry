@@ -190,9 +190,10 @@ public class ResearchSystem : MonoBehaviour
             return true;
         }
 
-        int coins = Economy.SellValue(item);
+        // Цена от сложности производства и насыщения рынка (LabMarket), дробь копится.
+        int coins = LabMarket.Sell(item);
         if (coins > 0 && PlayerWallet.Instance != null)
-            PlayerWallet.Instance.AddCoins(coins);
+            PlayerWallet.Instance.AddCoins(coins, MoneySource.LabSale);
 
         return true;
     }
@@ -316,7 +317,7 @@ public class ResearchSystem : MonoBehaviour
         {
             int rubies = Economy.RubyReward(node);
             if (rubies > 0 && PlayerWallet.Instance != null)
-                PlayerWallet.Instance.AddRubies(rubies);
+                PlayerWallet.Instance.AddRubies(rubies, MoneySource.Research);
             Debug.Log($"[Research] Completed: {node.Title}  +{rubies} ruby");
             UiAudio.PlayNotify();
             UiNotification.Push(NotifyKind.Research,

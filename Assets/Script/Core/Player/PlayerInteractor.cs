@@ -63,7 +63,7 @@ public class PlayerInteractor : MonoBehaviour
         currentInteractable = null;
 
         Ray ray = new Ray(cam.transform.position, cam.transform.forward);
-        if (Physics.Raycast(ray, out RaycastHit hit, interactDistance, interactLayer))
+        if (PlayerMovement.AimRaycast(ray, out RaycastHit hit, interactDistance + PlayerMovement.ReachBonus, interactLayer, QueryTriggerInteraction.UseGlobal))
         {
             currentInteractable = hit.collider.GetComponentInParent<IInteractable>();
         }

@@ -262,10 +262,10 @@ public class SelectionActionsUI : MonoBehaviour
             if (b == null || !b.CanUpgradeBuilding)
                 continue;
             int cost = Economy.UpgradeCost(b);
-            if (PlayerWallet.Instance != null && !PlayerWallet.Instance.TrySpendCoins(cost))
+            if (PlayerWallet.Instance != null && !PlayerWallet.Instance.TrySpendCoins(cost, MoneySource.Upgrade))
                 break;
             if (!b.TryUpgradeBuilding() && PlayerWallet.Instance != null)
-                PlayerWallet.Instance.AddCoins(cost);
+                PlayerWallet.Instance.AddCoins(cost, MoneySource.Upgrade);
         }
         Rebuild();
     }

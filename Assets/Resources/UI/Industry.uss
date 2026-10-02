@@ -4150,3 +4150,120 @@ Button.keycap .btn-label {
     -unity-text-align: middle-center;
     white-space: nowrap;
 }
+
+/* ===== CHARACTER (экран «Персонаж»: превью + варианты) ===== */
+
+.panel-menu.char-panel {
+    width: 1040px;
+    max-width: 94%;
+    max-height: 92%;
+}
+
+.char-body {
+    flex-direction: row;
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-height: 0;
+}
+
+.char-left {
+    width: 340px;
+    flex-shrink: 0;
+    margin-right: 20px;
+    align-items: center;
+}
+
+.char-preview {
+    width: 340px;
+    height: 486px;
+    border-radius: 4px;
+    border-width: 1px;
+    border-color: var(--border-subtle);
+    background-color: rgb(20, 25, 32);
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.char-preview:hover {
+    border-color: var(--border-strong);
+}
+
+.char-hint {
+    margin-top: 8px;
+    -unity-text-align: middle-center;
+}
+
+.char-quick {
+    margin-top: 8px;
+    justify-content: center;
+}
+
+.char-options {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-height: 0;
+}
+
+.char-row .set-text {
+    width: 150px;
+    flex-shrink: 0;
+}
+
+.char-row .set-ctl {
+    flex-grow: 1;
+    flex-shrink: 1;
+}
+
+.char-row .set-seg {
+    justify-content: flex-start;
+}
+
+.char-swatches {
+    flex-direction: row;
+    flex-wrap: wrap;
+}
+
+.char-swatch {
+    width: 24px;
+    height: 24px;
+    margin: 3px 6px 3px 0;
+    border-radius: 12px;
+    border-width: 2px;
+    border-color: rgba(0, 0, 0, 0.35);
+    transition-property: scale, border-color;
+    transition-duration: 0.12s;
+}
+
+.char-swatch:hover {
+    scale: 1.12 1.12;
+    border-color: var(--border-strong);
+}
+
+.char-swatch.is-selected {
+    border-color: var(--accent);
+    scale: 1.15 1.15;
+}
+
+.char-footer {
+    margin-top: 14px;
+    align-items: center;
+}
+
+.char-footer > .btn-small:first-child {
+    margin-left: 0;
+}
+
+/* ===== ECONOMY (вкладка статистики лаборатории) ===== */
+
+.econ-graph {
+    height: 140px;
+    margin: 8px 0 4px 0;
+    border-radius: 3px;
+    border-width: 1px;
+    border-color: var(--border-subtle);
+    background-color: rgba(255, 255, 255, 0.02);
+    flex-shrink: 0;
+}
+
+.econ-legend {
+    margin-bottom: 8px;
+}

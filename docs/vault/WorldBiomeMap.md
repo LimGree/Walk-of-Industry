@@ -30,3 +30,5 @@
 Картинка земли (`BiomeOverlay`) чуть шире карты (~280 м). Сид мира из [[WorldCatalog]] влияет на шум.
 
 Жилы кладёт отдельно [[WorldResourceScatterer]] поверх уже зафиксированного ландшафта.
+
+Тайлы `BiomeOverlay` рисуются шейдером `Hidden/WalkToBiome/GroundLit` и принимают свет фонарей, огня печей и фонарика — список огней готовит [[GroundLights]] (компонент на `BiomeOverlay`).

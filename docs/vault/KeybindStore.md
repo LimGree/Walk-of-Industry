@@ -21,3 +21,5 @@ JSON переназначений в PlayerPrefs `InputBindingOverrides`.
 - `BlocksGameplayInput` — пока слушаем новую клавишу **или в поле ввода текст** (метка, `UiModal`, [[DevConsole]]), хоткеи молчат. `SetPlayerMapEnabled` глушит карту Player, пока открыта консоль.
 
 Связи: почти весь ввод. UI: [[KeybindSettingsUI]], [[InputHintUI]].
+
+`CameraView` (F6) — вид камеры 1-е / 3-е лицо, добавляется в карту Player из кода (`EnsureCameraViewAction`), есть в окне переназначения.

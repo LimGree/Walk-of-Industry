@@ -63,8 +63,8 @@ public static class TestYard
             ResearchSystem.Instance.CompleteAllResearch(false);
         if (PlayerWallet.Instance != null)
         {
-            PlayerWallet.Instance.AddCoins(500000);
-            PlayerWallet.Instance.AddRubies(999);
+            PlayerWallet.Instance.AddCoins(500000, MoneySource.Cheat);
+            PlayerWallet.Instance.AddRubies(999, MoneySource.Cheat);
         }
 
         Vector2Int o = FindPad();

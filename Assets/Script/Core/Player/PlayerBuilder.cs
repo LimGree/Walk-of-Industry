@@ -264,13 +264,7 @@ public class PlayerBuilder : MonoBehaviour
         if (playerCamera == null || GridSystem.Instance == null)
             return false;
 
-        Ray ray = new Ray(playerCamera.transform.position, playerCamera.transform.forward);
-        if (!Physics.Raycast(ray, out RaycastHit hit, maxBuildDistance, demolishLayer))
-            return false;
-        if (IsStrokeGhost(hit.transform))
-            return false;
-
-        BuildingBase building = hit.collider.GetComponentInParent<BuildingBase>();
+        BuildingBase building = BuildingUnderCrosshair();
         if (building == null)
             return false;
         if (building is UndergroundConveyor)
@@ -471,7 +465,7 @@ public class PlayerBuilder : MonoBehaviour
         }
 
         Ray ray = new Ray(playerCamera.transform.position, playerCamera.transform.forward);
-        if (!Physics.Raycast(ray, out RaycastHit hit, maxBuildDistance, buildLayer))
+        if (!Physics.Raycast(ray, out RaycastHit hit, maxBuildDistance + PlayerMovement.ReachBonus, buildLayer))
         {
             canPlace = false;
             ClearPlacementTarget();
@@ -785,7 +779,7 @@ public class PlayerBuilder : MonoBehaviour
             return false;
 
         Ray ray = new Ray(playerCamera.transform.position, playerCamera.transform.forward);
-        if (!Physics.Raycast(ray, out RaycastHit hit, maxBuildDistance, buildLayer))
+        if (!Physics.Raycast(ray, out RaycastHit hit, maxBuildDistance + PlayerMovement.ReachBonus, buildLayer))
             return false;
 
         CurrentPlacementPosition = SnapToGrid(hit.point);
@@ -1271,6 +1265,7 @@ public class PlayerBuilder : MonoBehaviour
                 GameAudio.World("world_place_belt", soundPos);
             else
                 GameAudio.World("world_place", soundPos);
+            PlayerAvatar.PlayAction();
         }
 
         BuildUndo.End();
@@ -1281,6 +1276,8 @@ public class PlayerBuilder : MonoBehaviour
     {
         int cost = 0;
         var paidPairs = new HashSet<int>();
+        // Цена станка растёт с количеством — каждый следующий в линии дороже.
+        var queued = new Dictionary<BuildingData, int>();
         for (int i = 0; i < strokeSlots.Count; i++)
         {
             LineSlot slot = strokeSlots[i];
@@ -1291,7 +1288,10 @@ public class PlayerBuilder : MonoBehaviour
                     continue;
             }
 
-            cost += Economy.BuildCost(data);
+            queued.TryGetValue(data, out int before);
+            cost += Economy.BuildCost(data, before);
+            if (data != null)
+                queued[data] = before + 1;
         }
 
         return cost;
@@ -1335,7 +1335,7 @@ public class PlayerBuilder : MonoBehaviour
             return;
 
         int cost = Economy.BuildCost(data);
-        if (PlayerWallet.Instance != null && !PlayerWallet.Instance.TrySpendCoins(cost))
+        if (PlayerWallet.Instance != null && !PlayerWallet.Instance.TrySpendCoins(cost, MoneySource.Build))
         {
             NotifyNoMoney(cost);
             GameAudio.World("world_invalid", entrance.pos);
@@ -1389,7 +1389,7 @@ public class PlayerBuilder : MonoBehaviour
             return false;
 
         int cost = Economy.BuildCost(data);
-        if (PlayerWallet.Instance != null && !PlayerWallet.Instance.TrySpendCoins(cost))
+        if (PlayerWallet.Instance != null && !PlayerWallet.Instance.TrySpendCoins(cost, MoneySource.Build))
         {
             GameAudio.World("world_invalid", placePos);
             return false;
@@ -1427,20 +1427,60 @@ public class PlayerBuilder : MonoBehaviour
         GridFootprint.Register(obj, obj.transform.position, size);
     }
 
-    void TryDemolish()
+    static readonly RaycastHit[] crosshairHits = new RaycastHit[16];
+
+    /// <summary>
+    /// Поставленное здание под прицелом. Луч идёт по зданиям и земле, мимо триггеров и призраков стройки.
+    /// Коллайдер ленты уже клетки (72%), и луч у края ленты уходил в щель — тогда здание берётся
+    /// по клетке сетки в точке попадания в землю.
+    /// </summary>
+    BuildingBase BuildingUnderCrosshair()
     {
         if (playerCamera == null)
-            return;
+            return null;
 
         Ray ray = new Ray(playerCamera.transform.position, playerCamera.transform.forward);
-        if (!Physics.Raycast(ray, out RaycastHit hit, maxBuildDistance, demolishLayer))
-            return;
+        int count = Physics.RaycastNonAlloc(ray, crosshairHits, maxBuildDistance + PlayerMovement.ReachBonus, demolishLayer | buildLayer, QueryTriggerInteraction.Ignore);
+        System.Array.Sort(crosshairHits, 0, count, HitDistanceComparer.Instance);
+        for (int i = 0; i < count; i++)
+        {
+            RaycastHit hit = crosshairHits[i];
+            if (hit.collider == null || IsStrokeGhost(hit.transform))
+                continue;
 
-        BuildingBase building = hit.collider.GetComponentInParent<BuildingBase>();
+            BuildingBase building = hit.collider.GetComponentInParent<BuildingBase>();
+            if (building != null)
+            {
+                if (building.IsPlaced)
+                    return building;
+                continue;
+            }
+
+            // Земля или что-то не-здание: смотрим, какое здание занимает эту клетку.
+            GameObject occupant = GridOccupancy.GetAt(BuildingLinker.WorldToCell(hit.point));
+            if (occupant == null)
+                return null;
+            BuildingBase atCell = occupant.GetComponent<BuildingBase>();
+            return atCell != null && atCell.IsPlaced ? atCell : null;
+        }
+
+        return null;
+    }
+
+    sealed class HitDistanceComparer : IComparer<RaycastHit>
+    {
+        public static readonly HitDistanceComparer Instance = new HitDistanceComparer();
+        public int Compare(RaycastHit a, RaycastHit b) => a.distance.CompareTo(b.distance);
+    }
+
+    void TryDemolish()
+    {
+        BuildingBase building = BuildingUnderCrosshair();
         if (building == null)
             return;
 
         GameAudio.World("world_demolish", building.transform.position);
+        PlayerAvatar.PlayAction();
         BuildUndo.NoteRemoved(building);
         Economy.PayRefund(building);
         building.OnRemoved();

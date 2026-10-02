@@ -14,6 +14,7 @@ public class MainMenu : MonoBehaviour
     VisualElement settings;
     VisualElement worlds;
     VisualElement create;
+    VisualElement character;
     ScrollView worldList;
     TextField nameField;
     TextField seedField;
@@ -107,6 +108,7 @@ public class MainMenu : MonoBehaviour
         continueBtn.RegisterCallback<PointerDownEvent>(OnContinuePointer, TrickleDown.TrickleDown);
         home.Add(continueBtn);
         home.Add(IndustryUi.Btn(UiLocale.T("menu.worlds"), ShowWorlds));
+        home.Add(IndustryUi.Btn(UiLocale.T("avatar.title"), ShowCharacter));
         home.Add(IndustryUi.Btn(UiLocale.T("menu.settings"), ShowSettings));
         home.Add(IndustryUi.Btn(UiLocale.T("menu.exit"), Quit, "btn-ghost"));
         bg.Add(home);
@@ -141,6 +143,9 @@ public class MainMenu : MonoBehaviour
         create.Add(IndustryUi.Btn(UiLocale.T("menu.back"), ShowWorlds, "btn-ghost"));
         bg.Add(create);
 
+        character = MenuPanel("Character");
+        bg.Add(character);
+
         settings = MenuPanel("Settings");
         settings.AddToClassList("settings-shell");
         SettingsHub.HostVisibility = null;
@@ -153,6 +158,8 @@ public class MainMenu : MonoBehaviour
             ShowWorlds();
         else if (page == "create")
             ShowCreate();
+        else if (page == "character")
+            ShowCharacter();
         else
             ShowHome();
     }
@@ -165,6 +172,8 @@ public class MainMenu : MonoBehaviour
             return "worlds";
         if (create != null && create.resolvedStyle.display == DisplayStyle.Flex)
             return "create";
+        if (character != null && character.resolvedStyle.display == DisplayStyle.Flex)
+            return "character";
         return "home";
     }
 
@@ -181,6 +190,13 @@ public class MainMenu : MonoBehaviour
         SettingsHub.HostVisibility = null;
         SettingsHub.Fill(settings, ShowHome, SettingsHub.CurrentTab);
         IndustryUi.Show(settings, true);
+    }
+
+    void ShowCharacter()
+    {
+        HideAll();
+        CharacterScreen.Fill(character, ShowHome);
+        IndustryUi.Show(character, true);
     }
 
     void ShowHome()
@@ -212,6 +228,8 @@ public class MainMenu : MonoBehaviour
         IndustryUi.Show(settings, false);
         IndustryUi.Show(worlds, false);
         IndustryUi.Show(create, false);
+        IndustryUi.Show(character, false);
+        CharacterScreen.Release(character);
     }
 
     void PlayWorld(WorldInfo world)

@@ -817,7 +817,7 @@ public class BuildSelectionController : MonoBehaviour
             return;
         }
 
-        int cost = Economy.BuildCost(data) * count;
+        int cost = Economy.BuildCostBatch(data, count);
         UiModal.Confirm(
             UiLocale.T("select.extractors_title"),
             UiLocale.T("select.extractors_body", count, cost),
@@ -857,7 +857,10 @@ public class BuildSelectionController : MonoBehaviour
         BuildUndo.End();
 
         if (placed > 0)
+        {
             GameAudio.World("world_place", sound);
+            PlayerAvatar.PlayAction();
+        }
         else
             GameAudio.World("world_invalid", builder.transform.position);
         RefreshSelectedBuildings();
@@ -1114,57 +1117,90 @@ public class BuildSelectionController : MonoBehaviour
         if (preview.Count == 0)
             return;
 
-        Vector2 pivot = PreviewPivot();
+        RectInt bounds = default;
+        for (int i = 0; i < preview.Count; i++)
+        {
+            PreviewItem item = preview[i];
+            RectInt r = new RectInt(item.minOffset, GridFootprint.GetRotatedSize(item.data.size, item.yaw));
+            bounds = i == 0 ? r : Encapsulate(bounds, r);
+        }
+
         for (int i = 0; i < preview.Count; i++)
         {
             PreviewItem item = preview[i];
             Vector2Int oldSize = GridFootprint.GetRotatedSize(item.data.size, item.yaw);
-            Vector2 center = new Vector2(
-                item.minOffset.x + (oldSize.x - 1) * 0.5f,
-                item.minOffset.y + (oldSize.y - 1) * 0.5f);
-            item.yaw += 90f;
-            Vector2Int newSize = GridFootprint.GetRotatedSize(item.data.size, item.yaw);
-
-            if (!inPlace)
-            {
-                Vector2 rel = center - pivot;
-                center = pivot + new Vector2(rel.y, -rel.x);
-            }
-
-            item.minOffset = new Vector2Int(
-                Mathf.RoundToInt(center.x - (newSize.x - 1) * 0.5f),
-                Mathf.RoundToInt(center.y - (newSize.y - 1) * 0.5f));
+            item.yaw = NextYaw(item.yaw);
+            item.minOffset = inPlace
+                ? RotateInPlaceMin(item.minOffset, oldSize)
+                : RotateMinAround(item.minOffset, oldSize, bounds);
             preview[i] = item;
         }
     }
 
-    Vector2 PreviewPivot()
+    // ---------- Поворот группы на сетке ----------
+    // Всё в целых. Группа поворачивается внутри своей рамки точно, а рамка остаётся на месте
+    // с округлением к нулю: +½ и −½ на соседних поворотах гасятся, четыре поворота возвращают всё как было.
+    // Раньше центры были дробными и округлялись Mathf.RoundToInt (к чётному: 0.5→0, 1.5→2),
+    // соседи разъезжались в разные стороны — дыры и наложения, а группа уползала.
+
+    static float NextYaw(float yaw)
     {
-        int minX = int.MaxValue, minZ = int.MaxValue, maxX = int.MinValue, maxZ = int.MinValue;
-        for (int i = 0; i < preview.Count; i++)
-        {
-            PreviewItem item = preview[i];
-            Vector2Int size = GridFootprint.GetRotatedSize(item.data.size, item.yaw);
-            minX = Mathf.Min(minX, item.minOffset.x);
-            minZ = Mathf.Min(minZ, item.minOffset.y);
-            maxX = Mathf.Max(maxX, item.minOffset.x + size.x - 1);
-            maxZ = Mathf.Max(maxZ, item.minOffset.y + size.y - 1);
-        }
-        return new Vector2((minX + maxX) * 0.5f, (minZ + maxZ) * 0.5f);
+        return Mathf.Repeat(Mathf.Round(yaw / 90f) * 90f + 90f, 360f);
+    }
+
+    static RectInt Encapsulate(RectInt a, RectInt b)
+    {
+        int minX = Mathf.Min(a.xMin, b.xMin), minY = Mathf.Min(a.yMin, b.yMin);
+        int maxX = Mathf.Max(a.xMax, b.xMax), maxY = Mathf.Max(a.yMax, b.yMax);
+        return new RectInt(minX, minY, maxX - minX, maxY - minY);
+    }
+
+    /// <summary>Поворот прямоугольника клеток группы на 90° по часовой (как yaw +90).</summary>
+    static Vector2Int RotateMinAround(Vector2Int min, Vector2Int size, RectInt bounds)
+    {
+        int w = bounds.width, h = bounds.height;
+        // Целочисленное деление в C# округляет к нулю — сдвиг рамки симметричен.
+        int newBoundsX = bounds.xMin + (w - h) / 2;
+        int newBoundsZ = bounds.yMin + (h - w) / 2;
+        int rx = min.x - bounds.xMin;
+        int rz = min.y - bounds.yMin;
+        // (x, z) -> (z, -x) внутри рамки
+        return new Vector2Int(newBoundsX + rz, newBoundsZ + w - rx - size.x);
+    }
+
+    /// <summary>Поворот на месте: центр тот же, полклетки округляются к нулю — туда и обратно без сдвига.</summary>
+    static Vector2Int RotateInPlaceMin(Vector2Int min, Vector2Int size)
+    {
+        return new Vector2Int(
+            min.x + (size.x - size.y) / 2,
+            min.y + (size.y - size.x) / 2);
     }
 
     void RotateSelectionAroundCenter()
     {
         if (!TryPlanSelectionRotate(inPlace: false, out List<Planned> planned))
+        {
+            RotateDenied();
             return;
+        }
         ApplyPlanned(planned);
     }
 
-    void RotateSelectionInPlace()
+    bool RotateSelectionInPlace()
     {
         if (!TryPlanSelectionRotate(inPlace: true, out List<Planned> planned))
-            return;
+        {
+            RotateDenied();
+            return false;
+        }
         ApplyPlanned(planned);
+        return true;
+    }
+
+    void RotateDenied()
+    {
+        if (builder != null)
+            GameAudio.World("world_invalid", builder.transform.position);
     }
 
     struct Planned
@@ -1182,35 +1218,45 @@ public class BuildSelectionController : MonoBehaviour
         if (selectedBuildings.Count == 0)
             return false;
 
-        Vector2 pivot = SelectionPivot();
         var ignore = new HashSet<GameObject>();
+        RectInt bounds = default;
         for (int i = 0; i < selectedBuildings.Count; i++)
-            ignore.Add(selectedBuildings[i].gameObject);
+        {
+            BuildingBase b = selectedBuildings[i];
+            ignore.Add(b.gameObject);
+            Vector2Int size = b.FootprintSize;
+            RectInt r = new RectInt(GridFootprint.GetMinCell(b.transform.position, size), size);
+            bounds = i == 0 ? r : Encapsulate(bounds, r);
+        }
 
         for (int i = 0; i < selectedBuildings.Count; i++)
         {
             BuildingBase b = selectedBuildings[i];
             Vector2Int oldSize = b.FootprintSize;
             Vector2Int oldMin = GridFootprint.GetMinCell(b.transform.position, oldSize);
-            Vector2 center = new Vector2(
-                oldMin.x + (oldSize.x - 1) * 0.5f,
-                oldMin.y + (oldSize.y - 1) * 0.5f);
-
-            float yaw = b.transform.eulerAngles.y + 90f;
+            float yaw = NextYaw(b.transform.eulerAngles.y);
             Vector2Int size = GridFootprint.GetRotatedSize(
                 b.data != null ? b.data.size : Vector2Int.one, yaw);
-
-            if (!inPlace)
-            {
-                Vector2 rel = center - pivot;
-                center = pivot + new Vector2(rel.y, -rel.x);
-            }
-
-            Vector2Int min = new Vector2Int(
-                Mathf.RoundToInt(center.x - (size.x - 1) * 0.5f),
-                Mathf.RoundToInt(center.y - (size.y - 1) * 0.5f));
+            Vector2Int min = inPlace
+                ? RotateInPlaceMin(oldMin, oldSize)
+                : RotateMinAround(oldMin, oldSize, bounds);
             Vector3 pos = GridFootprint.MinCellToCenter(min, size, b.transform.position.y);
             planned.Add(new Planned { building = b, pos = pos, yaw = yaw, min = min, size = size });
+        }
+
+        // Выделенные здания не должны наложиться друг на друга (на месте 2×1 рядом с 2×1 — легко).
+        var taken = new HashSet<Vector2Int>();
+        for (int i = 0; i < planned.Count; i++)
+        {
+            Planned p = planned[i];
+            for (int x = 0; x < p.size.x; x++)
+            {
+                for (int z = 0; z < p.size.y; z++)
+                {
+                    if (!taken.Add(p.min + new Vector2Int(x, z)))
+                        return false;
+                }
+            }
         }
 
         for (int i = 0; i < planned.Count; i++)
@@ -1227,23 +1273,6 @@ public class BuildSelectionController : MonoBehaviour
         return true;
     }
 
-    Vector2 SelectionPivot()
-    {
-        int minX = int.MaxValue, minZ = int.MaxValue, maxX = int.MinValue, maxZ = int.MinValue;
-        bool any = false;
-        foreach (Vector2Int cell in selectedCells)
-        {
-            any = true;
-            minX = Mathf.Min(minX, cell.x);
-            minZ = Mathf.Min(minZ, cell.y);
-            maxX = Mathf.Max(maxX, cell.x);
-            maxZ = Mathf.Max(maxZ, cell.y);
-        }
-        if (!any)
-            return Vector2.zero;
-        return new Vector2((minX + maxX) * 0.5f, (minZ + maxZ) * 0.5f);
-    }
-
     void ApplyPlanned(List<Planned> planned)
     {
         selectedCells.Clear();
@@ -1258,7 +1287,6 @@ public class BuildSelectionController : MonoBehaviour
             float oldYaw = p.building.transform.eulerAngles.y;
             p.building.transform.SetPositionAndRotation(p.pos, Quaternion.Euler(0f, p.yaw, 0f));
             p.building.ReRegisterOnGrid();
-            p.building.OnRotated();
             BuildUndo.NoteEdit(p.building, oldPos, oldYaw);
             for (int x = 0; x < p.size.x; x++)
             {
@@ -1266,6 +1294,9 @@ public class BuildSelectionController : MonoBehaviour
                     selectedCells.Add(p.min + new Vector2Int(x, z));
             }
         }
+        // Связи — когда вся группа уже на новых местах, иначе лента цеплялась к соседу на старой позиции.
+        for (int i = 0; i < planned.Count; i++)
+            planned[i].building.OnRotated();
         BuildUndo.End();
     }
 
@@ -1316,8 +1347,7 @@ public class BuildSelectionController : MonoBehaviour
     {
         if (!selectionMode || selectedBuildings.Count == 0)
             return false;
-        RotateSelectionInPlace();
-        if (builder != null)
+        if (RotateSelectionInPlace() && builder != null)
             GameAudio.World("world_rotate", builder.transform.position);
         return true;
     }

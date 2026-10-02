@@ -322,7 +322,7 @@ public class WalletHud : MonoBehaviour
         string name = data.Title;
         int count = builder.PreviewBuildCount;
         if (builder.IsLineStrokeActive && count > 1)
-            buildCostText.text = UiLocale.T("hud.build_line", name, count, IndustryUi.Money(unit * count));
+            buildCostText.text = UiLocale.T("hud.build_line", name, count, IndustryUi.Money(Economy.BuildCostBatch(data, count)));
         else
             buildCostText.text = UiLocale.T("hud.build_cost", name, IndustryUi.Money(unit));
         IndustryUi.Show(buildCostText, true);

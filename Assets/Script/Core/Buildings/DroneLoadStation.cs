@@ -109,7 +109,7 @@ public class DroneLoadStation : BuildingBase, IInteractable
     {
         if (!CanBuyDrone || PlayerWallet.Instance == null)
             return false;
-        if (!PlayerWallet.Instance.TrySpendRubies(NextDronePrice))
+        if (!PlayerWallet.Instance.TrySpendRubies(NextDronePrice, MoneySource.Drones))
             return false;
         ownedDrones++;
         EnsureDrones();

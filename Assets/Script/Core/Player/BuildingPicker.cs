@@ -62,7 +62,7 @@ public class BuildingPicker : MonoBehaviour
             return;
 
         var ray = new Ray(cam.transform.position, cam.transform.forward);
-        if (!Physics.Raycast(ray, out RaycastHit hit, builder.maxBuildDistance, ~0, QueryTriggerInteraction.Ignore))
+        if (!PlayerMovement.AimRaycast(ray, out RaycastHit hit, builder.maxBuildDistance + PlayerMovement.ReachBonus, ~0, QueryTriggerInteraction.Ignore))
             return;
 
         BuildingBase source = hit.collider.GetComponentInParent<BuildingBase>();

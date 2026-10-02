@@ -86,7 +86,7 @@ public class BeltSpeedSystem : MonoBehaviour
             return false;
         int gears = NextGearCost;
         int coins = NextCoinCost;
-        if (PlayerWallet.Instance != null && !PlayerWallet.Instance.TrySpendCoins(coins))
+        if (PlayerWallet.Instance != null && !PlayerWallet.Instance.TrySpendCoins(coins, MoneySource.BeltUpgrade))
             return false;
 
         GearsTowardNext -= gears;

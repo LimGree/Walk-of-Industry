@@ -274,6 +274,17 @@ public static class SettingsHub
             () => GameSettings.HeadBob, v => GameSettings.HeadBob = Mathf.Round(v * 20f) / 20f, v => v <= 0.001f ? UiLocale.T("settings.off") : Pct(v)));
         parent.Add(SettingsControls.SliderRow("settings.camera_shake", 0f, 1f,
             () => GameSettings.CameraShake, v => GameSettings.CameraShake = Mathf.Round(v * 20f) / 20f, v => v <= 0.001f ? UiLocale.T("settings.off") : Pct(v)));
+        parent.Add(SettingsControls.SliderRow("settings.cam_side", -1.5f, 1.5f,
+            () => GameSettings.ThirdPersonSide, v => GameSettings.ThirdPersonSide = Mathf.Round(v * 20f) / 20f, v => Side(v)));
+    }
+
+    /// <summary>Сдвиг камеры вбок: «по центру», «0.75 м →», «← 0.5 м».</summary>
+    static string Side(float v)
+    {
+        if (Mathf.Abs(v) < 0.025f)
+            return UiLocale.T("settings.center");
+        string m = Mathf.Abs(v).ToString("0.##") + " " + UiLocale.T("settings.unit_m");
+        return v > 0f ? m + " →" : "← " + m;
     }
 
     static void FillInterface(VisualElement parent)

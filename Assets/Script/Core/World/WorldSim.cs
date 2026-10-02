@@ -16,6 +16,9 @@ public class WorldSim : MonoBehaviour
     readonly HashSet<BuildingBase> buildingSet = new HashSet<BuildingBase>();
     readonly HashSet<Conveyor> beltSet = new HashSet<Conveyor>();
     readonly HashSet<Splitter> splitterSet = new HashSet<Splitter>();
+    // Сколько стоит зданий каждого типа — для роста цены станков (Economy.BuildCost).
+    readonly Dictionary<BuildingData, int> countByData = new Dictionary<BuildingData, int>(32);
+    readonly Dictionary<BuildingBase, BuildingData> countedAs = new Dictionary<BuildingBase, BuildingData>(256);
     readonly Dictionary<Vector2Int, List<BuildingBase>> buckets = new Dictionary<Vector2Int, List<BuildingBase>>(64);
     readonly HashSet<Vector2Int> lastVisible = new HashSet<Vector2Int>();
     readonly List<Vector2Int> visibleScratch = new List<Vector2Int>(32);
@@ -27,6 +30,32 @@ public class WorldSim : MonoBehaviour
 
     /// <summary>Все поставленные здания (реестр, без поиска по сцене). Могут встречаться уничтоженные — проверяй на null.</summary>
     public static IReadOnlyList<BuildingBase> Buildings => instance != null ? instance.buildings : (IReadOnlyList<BuildingBase>)EmptyList;
+
+    /// <summary>Сколько поставлено зданий этого типа.</summary>
+    public static int CountOf(BuildingData data)
+    {
+        if (instance == null || data == null)
+            return 0;
+        return instance.countByData.TryGetValue(data, out int n) ? n : 0;
+    }
+
+    void Count(BuildingBase building, int delta)
+    {
+        BuildingData data;
+        if (delta > 0)
+        {
+            data = building.data;
+            if (data == null)
+                return;
+            countedAs[building] = data;
+        }
+        else if (!countedAs.TryGetValue(building, out data))
+            return;
+        else
+            countedAs.Remove(building);
+        countByData.TryGetValue(data, out int n);
+        countByData[data] = Mathf.Max(0, n + delta);
+    }
 
     public static WorldSim Ensure()
     {
@@ -68,6 +97,7 @@ public class WorldSim : MonoBehaviour
             return;
         }
         sim.buildings.Add(building);
+        sim.Count(building, +1);
         sim.AddToBucket(building);
     }
 
@@ -76,7 +106,10 @@ public class WorldSim : MonoBehaviour
         if (instance == null || building == null)
             return;
         if (instance.buildingSet.Remove(building))
+        {
             instance.buildings.Remove(building);
+            instance.Count(building, -1);
+        }
         instance.RemoveFromBucket(building);
         instance.buildingBucket.Remove(building);
     }

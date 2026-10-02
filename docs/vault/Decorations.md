@@ -38,3 +38,5 @@
 ## Как поменять модель
 
 Правка `wi_decor.py` → `python wi_decor.py "<проект>" [id ...]` (без id — все + манифест). Новые цвета палитры (`wi_leaf`, `wi_wood`, `wi_gold`, `wi_paint`, `wi_warm`, `wi_neon`, `wi_holo` и др.) пишутся в `Resources/Models/Materials`, старые не трогаются. Подвижные части — объекты, перечисленные в `reg(..., parts=[...])`, с центром вращения.
+
+**Ребаланс:** рубиновая цена декора ×20 (`DecorCatalog.RubyPriceScale`), монетная установка ×2 (через `Economy.BuildCost`, без роста с количеством). Свет фонарей декора ложится на землю ([[GroundLights]]).

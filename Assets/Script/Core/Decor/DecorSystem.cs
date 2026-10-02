@@ -174,7 +174,7 @@ public class DecorSystem : MonoBehaviour
         if (def == null || OfferFor(def) != Offer.Buy)
             return false;
         int price = Price(def);
-        if (PlayerWallet.Instance == null || !PlayerWallet.Instance.TrySpendRubies(price))
+        if (PlayerWallet.Instance == null || !PlayerWallet.Instance.TrySpendRubies(price, MoneySource.Decor))
             return false;
         owned.Add(def.id);
         UiAudio.PlayConfirm();
@@ -288,7 +288,7 @@ public class DecorSystem : MonoBehaviour
             if (total == 0 || have < total || !claims.Add(key))
                 continue;
             if (PlayerWallet.Instance != null)
-                PlayerWallet.Instance.AddRubies(SetRewards[i]);
+                PlayerWallet.Instance.AddRubies(SetRewards[i], MoneySource.DecorReward);
             if (toast)
             {
                 UiAudio.PlayNotify();
@@ -364,7 +364,7 @@ public class DecorSystem : MonoBehaviour
             if (!claims.Add("beauty_" + BeautySteps[i]))
                 continue;
             if (PlayerWallet.Instance != null)
-                PlayerWallet.Instance.AddRubies(BeautyRewards[i]);
+                PlayerWallet.Instance.AddRubies(BeautyRewards[i], MoneySource.DecorReward);
             UiAudio.PlayNotify();
             UiNotification.Push(NotifyKind.Achievement, DecorText.T("decor.toast_beauty", BeautySteps[i]),
                 DecorText.T("decor.toast_beauty_body", BeautyRewards[i]), UiStatus.Completed);

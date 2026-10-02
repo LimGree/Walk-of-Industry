@@ -142,7 +142,7 @@ public class Decoration : BuildingBase, IInteractable
         if (!CanInteract)
             return;
         int cost = DecorSystem.TintCost;
-        if (cost > 0 && PlayerWallet.Instance != null && !PlayerWallet.Instance.TrySpendCoins(cost))
+        if (cost > 0 && PlayerWallet.Instance != null && !PlayerWallet.Instance.TrySpendCoins(cost, MoneySource.Decor))
         {
             UiAudio.PlayError();
             UiNotification.Push(NotifyKind.Resources, DecorText.T("decor.no_money_tint"),

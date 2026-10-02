@@ -28,6 +28,7 @@ public class MachineUI : MonoBehaviour
     Button tabRecipes;
     Button tabBelts;
     Button tabStats;
+    Button tabEconomy;
     Button tabIdle;
     VisualElement bodyHost;
     ScrollView bodyList;
@@ -35,6 +36,7 @@ public class MachineUI : MonoBehaviour
     VisualElement recipePage;
     VisualElement beltPage;
     VisualElement statsPage;
+    VisualElement economyPage;
     VisualElement idlePage;
     ScrollView idleList;
     VisualElement researchView;
@@ -45,6 +47,7 @@ public class MachineUI : MonoBehaviour
     ScrollView recipeList;
     ScrollView beltList;
     ScrollView statsList;
+    ScrollView economyList;
     VisualElement storageGrid;
     VisualElement storageScroll;
     Label storageSummary;
@@ -72,6 +75,7 @@ public class MachineUI : MonoBehaviour
     const int TabBelts = 2;
     const int TabStats = 3;
     const int TabIdle = 4;
+    const int TabEconomy = 5;
 
     void Awake()
     {
@@ -175,11 +179,13 @@ public class MachineUI : MonoBehaviour
         tabRecipes = IndustryUi.TabBtn(UiLocale.T("machine.tab_recipes"), () => OpenLabTab(TabRecipes));
         tabBelts = IndustryUi.TabBtn(UiLocale.T("machine.tab_belts"), () => OpenLabTab(TabBelts));
         tabStats = IndustryUi.TabBtn(UiLocale.T("machine.tab_stats"), () => OpenLabTab(TabStats));
+        tabEconomy = IndustryUi.TabBtn(UiLocale.T("machine.tab_economy"), () => OpenLabTab(TabEconomy));
         tabIdle = IndustryUi.TabBtn(UiLocale.T("machine.tab_idle"), () => OpenLabTab(TabIdle));
         tabRow.Add(tabResearch);
         tabRow.Add(tabRecipes);
         tabRow.Add(tabBelts);
         tabRow.Add(tabStats);
+        tabRow.Add(tabEconomy);
         tabRow.Add(tabIdle);
         if (header != null)
             panel.Insert(panel.IndexOf(progress) + 1, tabRow);
@@ -240,6 +246,10 @@ public class MachineUI : MonoBehaviour
         statsList = IndustryUi.Scroll("StatsList");
         statsPage.Add(statsList);
 
+        economyPage = IndustryUi.El("EconomyPage", "col", "grow");
+        economyList = IndustryUi.Scroll("EconomyList");
+        economyPage.Add(economyList);
+
         idlePage = IndustryUi.El("IdlePage", "col", "grow");
         idleList = IndustryUi.Scroll("IdleList");
         idlePage.Add(idleList);
@@ -271,6 +281,7 @@ public class MachineUI : MonoBehaviour
         bodyHost.Add(recipePage);
         bodyHost.Add(beltPage);
         bodyHost.Add(statsPage);
+        bodyHost.Add(economyPage);
         bodyHost.Add(idlePage);
         bodyHost.Add(storageSummary);
         bodyHost.Add(storageScroll);
@@ -512,6 +523,7 @@ public class MachineUI : MonoBehaviour
         IndustryUi.Show(recipePage, false);
         IndustryUi.Show(beltPage, false);
         IndustryUi.Show(statsPage, false);
+        IndustryUi.Show(economyPage, false);
         IndustryUi.Show(idlePage, false);
         IndustryUi.Show(storageSummary, false);
         IndustryUi.Show(storageScroll, false);
@@ -663,12 +675,12 @@ public class MachineUI : MonoBehaviour
         if (building == null || !building.CanUpgradeBuilding)
             return false;
         int cost = Economy.UpgradeCost(building);
-        if (PlayerWallet.Instance != null && !PlayerWallet.Instance.TrySpendCoins(cost))
+        if (PlayerWallet.Instance != null && !PlayerWallet.Instance.TrySpendCoins(cost, MoneySource.Upgrade))
             return false;
         if (building.TryUpgradeBuilding())
             return true;
         if (PlayerWallet.Instance != null)
-            PlayerWallet.Instance.AddCoins(cost);
+            PlayerWallet.Instance.AddCoins(cost, MoneySource.Upgrade);
         return false;
     }
 
@@ -947,6 +959,8 @@ public class MachineUI : MonoBehaviour
                 RebuildBeltTree();
             else if (labTab == TabIdle)
                 RebuildIdleList();
+            else if (labTab == TabEconomy)
+                RebuildEconomyList();
             else
                 RebuildStatsList();
             return;
@@ -966,11 +980,13 @@ public class MachineUI : MonoBehaviour
         IndustryUi.Show(recipePage, tab == TabRecipes);
         IndustryUi.Show(beltPage, tab == TabBelts);
         IndustryUi.Show(statsPage, tab == TabStats);
+        IndustryUi.Show(economyPage, tab == TabEconomy);
         IndustryUi.Show(idlePage, tab == TabIdle);
         IndustryUi.SetOn(tabResearch, tab == TabResearch, "tab-on");
         IndustryUi.SetOn(tabRecipes, tab == TabRecipes, "tab-on");
         IndustryUi.SetOn(tabBelts, tab == TabBelts, "tab-on");
         IndustryUi.SetOn(tabStats, tab == TabStats, "tab-on");
+        IndustryUi.SetOn(tabEconomy, tab == TabEconomy, "tab-on");
         IndustryUi.SetOn(tabIdle, tab == TabIdle, "tab-on");
 
         if (tab == TabResearch)
@@ -981,6 +997,8 @@ public class MachineUI : MonoBehaviour
             RebuildBeltTree();
         else if (tab == TabIdle)
             RebuildIdleList();
+        else if (tab == TabEconomy)
+            RebuildEconomyList();
         else
             RebuildStatsList();
     }
@@ -1298,6 +1316,82 @@ public class MachineUI : MonoBehaviour
         nextStatsRefresh = Time.unscaledTime + 0.6f;
     }
 
+    /// <summary>Вкладка «Экономика»: график по минутам, доходы/расходы по источникам, содержание, рынок лабы.</summary>
+    void RebuildEconomyList()
+    {
+        if (economyList == null)
+            return;
+        economyList.Clear();
+
+        const int recent = 10;
+        float win = EconomyLedger.WindowMinutes(recent);
+        int inRecent = 0, outRecent = 0;
+        var rows = new List<(MoneySource src, int ci, int co, int si, int so, int ri, int ro)>();
+        foreach (MoneySource src in System.Enum.GetValues(typeof(MoneySource)))
+        {
+            EconomyLedger.Sum(src, recent, out int ci, out int co, out int _, out int _);
+            EconomyLedger.Sum(src, 0, out int si, out int so, out int ri, out int ro);
+            inRecent += ci;
+            outRecent += co;
+            if (si != 0 || so != 0 || ri != 0 || ro != 0)
+                rows.Add((src, ci, co, si, so, ri, ro));
+        }
+        rows.Sort((x, y) => (Mathf.Abs(y.si) + Mathf.Abs(y.so)).CompareTo(Mathf.Abs(x.si) + Mathf.Abs(x.so)));
+
+        economyList.Add(IndustryUi.Text("EconSummary", UiLocale.T("econ.summary",
+            Mathf.RoundToInt(inRecent / win), Mathf.RoundToInt(outRecent / win)), "body-text"));
+        economyList.Add(new EconomyGraph());
+        economyList.Add(IndustryUi.Text("EconLegend", UiLocale.T("econ.legend", EconomyGraph.Window), "caption", "econ-legend"));
+
+        economyList.Add(IndustryUi.Text("SrcTitle", UiLocale.T("econ.sources"), "label-caps"));
+        if (rows.Count == 0)
+            economyList.Add(IndustryUi.Text("SrcEmpty", UiLocale.T("econ.empty"), "caption"));
+        for (int i = 0; i < rows.Count; i++)
+        {
+            var row = rows[i];
+            string detail = UiLocale.T("econ.row", row.ci, row.co, row.si, row.so);
+            if (row.ri != 0 || row.ro != 0)
+                detail += "   ·   " + UiLocale.T("econ.rubies", row.ri, row.ro);
+            economyList.Add(IndustryUi.StatRow(null, UiLocale.T("econ.src_" + row.src.ToString().ToLowerInvariant()), detail));
+        }
+
+        int buildings = WorldSim.Buildings.Count;
+        economyList.Add(IndustryUi.Text("UpkeepTitle", UiLocale.T("econ.upkeep_title"), "label-caps"));
+        economyList.Add(IndustryUi.StatRow(null, UiLocale.T("econ.upkeep", buildings),
+            UiLocale.T("econ.upkeep_rate", (buildings * Economy.UpkeepPerBuildingPerMinute).ToString("0.#"))));
+        economyList.Add(IndustryUi.Text("PriceHint", UiLocale.T("econ.price_hint",
+            Mathf.RoundToInt(Economy.CountGrowth * 100f)), "caption"));
+
+        economyList.Add(IndustryUi.Text("MarketTitle", UiLocale.T("econ.market"), "label-caps"));
+        economyList.Add(IndustryUi.Text("MarketHint", UiLocale.T("econ.market_hint",
+            Mathf.RoundToInt(LabMarket.FloorMultiplier * 100f)), "caption"));
+        List<ItemData> market = LabMarket.TrackedItems();
+        if (market.Count == 0)
+            economyList.Add(IndustryUi.Text("MarketEmpty", UiLocale.T("econ.market_empty"), "caption"));
+        for (int i = 0; i < market.Count; i++)
+        {
+            ItemData item = market[i];
+            float mul = LabMarket.Multiplier(item);
+            float baseValue = LabMarket.BaseValue(item);
+            var block = IndustryUi.El("Market", "col", "rate-block");
+            block.Add(IndustryUi.StatRow(item.icon, item.Title,
+                UiLocale.T("econ.market_row", Price(baseValue), Price(baseValue * mul), Mathf.RoundToInt(mul * 100f))));
+            var track = IndustryUi.El("Track", "rate-track");
+            var fill = IndustryUi.El("Fill", "rate-fill", mul > 0.5f ? "rate-fill-up" : "rate-fill-down");
+            fill.style.width = Length.Percent(mul * 100f);
+            track.Add(fill);
+            block.Add(track);
+            economyList.Add(block);
+        }
+
+        nextStatsRefresh = Time.unscaledTime + 0.6f;
+    }
+
+    static string Price(float coins)
+    {
+        return coins >= 10f ? coins.ToString("0") : coins.ToString("0.##");
+    }
+
     void AddMoneyStat(Sprite icon, string name, int now, float plusMin, float minusMin, int gained, int spent)
     {
         string perMin = UiLocale.T("unit.per_min");
@@ -1339,6 +1433,8 @@ public class MachineUI : MonoBehaviour
 
             if (labTab == TabStats && Time.unscaledTime >= nextStatsRefresh)
                 RebuildStatsList();
+            if (labTab == TabEconomy && Time.unscaledTime >= nextStatsRefresh)
+                RebuildEconomyList();
             if (labTab == TabIdle && Time.unscaledTime >= nextStatsRefresh)
                 RebuildIdleList();
         }

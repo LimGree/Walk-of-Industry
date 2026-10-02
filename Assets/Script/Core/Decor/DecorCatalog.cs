@@ -367,6 +367,8 @@ public static class DecorCatalog
 
     // ---------- Таблица ----------
 
+    const int RubyPriceScale = 20;
+
     static Def D(string id, Cat cat, int sx, int sz, int rubies, int coins, float beauty,
         string ru, string en, string ruDesc, string enDesc)
     {
@@ -375,7 +377,8 @@ public static class DecorCatalog
             id = id,
             cat = cat,
             size = new Vector2Int(sx, sz),
-            rubies = rubies,
+            // Ребаланс: рубиновая цена ×20; монетная установка ×2 идёт через Economy.BuildCost.
+            rubies = rubies * RubyPriceScale,
             coins = coins,
             beauty = beauty,
             ru = ru,

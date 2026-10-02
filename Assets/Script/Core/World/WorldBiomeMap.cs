@@ -1108,6 +1108,14 @@ public class WorldBiomeMap : MonoBehaviour
             Destroy(overlayRoot.GetChild(i).gameObject);
 
         overlayMat = RuntimeMaterials.Create(overlayTexture, Color.white);
+        // Земля принимает свет фонарей, печей и фонарика (см. GroundLights).
+        Shader groundLit = GroundLights.GroundShader;
+        if (groundLit != null)
+        {
+            overlayMat.shader = groundLit;
+            if (overlayRoot.GetComponent<GroundLights>() == null)
+                overlayRoot.gameObject.AddComponent<GroundLights>();
+        }
         if (overlayMat.HasProperty("_WalkUvFog"))
             overlayMat.SetFloat("_WalkUvFog", 0f);
 

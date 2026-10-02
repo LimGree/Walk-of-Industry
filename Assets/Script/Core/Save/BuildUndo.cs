@@ -237,7 +237,7 @@ public static class BuildUndo
 
         int coins = reverse ? -step.coins : step.coins;
         if (coins != 0 && PlayerWallet.Instance != null)
-            PlayerWallet.Instance.AddCoins(coins);
+            PlayerWallet.Instance.AddCoins(coins, MoneySource.Undo);
     }
 
     static void ApplyDirected(BuildingSaveData[] from, BuildingSaveData[] to)

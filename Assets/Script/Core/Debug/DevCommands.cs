@@ -10,6 +10,8 @@ public static class DevCommands
     {
         "/help",
         "/help research",
+        "/economy",
+        "/economy 10",
         "/money add ",
         "/money remove ",
         "/ruby add ",
@@ -228,6 +230,8 @@ public static class DevCommands
                 return Timeskip(p);
             if (a0 == "stat")
                 return Stat(a1);
+            if (a0 == "economy" || a0 == "eco")
+                return EconomyCmd(a1);
             if (a0 == "locate")
                 return Locate(a1, a2);
             if (a0 == "regenworldmap")
@@ -364,6 +368,7 @@ public static class DevCommands
         sb.AppendLine("tp biome <id> | cluster <type> | veins <type>");
         sb.AppendLine("time set morning|day|evening|night|midnight|HH[:MM[:SS]]");
         sb.AppendLine("timeskip HH:MM:SS");
+        sb.AppendLine("economy [минут] — доходы/расходы по источникам");
         sb.AppendLine("stat cluster|veins|biome");
         sb.AppendLine("locate biome|cluster|veins [id]");
         sb.AppendLine("regenWorldMap | belts | conveer speed X | clearcargo | killitems | dump cell");
@@ -429,9 +434,9 @@ public static class DevCommands
             return "no wallet";
         int v = ParseInt(n);
         if (op == "add")
-            PlayerWallet.Instance.AddCoins(v);
+            PlayerWallet.Instance.AddCoins(v, MoneySource.Cheat);
         else if (op == "remove")
-            PlayerWallet.Instance.AddCoins(-v);
+            PlayerWallet.Instance.AddCoins(-v, MoneySource.Cheat);
         else
             return "money add|remove N";
         return "coins " + PlayerWallet.Instance.Coins;
@@ -443,9 +448,9 @@ public static class DevCommands
             return "no wallet";
         int v = ParseInt(n);
         if (op == "add")
-            PlayerWallet.Instance.AddRubies(v);
+            PlayerWallet.Instance.AddRubies(v, MoneySource.Cheat);
         else if (op == "remove")
-            PlayerWallet.Instance.AddRubies(-v);
+            PlayerWallet.Instance.AddRubies(-v, MoneySource.Cheat);
         else
             return "ruby add|remove N";
         return "rubies " + PlayerWallet.Instance.Rubies;
@@ -655,6 +660,14 @@ public static class DevCommands
         return "Tab — подставить. синтаксис: " + best;
     }
 
+    static string EconomyCmd(string arg)
+    {
+        int minutes = 0;
+        if (!string.IsNullOrEmpty(arg) && !int.TryParse(arg, out minutes))
+            return "economy [минут]";
+        return EconomyLedger.Summary(minutes);
+    }
+
     static string Timeskip(string[] p)
     {
         string spec = p.Length >= 2 ? p[1] : "";
@@ -674,7 +687,7 @@ public static class DevCommands
         {
             coinGain = Mathf.Max(0, Mathf.RoundToInt(stats.CoinsPerMinute() * minutes));
             if (coinGain > 0)
-                PlayerWallet.Instance.AddCoins(coinGain);
+                PlayerWallet.Instance.AddCoins(coinGain, MoneySource.Cheat);
         }
 
         int kinds = 0;
