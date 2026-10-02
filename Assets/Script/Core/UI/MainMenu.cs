@@ -143,6 +143,7 @@ public class MainMenu : MonoBehaviour
 
         settings = MenuPanel("Settings");
         settings.AddToClassList("settings-shell");
+        SettingsHub.HostVisibility = null;
         SettingsHub.Fill(settings, ShowHome, SettingsHub.CurrentTab);
         bg.Add(settings);
 
@@ -177,6 +178,7 @@ public class MainMenu : MonoBehaviour
     void ShowSettings()
     {
         HideAll();
+        SettingsHub.HostVisibility = null;
         SettingsHub.Fill(settings, ShowHome, SettingsHub.CurrentTab);
         IndustryUi.Show(settings, true);
     }

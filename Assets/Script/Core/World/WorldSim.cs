@@ -12,12 +12,21 @@ public class WorldSim : MonoBehaviour
     readonly List<BuildingBase> buildings = new List<BuildingBase>(256);
     readonly List<Conveyor> belts = new List<Conveyor>(256);
     readonly List<Splitter> splitters = new List<Splitter>(32);
+    // Проверка «уже зарегистрирован» без List.Contains: на загрузке тысяч лент это было O(n²).
+    readonly HashSet<BuildingBase> buildingSet = new HashSet<BuildingBase>();
+    readonly HashSet<Conveyor> beltSet = new HashSet<Conveyor>();
+    readonly HashSet<Splitter> splitterSet = new HashSet<Splitter>();
     readonly Dictionary<Vector2Int, List<BuildingBase>> buckets = new Dictionary<Vector2Int, List<BuildingBase>>(64);
     readonly HashSet<Vector2Int> lastVisible = new HashSet<Vector2Int>();
     readonly List<Vector2Int> visibleScratch = new List<Vector2Int>(32);
     readonly Dictionary<BuildingBase, Vector2Int> buildingBucket = new Dictionary<BuildingBase, Vector2Int>(256);
     readonly List<BuildingBase> flushQueue = new List<BuildingBase>(64);
     bool cullPrimed;
+
+    static readonly List<BuildingBase> EmptyList = new List<BuildingBase>(0);
+
+    /// <summary>Все поставленные здания (реестр, без поиска по сцене). Могут встречаться уничтоженные — проверяй на null.</summary>
+    public static IReadOnlyList<BuildingBase> Buildings => instance != null ? instance.buildings : (IReadOnlyList<BuildingBase>)EmptyList;
 
     public static WorldSim Ensure()
     {
@@ -53,7 +62,7 @@ public class WorldSim : MonoBehaviour
         if (building == null)
             return;
         WorldSim sim = Ensure();
-        if (sim.buildings.Contains(building))
+        if (!sim.buildingSet.Add(building))
         {
             sim.MoveBucket(building);
             return;
@@ -66,7 +75,8 @@ public class WorldSim : MonoBehaviour
     {
         if (instance == null || building == null)
             return;
-        instance.buildings.Remove(building);
+        if (instance.buildingSet.Remove(building))
+            instance.buildings.Remove(building);
         instance.RemoveFromBucket(building);
         instance.buildingBucket.Remove(building);
     }
@@ -76,7 +86,7 @@ public class WorldSim : MonoBehaviour
         if (belt == null)
             return;
         WorldSim sim = Ensure();
-        if (!sim.belts.Contains(belt))
+        if (sim.beltSet.Add(belt))
             sim.belts.Add(belt);
         RegisterBuilding(belt);
     }
@@ -85,7 +95,8 @@ public class WorldSim : MonoBehaviour
     {
         if (instance == null || belt == null)
             return;
-        instance.belts.Remove(belt);
+        if (instance.beltSet.Remove(belt))
+            instance.belts.Remove(belt);
         UnregisterBuilding(belt);
     }
 
@@ -94,7 +105,7 @@ public class WorldSim : MonoBehaviour
         if (splitter == null)
             return;
         WorldSim sim = Ensure();
-        if (!sim.splitters.Contains(splitter))
+        if (sim.splitterSet.Add(splitter))
             sim.splitters.Add(splitter);
         RegisterBuilding(splitter);
     }
@@ -103,7 +114,8 @@ public class WorldSim : MonoBehaviour
     {
         if (instance == null || splitter == null)
             return;
-        instance.splitters.Remove(splitter);
+        if (instance.splitterSet.Remove(splitter))
+            instance.splitters.Remove(splitter);
         UnregisterBuilding(splitter);
     }
 
@@ -125,6 +137,7 @@ public class WorldSim : MonoBehaviour
         {
             if (belts[i] == null)
             {
+                beltSet.Remove(belts[i]);
                 belts.RemoveAt(i);
                 continue;
             }
@@ -135,6 +148,7 @@ public class WorldSim : MonoBehaviour
         {
             if (splitters[i] == null)
             {
+                splitterSet.Remove(splitters[i]);
                 splitters.RemoveAt(i);
                 continue;
             }

@@ -44,13 +44,16 @@ public class ResearchUI : MonoBehaviour
 
     void OnResearchToggle(InputAction.CallbackContext ctx)
     {
-        if (KeybindStore.BlocksGameplayInput)
+        if (UiStack.HotkeysBlocked)
             return;
-        if (GameManager.Instance != null && GameManager.Instance.IsPaused)
+        MachineUI machine = MachineUI.Instance;
+        if (machine == null)
             return;
-        if (MachineUI.Instance != null && MachineUI.Instance.IsOpen && !MachineUI.Instance.IsLabView)
-            return;
-        ToggleMenu();
+        // Стек: исследования сверху — закрыть; иначе открыть/поднять (окно станка переключится на лабораторию).
+        if (machine.IsOpen && machine.IsLabView && UiStack.IsTop(MachineUI.WindowId))
+            machine.Close();
+        else
+            machine.OpenLab();
     }
 
     public void ToggleMenu()

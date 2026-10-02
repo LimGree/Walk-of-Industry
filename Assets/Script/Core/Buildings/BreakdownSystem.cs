@@ -72,10 +72,12 @@ public class BreakdownSystem : MonoBehaviour
 
         Instance = this;
         lastActivity = Time.unscaledTime;
+        GameSettings.Changed += RefreshMarkMaterials;
     }
 
     void OnDestroy()
     {
+        GameSettings.Changed -= RefreshMarkMaterials;
         if (Instance == this)
             Instance = null;
         foreach (var pair in marks)
@@ -162,13 +164,16 @@ public class BreakdownSystem : MonoBehaviour
 
     static IReadOnlyList<BuildingBase> AllBuildings()
     {
+        // Реестр WorldSim вместо шести поисков по всей сцене (CanBreak дальше отфильтрует типы).
         AllScratch.Clear();
-        AllScratch.AddRange(FindObjectsByType<CrafterBuilding>(FindObjectsSortMode.None));
-        AllScratch.AddRange(FindObjectsByType<Extractor>(FindObjectsSortMode.None));
-        AllScratch.AddRange(FindObjectsByType<OilExtractor>(FindObjectsSortMode.None));
-        AllScratch.AddRange(FindObjectsByType<WaterExtractor>(FindObjectsSortMode.None));
-        AllScratch.AddRange(FindObjectsByType<DroneLoadStation>(FindObjectsSortMode.None));
-        AllScratch.AddRange(FindObjectsByType<DroneUnloadStation>(FindObjectsSortMode.None));
+        IReadOnlyList<BuildingBase> all = WorldSim.Buildings;
+        for (int i = 0; i < all.Count; i++)
+        {
+            BuildingBase b = all[i];
+            if (b != null && (b is CrafterBuilding || b is Extractor || b is OilExtractor || b is WaterExtractor
+                || b is DroneLoadStation || b is DroneUnloadStation))
+                AllScratch.Add(b);
+        }
         return AllScratch;
     }
 
@@ -183,11 +188,22 @@ public class BreakdownSystem : MonoBehaviour
     public static float DailyRate()
     {
         ResearchSystem rs = ResearchSystem.Instance;
+        float rate = 0.05f;
         if (rs != null && rs.IsResearchIdUnlocked(ReliabilityResearch2))
-            return 0.02f;
-        if (rs != null && rs.IsResearchIdUnlocked(ReliabilityResearch1))
-            return 0.035f;
-        return 0.05f;
+            rate = 0.02f;
+        else if (rs != null && rs.IsResearchIdUnlocked(ReliabilityResearch1))
+            rate = 0.035f;
+        return rate * GameSettings.BreakdownRateMultiplier;
+    }
+
+    /// <summary>Удар молнии (настройка «Гроза ломает станки»): ломает случайный станок, если поломки разрешены.</summary>
+    public void StormStrike()
+    {
+        if (!AutoAllowed() || !UnderShareCap())
+            return;
+        BuildingBase victim = PickVictim();
+        if (victim != null)
+            BreakNow(victim, true);
     }
 
     public static int DailyBudget(int eligible)
@@ -241,7 +257,7 @@ public class BreakdownSystem : MonoBehaviour
             loadToastAt = 0f;
             int broken = CountBroken();
             if (broken > 0)
-                UiNotification.Push(
+                UiNotification.Push(NotifyKind.Breakdown,
                     UiLocale.T("breakdown.load_title"),
                     UiLocale.T("breakdown.load_body", broken),
                     UiStatus.Warning);
@@ -365,7 +381,7 @@ public class BreakdownSystem : MonoBehaviour
             if (victim == null || !UnderShareCap())
                 continue;
             BreakNow(victim, false);
-            UiNotification.Push(
+            UiNotification.Push(NotifyKind.Breakdown,
                 UiLocale.T("breakdown.spread_title"),
                 UiLocale.T("breakdown.spread_body", Name(src), Name(victim)),
                 UiStatus.Error);
@@ -401,7 +417,8 @@ public class BreakdownSystem : MonoBehaviour
         {
             BuildingBase b = Scratch[i];
             float dist = Vector3.Distance(player, b.transform.position);
-            float w = (IsWorking(b) ? 3f : 1f) * (1f + dist / 25f);
+            // Под фонарём ([[DecorSystem]]) ночью ломается реже.
+            float w = (IsWorking(b) ? 3f : 1f) * (1f + dist / 25f) * DecorSystem.BreakWeight(b.transform.position);
             weights[i] = w;
             total += w;
         }
@@ -475,8 +492,10 @@ public class BreakdownSystem : MonoBehaviour
             // Слышно издалека: звук у камеры, а не у станка.
             Vector3 at = Camera.main != null ? Camera.main.transform.position : b.transform.position;
             GameAudio.World("world_breakdown", at);
+            CameraFx.Shake(0.25f, b.transform.position);
+            SoundCaptions.Show("caption.breakdown", b.transform.position);
             Vector2Int cell = BuildingLinker.WorldToCell(b.transform.position);
-            UiNotification.Push(
+            UiNotification.Push(NotifyKind.Breakdown,
                 UiLocale.T("breakdown.toast_title"),
                 UiLocale.T(mode == 2 ? "breakdown.toast_weak" : "breakdown.toast_body", Name(b), cell.x, cell.y),
                 UiStatus.Error);
@@ -560,7 +579,7 @@ public class BreakdownSystem : MonoBehaviour
 
     static string Name(BuildingBase b)
     {
-        return b != null && b.data != null && !string.IsNullOrEmpty(b.data.displayName) ? b.data.displayName : "Building";
+        return b != null && b.data != null && !string.IsNullOrEmpty(b.data.Title) ? b.data.Title : "Building";
     }
 
     // ---------- Сейв ----------
@@ -707,7 +726,7 @@ public class BreakdownSystem : MonoBehaviour
         if (markFont != null)
         {
             tm.font = markFont;
-            bang.GetComponent<MeshRenderer>().sharedMaterial = markFont.material;
+            bang.GetComponent<MeshRenderer>().sharedMaterial = MarkMaterial();
         }
 
         MeshRenderer rend = bang.GetComponent<MeshRenderer>();
@@ -719,6 +738,40 @@ public class BreakdownSystem : MonoBehaviour
         smoke.transform.position = b.transform.position + Vector3.up * Mathf.Max(0.6f, top * 0.8f);
         BuildSmoke(smoke);
         return root.transform;
+    }
+
+    static Material xrayMarkMat;
+
+    /// <summary>«Маркеры поломок сквозь стены»: копия материала шрифта с ZTest Always поверх всего.</summary>
+    static Material MarkMaterial()
+    {
+        if (markFont == null)
+            return null;
+        if (!GameSettings.BreakdownMarkersXray)
+            return markFont.material;
+        if (xrayMarkMat == null)
+        {
+            xrayMarkMat = new Material(markFont.material) { name = "BreakMarkXray" };
+            xrayMarkMat.SetFloat("unity_GUIZTestMode", (float)UnityEngine.Rendering.CompareFunction.Always);
+            xrayMarkMat.renderQueue = 4000;
+        }
+        return xrayMarkMat;
+    }
+
+    void RefreshMarkMaterials()
+    {
+        Material mat = MarkMaterial();
+        if (mat == null)
+            return;
+        foreach (var pair in marks)
+        {
+            if (pair.Value == null)
+                continue;
+            Transform bang = pair.Value.Find("BreakBang");
+            MeshRenderer rend = bang != null ? bang.GetComponent<MeshRenderer>() : null;
+            if (rend != null)
+                rend.sharedMaterial = mat;
+        }
     }
 
     static float TopHeight(BuildingBase b)

@@ -79,7 +79,7 @@ public class StorageContainer : BuildingBase, IInteractable
         if (item == null)
             return;
         if (TryPushToConnections(item) && TryRemoveOne(item) && showDebug)
-            Debug.Log($"[Storage] out {item.displayName}");
+            Debug.Log($"[Storage] out {item.Title}");
     }
 
     public override bool CanAcceptFrom(BuildingBase source)
@@ -109,7 +109,7 @@ public class StorageContainer : BuildingBase, IInteractable
 
         WorldSim.MarkFlush(this);
         if (showDebug)
-            Debug.Log($"[Storage] in {item.displayName}");
+            Debug.Log($"[Storage] in {item.Title}");
         return true;
     }
 

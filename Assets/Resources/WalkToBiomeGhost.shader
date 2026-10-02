@@ -4,6 +4,8 @@ Shader "Hidden/WalkToBiome/Ghost"
     {
         _MainTex ("Texture", 2D) = "white" {}
         _Color ("Color", Color) = (1,1,1,0.45)
+        // 0 — альфа текстуры не прозрачность (палитра wi_palette хранит в ней глянец)
+        _TexAlpha ("Use texture alpha", Float) = 1
     }
     SubShader
     {
@@ -31,6 +33,7 @@ Shader "Hidden/WalkToBiome/Ghost"
             sampler2D _MainTex;
             float4 _MainTex_ST;
             fixed4 _Color;
+            float _TexAlpha;
 
             struct appdata
             {
@@ -56,7 +59,7 @@ Shader "Hidden/WalkToBiome/Ghost"
             {
                 fixed4 tex = tex2D(_MainTex, i.uv);
                 fixed4 col = tex * _Color;
-                col.a = _Color.a * max(tex.a, 0.15);
+                col.a = _Color.a * lerp(1.0, max(tex.a, 0.15), _TexAlpha);
                 return col;
             }
             ENDCG

@@ -149,24 +149,34 @@ public class LoadingScreen : MonoBehaviour
         var screen = IndustryUi.El("Bg", "bg-menu");
         screen.style.justifyContent = Justify.Center;
         screen.style.alignItems = Align.Center;
-        var box = IndustryUi.El("Box", "col");
-        box.style.width = 720;
+        var box = IndustryUi.El("Box", "panel", "panel-menu", "load-card");
         box.Add(IndustryUi.Text("Title", GameBranding.TitleCaps, "display"));
         box.Add(IndustryUi.Text("Tag", GameBranding.Tagline, "tagline"));
-        status = IndustryUi.Text("Status", UiLocale.T("load.loading"), "body-text");
-        box.Add(status);
-        var track = IndustryUi.El("Track", "progress-track");
-        track.style.marginTop = 18;
-        track.style.height = 10;
-        fill = IndustryUi.El("Fill", "progress-fill");
+
+        var line = IndustryUi.El("Line", "load-line");
+        status = IndustryUi.Text("Status", UiLocale.T("load.loading"), "load-status");
+        line.Add(status);
+        line.Add(IndustryUi.El("Spacer", "grow"));
+        percent = IndustryUi.Text("Pct", "0%", "load-percent");
+        line.Add(percent);
+        box.Add(line);
+
+        var track = IndustryUi.El("Track", "progress-track", "load-track");
+        fill = IndustryUi.El("Fill", "progress-fill", "load-fill");
         fill.style.width = Length.Percent(0);
-        fill.style.height = 10;
         track.Add(fill);
         box.Add(track);
-        percent = IndustryUi.Text("Pct", "0%", "muted");
-        percent.style.marginTop = 10;
-        box.Add(percent);
+
+        // Случайный совет, пока грузится мир.
+        int tip = Random.Range(1, TipCount + 1);
+        var tipRow = IndustryUi.El("Tip", "load-tip");
+        tipRow.Add(IndustryUi.Text("K", UiLocale.T("load.tip"), "label-caps"));
+        tipRow.Add(IndustryUi.Text("T", UiLocale.T("load.tip" + tip), "load-tip-text"));
+        box.Add(tipRow);
+
         screen.Add(box);
         root.Add(screen);
     }
+
+    const int TipCount = 6;
 }

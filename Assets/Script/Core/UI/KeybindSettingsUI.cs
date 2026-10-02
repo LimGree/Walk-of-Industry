@@ -85,6 +85,7 @@ public static class KeybindSettingsUI
             case "Move":
             case "Jump":
             case "Sprint":
+            case "AutoRun":
             case "Zoom":
                 return UiLocale.T("keys.movement");
             case "Place":
@@ -96,6 +97,7 @@ public static class KeybindSettingsUI
             case "Copy":
             case "Paste":
             case "Blueprints":
+            case "PickBuilding":
             case "Undo":
             case "Redo":
             case "MoveSelection":

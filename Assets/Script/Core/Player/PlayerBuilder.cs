@@ -35,6 +35,14 @@ public class PlayerBuilder : MonoBehaviour
     public GameObject CurrentGhost => currentGhost;
     public BuildingData CurrentBuildingData => currentBuildingData;
     public float PlacementYaw => currentRotationY;
+
+    /// <summary>Поворот призрака (СКМ «взять здание» копирует поворот оригинала), шаг 90°.</summary>
+    public void SetPlacementYaw(float yaw)
+    {
+        currentRotationY = Mathf.Repeat(Mathf.Round(yaw / 90f) * 90f, 360f);
+        if (currentGhost != null)
+            currentGhost.transform.rotation = Quaternion.Euler(0f, currentRotationY, 0f);
+    }
     public BuildSelectionController Selection => selection;
 
     BuildSelectionController selection;
@@ -183,33 +191,18 @@ public class PlayerBuilder : MonoBehaviour
         }
     }
 
+    static void NotifyNoMoney(int cost)
+    {
+        UiNotification.Push(NotifyKind.Resources,
+            UiLocale.T("notify.no_money"),
+            UiLocale.T("notify.no_money_body", IndustryUi.Money(cost)),
+            UiStatus.Warning);
+    }
+
     bool IsGameplayBuildInputBlocked()
     {
-        if (KeybindStore.BlocksGameplayInput)
-            return true;
-        if (GameManager.Instance != null && GameManager.Instance.IsPaused)
-            return true;
-        if ((MachineUI.Instance != null && MachineUI.Instance.IsOpen) || WorldOverlayGate.IsOpen)
-            return true;
-        if (ResearchUI.Instance != null && ResearchUI.Instance.IsOpen)
-            return true;
-        if (buildMenuUI != null && buildMenuUI.IsOpen)
-            return true;
-        if (WalletHud.Instance != null && WalletHud.Instance.IsShopOpen)
-            return true;
-        if (SelectionActionsUI.Instance != null && SelectionActionsUI.Instance.IsOpen)
-            return true;
-        if (WorldMapUI.Instance != null && WorldMapUI.Instance.IsOpen)
-            return true;
-        if (BlueprintLibraryUI.Instance != null && BlueprintLibraryUI.Instance.IsOpen)
-            return true;
-        if (TutorialSystem.Instance != null && TutorialSystem.Instance.IsModal)
-            return true;
-        if (UiModal.IsOpen)
-            return true;
-        if (DevConsole.IsOpen)
-            return true;
-        return false;
+        // Единый шлюз: открыто любое окно, модалка, пауза, консоль, ввод текста, модальный шаг обучения.
+        return UiStack.GameplayBlocked;
     }
 
     void OnRotate(InputAction.CallbackContext ctx)
@@ -228,12 +221,25 @@ public class PlayerBuilder : MonoBehaviour
 
     void OnDemolish(InputAction.CallbackContext ctx)
     {
-        if (!isBuildMode || IsGameplayBuildInputBlocked() || BlocksBuildInput)
+        if (!isBuildMode || IsGameplayBuildInputBlocked() || BlocksBuildInput || InventoryUI.BlocksWorldMouse)
             return;
         if (selection != null && selection.IsSelectionMode)
             return;
         EndStroke();
         TryDemolish();
+    }
+
+    /// <summary>Shift + колесо: поворот держимого здания (dir > 0 — по часовой).</summary>
+    public bool TryWheelRotate(int dir)
+    {
+        if (!isBuildMode || strokeActive || IsGameplayBuildInputBlocked() || BlocksBuildInput || !HasHeldBuilding)
+            return false;
+        currentRotationY = Mathf.Repeat(currentRotationY + (dir > 0 ? 90f : -90f), 360f);
+        if (currentGhost != null)
+            currentGhost.transform.rotation = Quaternion.Euler(0f, currentRotationY, 0f);
+        if (playerCamera != null)
+            GameAudio.World("world_rotate", playerCamera.transform.position);
+        return true;
     }
 
     void HandleRotateKey()
@@ -549,7 +555,11 @@ public class PlayerBuilder : MonoBehaviour
         if (GridSystem.Instance != null)
         {
             Vector2Int minCell = GridFootprint.GetMinCell(position, size);
-            if (!GridOccupancy.IsAreaFree(minCell, size))
+            // Напольная декорация (плитка, асфальт) живёт в своей сетке: под зданиями можно.
+            bool floorFree = IsFloorDecor(currentBuildingData)
+                ? DecorSystem.IsFloorFree(minCell, size)
+                : GridOccupancy.IsAreaFree(minCell, size);
+            if (!floorFree)
                 return false;
             bool allowWater = currentBuildingData != null && currentBuildingData.allowOnWater;
             bool requireWater = currentBuildingData != null && currentBuildingData.requiresWater;
@@ -648,6 +658,19 @@ public class PlayerBuilder : MonoBehaviour
         return GridFootprint.GetRotatedSize(size, rotation.eulerAngles.y);
     }
 
+    static bool IsFloorDecor(BuildingData data)
+    {
+        DecorCatalog.Def def = DecorCatalog.Find(data);
+        return def != null && def.IsFloor;
+    }
+
+    /// <summary>Декорации в линии сохраняют поворот, кроме «линейных» (забор, сетка, асфальт).</summary>
+    static bool KeepsYawInLine(BuildingData data)
+    {
+        DecorCatalog.Def def = DecorCatalog.Find(data);
+        return def != null && !def.IsLine;
+    }
+
     static bool IsResearchLabData(BuildingData data)
     {
         return data != null && data.id == "research_lab";
@@ -698,7 +721,7 @@ public class PlayerBuilder : MonoBehaviour
 
     void OnPlaceStarted(InputAction.CallbackContext ctx)
     {
-        if (BlocksBuildInput)
+        if (BlocksBuildInput || InventoryUI.BlocksWorldMouse)
             return;
         if (IsGameplayBuildInputBlocked() || !IsBuildModeActive || !IsAimingAtBuildSurface())
             return;
@@ -707,7 +730,7 @@ public class PlayerBuilder : MonoBehaviour
         if (ResearchSystem.Instance != null
             && !ResearchSystem.Instance.IsBuildingUnlocked(currentBuildingData))
         {
-            Debug.LogWarning($"[Builder] Locked: {currentBuildingData.displayName}");
+            Debug.LogWarning($"[Builder] Locked: {currentBuildingData.Title}");
             return;
         }
 
@@ -1046,7 +1069,7 @@ public class PlayerBuilder : MonoBehaviour
 
     float LineYaw(int dir)
     {
-        if (strokeAxis.HasValue)
+        if (strokeAxis.HasValue && !KeepsYawInLine(strokeBuilding))
             return YawFromCellDir(strokeAxis.Value, dir);
         return strokeYaw;
     }
@@ -1230,6 +1253,7 @@ public class PlayerBuilder : MonoBehaviour
         int lineCost = LineStrokeCost();
         if (PlayerWallet.Instance != null && !PlayerWallet.Instance.CanAfford(lineCost))
         {
+            NotifyNoMoney(lineCost);
             BuildUndo.End();
             EndStroke();
             return;
@@ -1313,6 +1337,7 @@ public class PlayerBuilder : MonoBehaviour
         int cost = Economy.BuildCost(data);
         if (PlayerWallet.Instance != null && !PlayerWallet.Instance.TrySpendCoins(cost))
         {
+            NotifyNoMoney(cost);
             GameAudio.World("world_invalid", entrance.pos);
             return;
         }
@@ -1379,6 +1404,7 @@ public class PlayerBuilder : MonoBehaviour
         {
             buildingBase.data = data;
             buildingBase.OnPlaced();
+            BuildingPicker.ApplyCopied(buildingBase);
             BuildUndo.Begin();
             BuildUndo.NoteCoins(-cost);
             BuildUndo.NotePlaced(buildingBase);

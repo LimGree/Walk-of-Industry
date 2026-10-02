@@ -125,7 +125,7 @@ public abstract class BuildingBase : MonoBehaviour
         WorldSim.RegisterBuilding(this);
     }
 
-    protected void RegisterOnGrid()
+    protected virtual void RegisterOnGrid()
     {
         if (GridSystem.Instance == null)
             return;

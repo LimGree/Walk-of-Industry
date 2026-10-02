@@ -4,6 +4,9 @@ using System.Collections.Generic;
 [CreateAssetMenu(fileName = "New Recipe", menuName = "Builderment/Recipe Data")]
 public class RecipeData : ScriptableObject
 {
+    /// <summary>Название на языке интерфейса ([[DataLocale]]): как у продукта.</summary>
+    public string Title => DataLocale.RecipeName(id, displayName);
+
     [Header("Basic Info")]
     public string id;
     public string displayName;

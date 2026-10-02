@@ -1,0 +1,1276 @@
+{
+ "items": [
+  {
+   "id": "decor_street_lamp",
+   "model": "Decor/decor_street_lamp",
+   "height": 2.425,
+   "width": 0.698,
+   "depth": 0.296,
+   "parts": [],
+   "lights": [
+    {
+     "pos": [
+      0.36,
+      2.22,
+      0
+     ],
+     "color": [
+      1.0,
+      0.86,
+      0.6
+     ],
+     "range": 7.0
+    }
+   ],
+   "line": false,
+   "floor": false,
+   "blink": 0.0,
+   "tintPart": "",
+   "fire": [],
+   "smoke": [],
+   "splash": [],
+   "text": null
+  },
+  {
+   "id": "decor_floodlight",
+   "model": "Decor/decor_floodlight",
+   "height": 3.4,
+   "width": 0.7,
+   "depth": 0.7,
+   "parts": [],
+   "lights": [
+    {
+     "pos": [
+      0,
+      3.05,
+      0.35
+     ],
+     "color": [
+      1.0,
+      0.95,
+      0.85
+     ],
+     "range": 11.0
+    }
+   ],
+   "line": false,
+   "floor": false,
+   "blink": 0.0,
+   "tintPart": "",
+   "fire": [],
+   "smoke": [],
+   "splash": [],
+   "text": null
+  },
+  {
+   "id": "decor_beacon",
+   "model": "Decor/decor_beacon",
+   "height": 0.95,
+   "width": 0.42,
+   "depth": 0.42,
+   "parts": [
+    {
+     "name": "Head",
+     "model": "Decor/decor_beacon_head",
+     "pos": [
+      0,
+      0.72,
+      0
+     ]
+    }
+   ],
+   "lights": [
+    {
+     "pos": [
+      0,
+      0.82,
+      0
+     ],
+     "color": [
+      1.0,
+      0.55,
+      0.15
+     ],
+     "range": 4.5
+    }
+   ],
+   "line": false,
+   "floor": false,
+   "blink": 0.6,
+   "tintPart": "",
+   "fire": [],
+   "smoke": [],
+   "splash": [],
+   "text": null
+  },
+  {
+   "id": "decor_fire_barrel",
+   "model": "Decor/decor_fire_barrel",
+   "height": 1.14,
+   "width": 0.554,
+   "depth": 0.517,
+   "parts": [
+    {
+     "name": "Flame",
+     "model": "Decor/decor_fire_barrel_flame",
+     "pos": [
+      0,
+      0.74,
+      0
+     ]
+    }
+   ],
+   "lights": [
+    {
+     "pos": [
+      0,
+      1.0,
+      0
+     ],
+     "color": [
+      1.0,
+      0.55,
+      0.2
+     ],
+     "range": 5.0
+    }
+   ],
+   "line": false,
+   "floor": false,
+   "blink": 0.0,
+   "tintPart": "",
+   "fire": [
+    0,
+    0.85,
+    0
+   ],
+   "smoke": [],
+   "splash": [],
+   "text": null
+  },
+  {
+   "id": "decor_garland",
+   "model": "Decor/decor_garland",
+   "height": 1.91,
+   "width": 1.94,
+   "depth": 0.24,
+   "parts": [
+    {
+     "name": "BulbsA",
+     "model": "Decor/decor_garland_bulbsa",
+     "pos": [
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "name": "BulbsB",
+     "model": "Decor/decor_garland_bulbsb",
+     "pos": [
+      0,
+      0,
+      0
+     ]
+    }
+   ],
+   "lights": [
+    {
+     "pos": [
+      0,
+      1.55,
+      0
+     ],
+     "color": [
+      1.0,
+      0.8,
+      0.5
+     ],
+     "range": 6.0
+    }
+   ],
+   "line": false,
+   "floor": false,
+   "blink": 0.5,
+   "tintPart": "",
+   "fire": [],
+   "smoke": [],
+   "splash": [],
+   "text": null
+  },
+  {
+   "id": "decor_neon_sign",
+   "model": "Decor/decor_neon_sign",
+   "height": 1.96,
+   "width": 1.9,
+   "depth": 0.2,
+   "parts": [],
+   "lights": [
+    {
+     "pos": [
+      0,
+      1.55,
+      0.35
+     ],
+     "color": [
+      1.0,
+      0.35,
+      0.75
+     ],
+     "range": 6.0
+    }
+   ],
+   "line": false,
+   "floor": false,
+   "blink": 0.0,
+   "tintPart": "",
+   "fire": [],
+   "smoke": [],
+   "splash": [],
+   "text": {
+    "pos": [
+     0,
+     1.55,
+     0.07
+    ],
+    "size": 0.055,
+    "color": [
+     1.0,
+     0.55,
+     0.85
+    ],
+    "kind": "world"
+   }
+  },
+  {
+   "id": "decor_bush",
+   "model": "Decor/decor_bush",
+   "height": 0.66,
+   "width": 0.778,
+   "depth": 0.708,
+   "parts": [],
+   "lights": [],
+   "line": false,
+   "floor": false,
+   "blink": 0.0,
+   "tintPart": "",
+   "fire": [],
+   "smoke": [],
+   "splash": [],
+   "text": null
+  },
+  {
+   "id": "decor_potted_tree",
+   "model": "Decor/decor_potted_tree",
+   "height": 1.67,
+   "width": 0.706,
+   "depth": 0.64,
+   "parts": [],
+   "lights": [],
+   "line": false,
+   "floor": false,
+   "blink": 0.0,
+   "tintPart": "",
+   "fire": [],
+   "smoke": [],
+   "splash": [],
+   "text": null
+  },
+  {
+   "id": "decor_flowerbed",
+   "model": "Decor/decor_flowerbed",
+   "height": 0.511,
+   "width": 1.9,
+   "depth": 0.94,
+   "parts": [],
+   "lights": [],
+   "line": false,
+   "floor": false,
+   "blink": 0.0,
+   "tintPart": "",
+   "fire": [],
+   "smoke": [],
+   "splash": [],
+   "text": null
+  },
+  {
+   "id": "decor_big_tree",
+   "model": "Decor/decor_big_tree",
+   "height": 3.2,
+   "width": 2.0,
+   "depth": 1.796,
+   "parts": [
+    {
+     "name": "Crown",
+     "model": "Decor/decor_big_tree_crown",
+     "pos": [
+      0,
+      1.5,
+      0
+     ]
+    }
+   ],
+   "lights": [],
+   "line": false,
+   "floor": false,
+   "blink": 0.0,
+   "tintPart": "",
+   "fire": [],
+   "smoke": [],
+   "splash": [],
+   "text": null
+  },
+  {
+   "id": "decor_rock_garden",
+   "model": "Decor/decor_rock_garden",
+   "height": 0.535,
+   "width": 1.9,
+   "depth": 1.9,
+   "parts": [],
+   "lights": [],
+   "line": false,
+   "floor": false,
+   "blink": 0.0,
+   "tintPart": "",
+   "fire": [],
+   "smoke": [],
+   "splash": [],
+   "text": null
+  },
+  {
+   "id": "decor_pond",
+   "model": "Decor/decor_pond",
+   "height": 0.869,
+   "width": 1.84,
+   "depth": 1.84,
+   "parts": [
+    {
+     "name": "Reeds",
+     "model": "Decor/decor_pond_reeds",
+     "pos": [
+      0.55,
+      0.05,
+      -0.5
+     ]
+    }
+   ],
+   "lights": [],
+   "line": false,
+   "floor": false,
+   "blink": 0.0,
+   "tintPart": "",
+   "fire": [],
+   "smoke": [],
+   "splash": [],
+   "text": null
+  },
+  {
+   "id": "decor_fountain",
+   "model": "Decor/decor_fountain",
+   "height": 1.7,
+   "width": 2.87,
+   "depth": 2.87,
+   "parts": [
+    {
+     "name": "Jet",
+     "model": "Decor/decor_fountain_jet",
+     "pos": [
+      0,
+      0.95,
+      0
+     ]
+    }
+   ],
+   "lights": [],
+   "line": false,
+   "floor": false,
+   "blink": 0.0,
+   "tintPart": "",
+   "fire": [],
+   "smoke": [],
+   "splash": [
+    0,
+    1.6,
+    0
+   ],
+   "text": null
+  },
+  {
+   "id": "decor_barrels",
+   "model": "Decor/decor_barrels",
+   "height": 1.05,
+   "width": 0.86,
+   "depth": 0.86,
+   "parts": [],
+   "lights": [],
+   "line": false,
+   "floor": false,
+   "blink": 0.0,
+   "tintPart": "",
+   "fire": [],
+   "smoke": [],
+   "splash": [],
+   "text": null
+  },
+  {
+   "id": "decor_pallets",
+   "model": "Decor/decor_pallets",
+   "height": 0.8,
+   "width": 0.866,
+   "depth": 0.9,
+   "parts": [],
+   "lights": [],
+   "line": false,
+   "floor": false,
+   "blink": 0.0,
+   "tintPart": "",
+   "fire": [],
+   "smoke": [],
+   "splash": [],
+   "text": null
+  },
+  {
+   "id": "decor_cable_reel",
+   "model": "Decor/decor_cable_reel",
+   "height": 0.806,
+   "width": 1.0,
+   "depth": 0.846,
+   "parts": [],
+   "lights": [],
+   "line": false,
+   "floor": false,
+   "blink": 0.0,
+   "tintPart": "",
+   "fire": [],
+   "smoke": [],
+   "splash": [],
+   "text": null
+  },
+  {
+   "id": "decor_toolbox",
+   "model": "Decor/decor_toolbox",
+   "height": 0.935,
+   "width": 0.79,
+   "depth": 0.512,
+   "parts": [],
+   "lights": [],
+   "line": false,
+   "floor": false,
+   "blink": 0.0,
+   "tintPart": "",
+   "fire": [],
+   "smoke": [],
+   "splash": [],
+   "text": null
+  },
+  {
+   "id": "decor_pipe_pile",
+   "model": "Decor/decor_pipe_pile",
+   "height": 0.736,
+   "width": 1.77,
+   "depth": 0.86,
+   "parts": [],
+   "lights": [],
+   "line": false,
+   "floor": false,
+   "blink": 0.0,
+   "tintPart": "",
+   "fire": [],
+   "smoke": [],
+   "splash": [],
+   "text": null
+  },
+  {
+   "id": "decor_scaffold",
+   "model": "Decor/decor_scaffold",
+   "height": 2.4,
+   "width": 1.919,
+   "depth": 0.84,
+   "parts": [],
+   "lights": [],
+   "line": false,
+   "floor": false,
+   "blink": 0.0,
+   "tintPart": "",
+   "fire": [],
+   "smoke": [],
+   "splash": [],
+   "text": null
+  },
+  {
+   "id": "decor_tower_crane",
+   "model": "Decor/decor_tower_crane",
+   "height": 6.0,
+   "width": 1.4,
+   "depth": 5.3,
+   "parts": [
+    {
+     "name": "Jib",
+     "model": "Decor/decor_tower_crane_jib",
+     "pos": [
+      0,
+      4.9,
+      0
+     ]
+    }
+   ],
+   "lights": [
+    {
+     "pos": [
+      0,
+      6.1,
+      0
+     ],
+     "color": [
+      1.0,
+      0.25,
+      0.2
+     ],
+     "range": 4.0
+    }
+   ],
+   "line": false,
+   "floor": false,
+   "blink": 1.2,
+   "tintPart": "",
+   "fire": [],
+   "smoke": [],
+   "splash": [],
+   "text": null
+  },
+  {
+   "id": "decor_fence",
+   "model": "Decor/decor_fence",
+   "height": 0.94,
+   "width": 0.1,
+   "depth": 1.02,
+   "parts": [],
+   "lights": [],
+   "line": true,
+   "floor": false,
+   "blink": 0.0,
+   "tintPart": "",
+   "fire": [],
+   "smoke": [],
+   "splash": [],
+   "text": null
+  },
+  {
+   "id": "decor_wire_fence",
+   "model": "Decor/decor_wire_fence",
+   "height": 1.388,
+   "width": 0.204,
+   "depth": 1.021,
+   "parts": [],
+   "lights": [],
+   "line": true,
+   "floor": false,
+   "blink": 0.0,
+   "tintPart": "",
+   "fire": [],
+   "smoke": [],
+   "splash": [],
+   "text": null
+  },
+  {
+   "id": "decor_cone",
+   "model": "Decor/decor_cone",
+   "height": 0.655,
+   "width": 0.84,
+   "depth": 0.74,
+   "parts": [],
+   "lights": [],
+   "line": false,
+   "floor": false,
+   "blink": 0.0,
+   "tintPart": "",
+   "fire": [],
+   "smoke": [],
+   "splash": [],
+   "text": null
+  },
+  {
+   "id": "decor_sign_arrow",
+   "model": "Decor/decor_sign_arrow",
+   "height": 1.6,
+   "width": 0.318,
+   "depth": 0.805,
+   "parts": [],
+   "lights": [],
+   "line": false,
+   "floor": false,
+   "blink": 0.0,
+   "tintPart": "",
+   "fire": [],
+   "smoke": [],
+   "splash": [],
+   "text": null
+  },
+  {
+   "id": "decor_paving",
+   "model": "Decor/decor_paving",
+   "height": 0.048,
+   "width": 1.0,
+   "depth": 1.0,
+   "parts": [],
+   "lights": [],
+   "line": false,
+   "floor": true,
+   "blink": 0.0,
+   "tintPart": "",
+   "fire": [],
+   "smoke": [],
+   "splash": [],
+   "text": null
+  },
+  {
+   "id": "decor_asphalt",
+   "model": "Decor/decor_asphalt",
+   "height": 0.038,
+   "width": 1.0,
+   "depth": 1.0,
+   "parts": [],
+   "lights": [],
+   "line": true,
+   "floor": true,
+   "blink": 0.0,
+   "tintPart": "",
+   "fire": [],
+   "smoke": [],
+   "splash": [],
+   "text": null
+  },
+  {
+   "id": "decor_barrier_gate",
+   "model": "Decor/decor_barrier_gate",
+   "height": 1.05,
+   "width": 1.87,
+   "depth": 0.47,
+   "parts": [
+    {
+     "name": "Arm",
+     "model": "Decor/decor_barrier_gate_arm",
+     "pos": [
+      -0.72,
+      0.92,
+      0
+     ]
+    }
+   ],
+   "lights": [],
+   "line": false,
+   "floor": false,
+   "blink": 0.0,
+   "tintPart": "",
+   "fire": [],
+   "smoke": [],
+   "splash": [],
+   "text": null
+  },
+  {
+   "id": "decor_factory_gate",
+   "model": "Decor/decor_factory_gate",
+   "height": 2.83,
+   "width": 3.04,
+   "depth": 1.27,
+   "parts": [],
+   "lights": [],
+   "line": false,
+   "floor": false,
+   "blink": 0.0,
+   "tintPart": "",
+   "fire": [],
+   "smoke": [],
+   "splash": [],
+   "text": {
+    "pos": [
+     0,
+     2.55,
+     0.095
+    ],
+    "size": 0.05,
+    "color": [
+     1.0,
+     0.93,
+     0.7
+    ],
+    "kind": "world"
+   }
+  },
+  {
+   "id": "decor_vending",
+   "model": "Decor/decor_vending",
+   "height": 1.93,
+   "width": 0.76,
+   "depth": 0.62,
+   "parts": [],
+   "lights": [
+    {
+     "pos": [
+      0,
+      1.1,
+      0.5
+     ],
+     "color": [
+      0.6,
+      0.85,
+      1.0
+     ],
+     "range": 3.5
+    }
+   ],
+   "line": false,
+   "floor": false,
+   "blink": 0.0,
+   "tintPart": "",
+   "fire": [],
+   "smoke": [],
+   "splash": [],
+   "text": null
+  },
+  {
+   "id": "decor_cooler",
+   "model": "Decor/decor_cooler",
+   "height": 1.58,
+   "width": 0.52,
+   "depth": 0.39,
+   "parts": [],
+   "lights": [],
+   "line": false,
+   "floor": false,
+   "blink": 0.0,
+   "tintPart": "",
+   "fire": [],
+   "smoke": [],
+   "splash": [],
+   "text": null
+  },
+  {
+   "id": "decor_bbq",
+   "model": "Decor/decor_bbq",
+   "height": 1.097,
+   "width": 0.83,
+   "depth": 0.466,
+   "parts": [
+    {
+     "name": "Coals",
+     "model": "Decor/decor_bbq_coals",
+     "pos": [
+      0,
+      0.62,
+      0
+     ]
+    }
+   ],
+   "lights": [
+    {
+     "pos": [
+      0,
+      0.9,
+      0
+     ],
+     "color": [
+      1.0,
+      0.5,
+      0.2
+     ],
+     "range": 3.0
+    }
+   ],
+   "line": false,
+   "floor": false,
+   "blink": 0.0,
+   "tintPart": "",
+   "fire": [],
+   "smoke": [
+    0,
+    0.95,
+    0
+   ],
+   "splash": [],
+   "text": null
+  },
+  {
+   "id": "decor_bench",
+   "model": "Decor/decor_bench",
+   "height": 0.924,
+   "width": 1.62,
+   "depth": 0.58,
+   "parts": [],
+   "lights": [],
+   "line": false,
+   "floor": false,
+   "blink": 0.0,
+   "tintPart": "",
+   "fire": [],
+   "smoke": [],
+   "splash": [],
+   "text": null
+  },
+  {
+   "id": "decor_picnic",
+   "model": "Decor/decor_picnic",
+   "height": 2.07,
+   "width": 1.907,
+   "depth": 1.907,
+   "parts": [],
+   "lights": [],
+   "line": false,
+   "floor": false,
+   "blink": 0.0,
+   "tintPart": "",
+   "fire": [],
+   "smoke": [],
+   "splash": [],
+   "text": null
+  },
+  {
+   "id": "decor_gazebo",
+   "model": "Decor/decor_gazebo",
+   "height": 3.22,
+   "width": 2.864,
+   "depth": 2.864,
+   "parts": [],
+   "lights": [
+    {
+     "pos": [
+      0,
+      2.0,
+      0
+     ],
+     "color": [
+      1.0,
+      0.85,
+      0.6
+     ],
+     "range": 5.5
+    }
+   ],
+   "line": false,
+   "floor": false,
+   "blink": 0.0,
+   "tintPart": "",
+   "fire": [],
+   "smoke": [],
+   "splash": [],
+   "text": null
+  },
+  {
+   "id": "decor_flagpole",
+   "model": "Decor/decor_flagpole",
+   "height": 3.35,
+   "width": 1.21,
+   "depth": 0.5,
+   "parts": [
+    {
+     "name": "Flag",
+     "model": "Decor/decor_flagpole_flag",
+     "pos": [
+      0.04,
+      2.9,
+      0
+     ]
+    }
+   ],
+   "lights": [],
+   "line": false,
+   "floor": false,
+   "blink": 0.0,
+   "tintPart": "Flag",
+   "fire": [],
+   "smoke": [],
+   "splash": [],
+   "text": null
+  },
+  {
+   "id": "decor_clock",
+   "model": "Decor/decor_clock",
+   "height": 2.65,
+   "width": 0.618,
+   "depth": 0.37,
+   "parts": [
+    {
+     "name": "HourF",
+     "model": "Decor/decor_clock_hourf",
+     "pos": [
+      0,
+      2.25,
+      0
+     ]
+    },
+    {
+     "name": "MinF",
+     "model": "Decor/decor_clock_minf",
+     "pos": [
+      0,
+      2.25,
+      0
+     ]
+    },
+    {
+     "name": "HourB",
+     "model": "Decor/decor_clock_hourb",
+     "pos": [
+      0,
+      2.25,
+      0
+     ]
+    },
+    {
+     "name": "MinB",
+     "model": "Decor/decor_clock_minb",
+     "pos": [
+      0,
+      2.25,
+      0
+     ]
+    }
+   ],
+   "lights": [
+    {
+     "pos": [
+      0,
+      2.25,
+      0.3
+     ],
+     "color": [
+      1.0,
+      0.9,
+      0.7
+     ],
+     "range": 2.5
+    }
+   ],
+   "line": false,
+   "floor": false,
+   "blink": 0.0,
+   "tintPart": "",
+   "fire": [],
+   "smoke": [],
+   "splash": [],
+   "text": null
+  },
+  {
+   "id": "decor_scoreboard",
+   "model": "Decor/decor_scoreboard",
+   "height": 2.36,
+   "width": 1.94,
+   "depth": 0.24,
+   "parts": [],
+   "lights": [
+    {
+     "pos": [
+      0,
+      1.5,
+      0.4
+     ],
+     "color": [
+      0.5,
+      1.0,
+      0.6
+     ],
+     "range": 4.0
+    }
+   ],
+   "line": false,
+   "floor": false,
+   "blink": 0.0,
+   "tintPart": "",
+   "fire": [],
+   "smoke": [],
+   "splash": [],
+   "text": {
+    "pos": [
+     0,
+     1.5,
+     0.085
+    ],
+    "size": 0.03,
+    "color": [
+     0.55,
+     1.0,
+     0.65
+    ],
+    "kind": "stats"
+   }
+  },
+  {
+   "id": "decor_gear_monument",
+   "model": "Decor/decor_gear_monument",
+   "height": 2.742,
+   "width": 1.928,
+   "depth": 1.4,
+   "parts": [
+    {
+     "name": "Gear",
+     "model": "Decor/decor_gear_monument_gear",
+     "pos": [
+      0,
+      1.75,
+      0
+     ]
+    }
+   ],
+   "lights": [],
+   "line": false,
+   "floor": false,
+   "blink": 0.0,
+   "tintPart": "",
+   "fire": [],
+   "smoke": [],
+   "splash": [],
+   "text": null
+  },
+  {
+   "id": "decor_rocket",
+   "model": "Decor/decor_rocket",
+   "height": 5.15,
+   "width": 2.587,
+   "depth": 2.587,
+   "parts": [],
+   "lights": [
+    {
+     "pos": [
+      0,
+      0.6,
+      0
+     ],
+     "color": [
+      1.0,
+      0.5,
+      0.2
+     ],
+     "range": 5.0
+    }
+   ],
+   "line": false,
+   "floor": false,
+   "blink": 0.0,
+   "tintPart": "",
+   "fire": [],
+   "smoke": [],
+   "splash": [],
+   "text": null
+  },
+  {
+   "id": "decor_robot",
+   "model": "Decor/decor_robot",
+   "height": 1.64,
+   "width": 0.77,
+   "depth": 0.293,
+   "parts": [
+    {
+     "name": "Arm",
+     "model": "Decor/decor_robot_arm",
+     "pos": [
+      0.24,
+      0.98,
+      0
+     ]
+    }
+   ],
+   "lights": [],
+   "line": false,
+   "floor": false,
+   "blink": 0.0,
+   "tintPart": "Body",
+   "fire": [],
+   "smoke": [],
+   "splash": [],
+   "text": null
+  },
+  {
+   "id": "decor_windmill",
+   "model": "Decor/decor_windmill",
+   "height": 4.95,
+   "width": 2.445,
+   "depth": 1.0,
+   "parts": [
+    {
+     "name": "Blades",
+     "model": "Decor/decor_windmill_blades",
+     "pos": [
+      0,
+      3.55,
+      0.3
+     ]
+    }
+   ],
+   "lights": [],
+   "line": false,
+   "floor": false,
+   "blink": 0.0,
+   "tintPart": "",
+   "fire": [],
+   "smoke": [],
+   "splash": [],
+   "text": null
+  },
+  {
+   "id": "decor_radio_tower",
+   "model": "Decor/decor_radio_tower",
+   "height": 5.66,
+   "width": 1.9,
+   "depth": 1.9,
+   "parts": [
+    {
+     "name": "Light",
+     "model": "Decor/decor_radio_tower_light",
+     "pos": [
+      0,
+      5.6,
+      0
+     ]
+    }
+   ],
+   "lights": [
+    {
+     "pos": [
+      0,
+      5.6,
+      0
+     ],
+     "color": [
+      1.0,
+      0.2,
+      0.15
+     ],
+     "range": 5.0
+    }
+   ],
+   "line": false,
+   "floor": false,
+   "blink": 1.0,
+   "tintPart": "",
+   "fire": [],
+   "smoke": [],
+   "splash": [],
+   "text": null
+  },
+  {
+   "id": "decor_hologram",
+   "model": "Decor/decor_hologram",
+   "height": 1.704,
+   "width": 1.739,
+   "depth": 1.739,
+   "parts": [
+    {
+     "name": "Holo",
+     "model": "Decor/decor_hologram_holo",
+     "pos": [
+      0,
+      1.25,
+      0
+     ]
+    }
+   ],
+   "lights": [
+    {
+     "pos": [
+      0,
+      1.2,
+      0
+     ],
+     "color": [
+      0.3,
+      0.85,
+      1.0
+     ],
+     "range": 5.0
+    }
+   ],
+   "line": false,
+   "floor": false,
+   "blink": 0.0,
+   "tintPart": "",
+   "fire": [],
+   "smoke": [],
+   "splash": [],
+   "text": null
+  },
+  {
+   "id": "decor_golden_cup",
+   "model": "Decor/decor_golden_cup",
+   "height": 1.34,
+   "width": 0.719,
+   "depth": 0.62,
+   "parts": [],
+   "lights": [],
+   "line": false,
+   "floor": false,
+   "blink": 0.0,
+   "tintPart": "",
+   "fire": [],
+   "smoke": [],
+   "splash": [],
+   "text": null
+  },
+  {
+   "id": "decor_snowman",
+   "model": "Decor/decor_snowman",
+   "height": 1.45,
+   "width": 1.022,
+   "depth": 0.799,
+   "parts": [],
+   "lights": [],
+   "line": false,
+   "floor": false,
+   "blink": 0.0,
+   "tintPart": "",
+   "fire": [],
+   "smoke": [],
+   "splash": [],
+   "text": null
+  },
+  {
+   "id": "decor_xmas_tree",
+   "model": "Decor/decor_xmas_tree",
+   "height": 2.85,
+   "width": 1.8,
+   "depth": 1.712,
+   "parts": [
+    {
+     "name": "LightsA",
+     "model": "Decor/decor_xmas_tree_lightsa",
+     "pos": [
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "name": "LightsB",
+     "model": "Decor/decor_xmas_tree_lightsb",
+     "pos": [
+      0,
+      0,
+      0
+     ]
+    }
+   ],
+   "lights": [
+    {
+     "pos": [
+      0,
+      1.6,
+      0
+     ],
+     "color": [
+      1.0,
+      0.8,
+      0.45
+     ],
+     "range": 6.0
+    }
+   ],
+   "line": false,
+   "floor": false,
+   "blink": 0.7,
+   "tintPart": "",
+   "fire": [],
+   "smoke": [],
+   "splash": [],
+   "text": null
+  }
+ ]
+}

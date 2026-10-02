@@ -61,8 +61,9 @@ public class DroneStationUI : MonoBehaviour
             MachineUI.Instance.Close();
         load = station as DroneLoadStation;
         unload = station as DroneUnloadStation;
-        IndustryUi.SetHeader(overlay, station.data != null ? station.data.displayName : "Drones", station.data != null ? station.data.icon : null);
+        IndustryUi.SetHeader(overlay, station.data != null ? station.data.Title : "Drones", station.data != null ? station.data.icon : null);
         IsOpen = true;
+        UiStack.Opened("drones", Close, 87);
         IndustryUi.Show(overlay, true);
         UiAudio.PlayOpen();
         Fill();
@@ -75,6 +76,7 @@ public class DroneStationUI : MonoBehaviour
         if (!IsOpen)
             return;
         IsOpen = false;
+        UiStack.Closed("drones");
         load = null;
         unload = null;
         IndustryUi.Show(overlay, false);
@@ -106,17 +108,13 @@ public class DroneStationUI : MonoBehaviour
         overlay = IndustryUi.OverlayPanel("Drones", null, Close);
         VisualElement panel = IndustryUi.PanelOf(overlay);
         if (panel != null)
-        {
-            panel.RemoveFromClassList("panel-wide");
-            panel.style.width = 820;
-            panel.style.maxWidth = Length.Percent(94);
-            panel.style.height = Length.Percent(80);
-            panel.style.alignSelf = Align.Center;
-            panel.style.marginTop = 40;
-        }
+            panel.AddToClassList("win-medium");
+        IndustryUi.WindowHints(overlay,
+            (UiLocale.T("bag.lmb"), UiLocale.T("drone.hint_click")),
+            ("Esc", UiLocale.T("win.close")));
 
         VisualElement host = overlay.Q("Body") ?? panel;
-        status = IndustryUi.Text("Status", "", "body-text");
+        status = IndustryUi.Text("Status", "", "body-text", "status-row");
         status.style.whiteSpace = WhiteSpace.Normal;
         host.Add(status);
         var scroll = IndustryUi.Scroll("DroneScroll");
@@ -143,12 +141,9 @@ public class DroneStationUI : MonoBehaviour
         RefreshLive();
     }
 
-    static Label Section(VisualElement parent, string key)
+    static void Section(VisualElement parent, string key)
     {
-        Label l = IndustryUi.Text("S", UiLocale.T(key), "settings-group");
-        l.style.marginTop = 14;
-        parent.Add(l);
-        return l;
+        parent.Add(IndustryUi.Section(UiLocale.T(key)));
     }
 
     // ---------- Загрузка ----------
@@ -215,7 +210,7 @@ public class DroneStationUI : MonoBehaviour
             bool on = st == current;
             targetList.Add(IndustryUi.FilterCard(
                 st.data != null ? st.data.icon : null,
-                (on ? "✓ " : "") + (st.data != null ? st.data.displayName : "Unload"),
+                (on ? "✓ " : "") + (st.data != null ? st.data.Title : "Unload"),
                 on ? UiLocale.T("drone.target_on") + "  ·  " + sub : sub,
                 on,
                 () =>
@@ -254,14 +249,14 @@ public class DroneStationUI : MonoBehaviour
             if (item == null || item.isFluid || string.IsNullOrEmpty(item.id) || !seen.Add(item.id))
                 continue;
             if (q.Length > 0
-                && (item.displayName ?? "").ToLowerInvariant().IndexOf(q) < 0
+                && (item.Title ?? "").ToLowerInvariant().IndexOf(q) < 0
                 && item.id.ToLowerInvariant().IndexOf(q) < 0)
                 continue;
             ItemData captured = item;
             bool selected = load.filter == item;
             filterGrid.Add(IndustryUi.FilterCard(
                 item.icon,
-                item.displayName,
+                item.Title,
                 selected ? UiLocale.T("machine.filter_set") : UiLocale.T("machine.filter_only"),
                 selected,
                 () =>
@@ -296,7 +291,7 @@ public class DroneStationUI : MonoBehaviour
         {
             if (pair.Key == null || pair.Value <= 0)
                 continue;
-            storageList.Add(IndustryUi.StatRow(pair.Key.icon, pair.Key.displayName, pair.Value.ToString()));
+            storageList.Add(IndustryUi.StatRow(pair.Key.icon, pair.Key.Title, pair.Value.ToString()));
         }
     }
 
@@ -307,7 +302,7 @@ public class DroneStationUI : MonoBehaviour
         if (load != null)
         {
             string crate = load.CrateItem != null
-                ? UiLocale.T("drone.crate", load.CrateItem.displayName, load.CrateCount, DroneNetwork.Capacity())
+                ? UiLocale.T("drone.crate", load.CrateItem.Title, load.CrateCount, DroneNetwork.Capacity())
                 : UiLocale.T("drone.crate_empty", DroneNetwork.Capacity());
             DroneUnloadStation t = load.Target;
             string to = t != null ? UiLocale.T("drone.to", DroneNetwork.CellText(t)) : UiLocale.T("drone.to_none");

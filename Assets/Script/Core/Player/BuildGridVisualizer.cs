@@ -58,13 +58,23 @@ public class BuildGridVisualizer : MonoBehaviour
             return;
         }
 
+        // Настройка «Сетка стройки»: 0 — в режиме стройки, 1 — всегда, 2 — выкл (клетки под зданием остаются).
+        int gridMode = GameSettings.BuildGridMode;
         if (!playerBuilder.isBuildMode)
         {
-            SetVisible(false);
+            if (gridMode != 1)
+            {
+                SetVisible(false);
+                return;
+            }
+            SetVisible(true);
+            UpdateGridAroundPlayer();
             return;
         }
 
         SetVisible(true);
+        if (gridPlane != null && gridMode == 2)
+            gridPlane.gameObject.SetActive(false);
 
         if (playerBuilder.IsBuildModeActive && playerBuilder.HasPlacementTarget)
         {

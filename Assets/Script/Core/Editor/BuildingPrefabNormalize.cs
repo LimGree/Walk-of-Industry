@@ -5,14 +5,14 @@ using UnityEngine;
 
 public static class BuildingPrefabNormalize
 {
-    const string InPrefabPath = "Assets/prefabs/IO/IoArrow_In.prefab";
-    const string OutPrefabPath = "Assets/prefabs/IO/IoArrow_Out.prefab";
-    const string ObjPath = "Assets/models/Builders/io_arrow.obj";
-    const string MeshAssetPath = "Assets/models/Builders/io_arrow_mesh.asset";
-    const string InMatPath = "Assets/Materials/IoArrow_In.mat";
-    const string OutMatPath = "Assets/Materials/IoArrow_Out.mat";
+    const string InPrefabPath = "Assets/Prefabs/IO/IoArrow_In.prefab";
+    const string OutPrefabPath = "Assets/Prefabs/IO/IoArrow_Out.prefab";
+    const string ObjPath = "Assets/Art/Models/Buildings/io_arrow.obj";
+    const string MeshAssetPath = "Assets/Art/Models/Buildings/io_arrow_mesh.asset";
+    const string InMatPath = "Assets/Art/Materials/IoArrow_In.mat";
+    const string OutMatPath = "Assets/Art/Materials/IoArrow_Out.mat";
 
-    [InitializeOnLoadMethod]
+    // Стрелки I/O в игре больше не нужны (лежат в _unused_assets): автосоздание выключено, осталось меню.
     static void BootstrapIoArrows()
     {
         EditorApplication.delayCall += () =>
@@ -43,7 +43,7 @@ public static class BuildingPrefabNormalize
             return;
         }
 
-        DirectoryEnsure("Assets/prefabs/IO");
+        DirectoryEnsure("Assets/Prefabs/IO");
         WriteArrowPrefab(InPrefabPath, "IoArrow_In", mesh, inMat);
         WriteArrowPrefab(OutPrefabPath, "IoArrow_Out", mesh, outMat);
         AssetDatabase.SaveAssets();
@@ -152,7 +152,7 @@ public static class BuildingPrefabNormalize
     [MenuItem("Walk of Industry/Normalize Building Prefabs")]
     public static void NormalizeAll()
     {
-        string[] guids = AssetDatabase.FindAssets("t:BuildingData", new[] { "Assets/ScriptableObjects/Builders" });
+        string[] guids = AssetDatabase.FindAssets("t:BuildingData", new[] { "Assets/Data/Buildings" });
         int n = 0;
         for (int i = 0; i < guids.Length; i++)
         {

@@ -16,7 +16,7 @@ public class WorldResourceScatterer : MonoBehaviour
         Sulfur
     }
 
-    [Header("Prefabs (Assets/prefabs/resourses)")]
+    [Header("Prefabs (Assets/Prefabs/Nodes)")]
     public GameObject sandPrefab;
     public GameObject stonePrefab;
     public GameObject coalPrefab;
@@ -828,7 +828,8 @@ public class WorldResourceScatterer : MonoBehaviour
 
     public bool DevSpawnVein(string kind, Vector2Int cell)
     {
-        if (used.Contains(cell) || ResourceNode.HasNode(cell))
+        // Мешает только жила в клетке; резерв генератора (used) ручному спавну не важен.
+        if (ResourceNode.HasNode(cell))
             return false;
         if (rng == null)
             rng = new System.Random(1);
@@ -1057,7 +1058,7 @@ public class WorldResourceScatterer : MonoBehaviour
             return fromResources;
 
 #if UNITY_EDITOR
-        string[] guids = AssetDatabase.FindAssets(name + " t:Prefab", new[] { "Assets/prefabs/resourses" });
+        string[] guids = AssetDatabase.FindAssets(name + " t:Prefab", new[] { "Assets/Prefabs/Nodes" });
         for (int i = 0; i < (guids != null ? guids.Length : 0); i++)
         {
             string path = AssetDatabase.GUIDToAssetPath(guids[i]);

@@ -75,6 +75,7 @@ public class InputHintUI : MonoBehaviour
         bar = IndustryUi.El("Hints", "hint-bar");
         bar.pickingMode = PickingMode.Ignore;
         root.Add(bar);
+        UiLook.RegisterHud(bar);
     }
 
     void LateUpdate()
@@ -102,6 +103,10 @@ public class InputHintUI : MonoBehaviour
             Add(hints, KeybindStore.Hint("Pause"), UiLocale.T("hint.resume"));
             return hints;
         }
+
+        // Открыто окно — его подсказки уже в подвале окна, игровые клавиши не действуют.
+        if (UiStack.Any || UiModal.IsOpen)
+            return hints;
 
         if (InventoryUI.Instance != null && InventoryUI.Instance.IsBagOpen)
         {

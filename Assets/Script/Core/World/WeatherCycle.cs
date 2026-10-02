@@ -86,6 +86,8 @@ public class WeatherCycle : MonoBehaviour
             Weather.Kind = ClampKind(data.worldWeather);
         previewWeather = Weather.Kind;
         Weather.Tick(10f);
+        // Загрузились в дождь — он закончится по таймеру дождя, а не через «ясные» 6–14 минут.
+        ArmFront();
     }
 
     public void ResetToNewWorld()
@@ -102,14 +104,30 @@ public class WeatherCycle : MonoBehaviour
         return (WeatherKind)value;
     }
 
+    /// <summary>Сколько держится текущая погода: ясно долго, осадки коротко (минуты игрового времени Unity).</summary>
     void ArmFront()
     {
-        nextFront = Random.Range(3f, 7f) * 60f;
+        switch (Weather.Kind)
+        {
+            case WeatherKind.Rain: nextFront = Random.Range(2f, 4f) * 60f; break;
+            case WeatherKind.Storm: nextFront = Random.Range(1.5f, 3f) * 60f; break;
+            default: nextFront = Random.Range(6f, 14f) * 60f; break;
+        }
     }
 
+    /// <summary>
+    /// Смена погоды по цепочке, а не случайно из трёх: после осадков почти всегда проясняется,
+    /// дождь не тянется дождём. Доля непогоды ≈ 25–30% времени.
+    /// </summary>
     static WeatherKind PickNext()
     {
-        return (WeatherKind)Random.Range(0, 3);
+        float r = Random.value;
+        switch (Weather.Kind)
+        {
+            case WeatherKind.Clear: return r < 0.75f ? WeatherKind.Rain : WeatherKind.Storm;
+            case WeatherKind.Rain: return r < 0.8f ? WeatherKind.Clear : WeatherKind.Storm;
+            default: return r < 0.7f ? WeatherKind.Clear : WeatherKind.Rain;
+        }
     }
 
     void TickStorm(float dt)
@@ -126,6 +144,9 @@ public class WeatherCycle : MonoBehaviour
             Weather.Flash = Random.Range(0.65f, 1f);
             thunderAt = Time.time + Random.Range(0.28f, 2.4f);
             ArmBolt();
+            // «Гроза ломает станки»: изредка молния бьёт в станок.
+            if (GameSettings.StormDamage && BreakdownSystem.Instance != null && Random.value < 0.12f)
+                BreakdownSystem.Instance.StormStrike();
         }
 
         if (thunderAt > 0f && Time.time >= thunderAt)

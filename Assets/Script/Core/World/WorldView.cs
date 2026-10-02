@@ -11,6 +11,9 @@ public static class WorldView
     static int frame = -1;
     static readonly Plane[] frustum = new Plane[6];
     static bool frustumOk;
+    // PlayerPrefs на Windows читает реестр — дорого звать с каждой ленты, поэтому раз в кадр.
+    static float renderDistance;
+    static float beltItemRadius;
 
     public static bool HasPlayer
     {
@@ -44,7 +47,17 @@ public static class WorldView
         get
         {
             Tick();
-            return GameSettings.RenderDistance;
+            return renderDistance;
+        }
+    }
+
+    /// <summary>Дальность моделей груза на лентах: настройка, но не дальше дальности объектов.</summary>
+    public static float BeltItemRadius
+    {
+        get
+        {
+            Tick();
+            return beltItemRadius;
         }
     }
 
@@ -58,7 +71,7 @@ public static class WorldView
         Tick();
         if (player == null)
             return false;
-        float r = radius > 0.01f ? radius : GameSettings.RenderDistance;
+        float r = radius > 0.01f ? radius : renderDistance;
         float dx = world.x - pos.x;
         float dz = world.z - pos.z;
         return dx * dx + dz * dz <= r * r;
@@ -78,6 +91,8 @@ public static class WorldView
         if (Time.frameCount == frame)
             return;
         frame = Time.frameCount;
+        renderDistance = GameSettings.RenderDistance;
+        beltItemRadius = Mathf.Min(GameSettings.BeltItemDistance, renderDistance);
         if (player == null)
         {
             if (GameManager.Instance != null && GameManager.Instance.playerBuilder != null)

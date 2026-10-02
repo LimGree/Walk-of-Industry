@@ -43,7 +43,7 @@ public static class BuildingRestyle
     {
         if (!Enabled || b == null || b.data == null)
             return;
-        if (b is Conveyor || b is DroneLoadStation || b is DroneUnloadStation)
+        if (b is Conveyor || b is DroneLoadStation || b is DroneUnloadStation || b is Decoration)
             return;
         Transform root = b.transform;
         Vector2 size = LocalSize(b);
@@ -223,6 +223,7 @@ public static class BuildingRestyle
             if (go == null)
                 continue;
             go.name = "Wi" + model;
+            ModelLibrary.NoShadows(go.transform);
             go.transform.SetParent(parent, false);
             go.transform.localPosition = pos;
             go.transform.localRotation = Quaternion.Euler(0f, yaw, 0f);
@@ -265,6 +266,7 @@ public static class BuildingRestyle
         if (existing != null && existing.childCount > 0 && existing.GetChild(0).name == model)
         {
             Align(existing, holder, belt.transform);
+            ModelLibrary.NoShadows(existing);
             return;
         }
 
@@ -284,6 +286,7 @@ public static class BuildingRestyle
         t.localPosition = Vector3.zero;
         t.localRotation = Quaternion.identity;
         t.localScale = Vector3.one;
+        ModelLibrary.NoShadows(wrap.transform);
         Align(wrap.transform, holder, belt.transform);
     }
 
@@ -332,13 +335,16 @@ public static class BuildingRestyle
             {
                 if (mats[i] == null || !mats[i].name.StartsWith(EdgeMaterial))
                     continue;
-                block.Clear();
-                if (tint.HasValue)
+                if (!tint.HasValue)
                 {
-                    block.SetColor(colorId, tint.Value);
-                    block.SetColor(baseColorId, tint.Value);
+                    // без фильтра — никакого блока: ленты рисуются инстансингом пачкой
+                    r.SetPropertyBlock(null, i);
+                    continue;
                 }
 
+                block.Clear();
+                block.SetColor(colorId, tint.Value);
+                block.SetColor(baseColorId, tint.Value);
                 r.SetPropertyBlock(block, i);
             }
         }

@@ -40,6 +40,27 @@ public class GameDatabase : ScriptableObject
     {
         Instance = this;
         RebuildIndex();
+        for (int i = 0; i < PendingExtra.Count; i++)
+            RegisterExtraBuilding(PendingExtra[i]);
+        PendingExtra.Clear();
+    }
+
+    /// <summary>Здания, созданные кодом (декорации [[DecorCatalog]]): ищутся по id, но не входят в меню стройки и исследования.</summary>
+    public static readonly List<BuildingData> PendingExtra = new List<BuildingData>();
+    readonly List<BuildingData> extraBuildings = new List<BuildingData>();
+
+    public void RegisterExtraBuilding(BuildingData data)
+    {
+        if (data == null || string.IsNullOrEmpty(data.id))
+            return;
+        string id = Normalize(data.id);
+        // Пересборка (Play без перезагрузки домена): старая запись с тем же id заменяется.
+        extraBuildings.RemoveAll(b => b == null || Normalize(b.id) == id);
+        extraBuildings.Add(data);
+        if (buildingsById.TryGetValue(id, out BuildingData existing) && existing != null
+            && buildings != null && System.Array.IndexOf(buildings, existing) >= 0)
+            return;
+        buildingsById[id] = data;
     }
 
     public void RebuildIndex()
@@ -52,6 +73,12 @@ public class GameDatabase : ScriptableObject
         Index(items, itemsById);
         Index(recipes, recipesById);
         Index(researches, researchesById);
+        for (int i = 0; i < extraBuildings.Count; i++)
+        {
+            BuildingData extra = extraBuildings[i];
+            if (extra != null && !buildingsById.ContainsKey(Normalize(extra.id)))
+                buildingsById.Add(Normalize(extra.id), extra);
+        }
         indexed = true;
     }
 

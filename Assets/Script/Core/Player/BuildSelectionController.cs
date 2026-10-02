@@ -161,6 +161,7 @@ public class BuildSelectionController : MonoBehaviour
 
     void Update()
     {
+        TickDeleteHold();
         if (builder == null || !builder.isBuildMode)
         {
             if (!boxSelecting && (selectionMode || pasteActive || moveActive))
@@ -269,21 +270,7 @@ public class BuildSelectionController : MonoBehaviour
 
     bool IsBlocked()
     {
-        if (KeybindStore.BlocksGameplayInput)
-            return true;
-        if (GameManager.Instance != null && GameManager.Instance.IsPaused)
-            return true;
-        if ((MachineUI.Instance != null && MachineUI.Instance.IsOpen) || WorldOverlayGate.IsOpen)
-            return true;
-        if (ResearchUI.Instance != null && ResearchUI.Instance.IsOpen)
-            return true;
-        if (WalletHud.Instance != null && WalletHud.Instance.IsShopOpen)
-            return true;
-        if (IsSelectionPanelOpen())
-            return true;
-        if (WorldMapUI.Instance != null && WorldMapUI.Instance.IsOpen)
-            return true;
-        return false;
+        return UiStack.GameplayBlocked;
     }
 
     static bool IsSelectionPanelOpen()
@@ -386,6 +373,46 @@ public class BuildSelectionController : MonoBehaviour
         if (selectedBuildings.Count == 0)
             return;
 
+        // «Подтверждать массовое удаление»: много зданий — удерживай клавишу.
+        int threshold = GameSettings.ConfirmMassDelete;
+        if (threshold > 0 && selectedBuildings.Count >= threshold)
+        {
+            deleteHoldStart = Time.unscaledTime;
+            deleteHolding = true;
+            return;
+        }
+
+        DeleteSelectedNow();
+    }
+
+    bool deleteHolding;
+    float deleteHoldStart;
+
+    void TickDeleteHold()
+    {
+        if (!deleteHolding)
+            return;
+        bool held = input != null && input.Player.Delete.IsPressed();
+        if (!held || !selectionMode || IsBlocked())
+        {
+            deleteHolding = false;
+            HoldPrompt.Hide();
+            return;
+        }
+        float t = (Time.unscaledTime - deleteHoldStart) / GameSettings.HoldTime;
+        HoldPrompt.Show(UiLocale.T("hold.delete", selectedBuildings.Count), t);
+        if (t < 1f)
+            return;
+        deleteHolding = false;
+        HoldPrompt.Hide();
+        DeleteSelectedNow();
+    }
+
+    void DeleteSelectedNow()
+    {
+        RefreshSelectedBuildings();
+        if (selectedBuildings.Count == 0)
+            return;
         BuildUndo.Begin();
         var skip = new HashSet<int>();
         for (int i = 0; i < selectedBuildings.Count; i++)
@@ -664,6 +691,8 @@ public class BuildSelectionController : MonoBehaviour
                 Vector2Int cell = new Vector2Int(x, z);
                 selectedCells.Add(cell);
                 BuildingBase building = BuildingLinker.GetBuildingAt(cell);
+                if (building == null)
+                    building = DecorSystem.FloorAt(cell);
                 if (building == null || !seen.Add(building.GetInstanceID()))
                     continue;
 
@@ -722,9 +751,12 @@ public class BuildSelectionController : MonoBehaviour
         foreach (Vector2Int cell in selectedCells)
         {
             BuildingBase b = BuildingLinker.GetBuildingAt(cell);
-            if (b == null || !seen.Add(b.GetInstanceID()))
-                continue;
-            selectedBuildings.Add(b);
+            if (b != null && seen.Add(b.GetInstanceID()))
+                selectedBuildings.Add(b);
+            // напольная декорация под зданием — отдельно ([[DecorSystem]])
+            Decoration floor = DecorSystem.FloorAt(cell);
+            if (floor != null && seen.Add(floor.GetInstanceID()))
+                selectedBuildings.Add(floor);
         }
     }
 
@@ -949,7 +981,7 @@ public class BuildSelectionController : MonoBehaviour
             Vector2Int size = GridFootprint.GetRotatedSize(item.data.size, item.yaw);
             Vector2Int min = origin + item.minOffset;
             Vector3 pos = GridFootprint.MinCellToCenter(min, size, y);
-            bool valid = GridOccupancy.IsAreaFree(min, size, reserveToken, moveActive ? moveIgnore : null)
+            bool valid = DecorSystem.IsAreaFreeFor(item.data, min, size, reserveToken, moveActive ? moveIgnore : null)
                 && WorldBiomeMap.CanBuild(min, size, item.data.allowOnWater, item.data.requiresWater);
             if (valid && pasteActive && item.data.id == "research_lab")
             {
@@ -959,6 +991,9 @@ public class BuildSelectionController : MonoBehaviour
             }
             if (valid && PlayerBuilder.NeedsResourceNode(item.data)
                 && !ResourceNode.HasNodeInArea(min, size))
+                valid = false;
+            // Чертёж из другого мира не вставит некупленную декорацию.
+            if (valid && pasteActive && DecorCatalog.IsDecor(item.data) && !DecorSystem.IsOwned(item.data))
                 valid = false;
 
             item.valid = valid;
@@ -1183,7 +1218,7 @@ public class BuildSelectionController : MonoBehaviour
             Planned p = planned[i];
             bool allowWater = p.building.data != null && p.building.data.allowOnWater;
             bool requireWater = p.building.data != null && p.building.data.requiresWater;
-            if (!GridOccupancy.IsAreaFree(p.min, p.size, null, ignore)
+            if (!DecorSystem.IsAreaFreeFor(p.building.data, p.min, p.size, null, ignore)
                 || !WorldBiomeMap.CanBuild(p.min, p.size, allowWater, requireWater))
                 return false;
             if (PlayerBuilder.NeedsResourceNode(p.building.data) && !ResourceNode.HasNodeInArea(p.min, p.size))

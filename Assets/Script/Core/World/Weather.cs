@@ -49,7 +49,7 @@ public static class Weather
         sample.exposure *= Mathf.Lerp(1f, 0.78f, c);
         sample.tint = Color.Lerp(sample.tint, sample.tint * new Color(0.70f, 0.74f, 0.80f, 1f), c * 0.55f);
 
-        if (Flash > 0.01f)
+        if (Flash > 0.01f && !GameSettings.NoFlashes)
         {
             float f = Flash;
             sample.sky = Color.Lerp(sample.sky, Color.white, f * 0.62f);

@@ -13,6 +13,11 @@ public class RepairUI : MonoBehaviour
 {
     public const float TimeLimit = 45f;
     public const int MaxMistakes = 3;
+
+    /// <summary>Рядом зона отдыха ([[DecorSystem]]): больше времени и одна лишняя ошибка.</summary>
+    bool RestBonus => target != null && DecorSystem.RestNear(target.transform.position);
+    float Limit => TimeLimit + (RestBonus ? DecorSystem.RestBonusSeconds : 0f);
+    int MistakeLimit => MaxMistakes + (RestBonus ? 1 : 0);
     public const int RushBaseCost = 3;
 
     public static RepairUI Instance { get; private set; }
@@ -87,6 +92,7 @@ public class RepairUI : MonoBehaviour
         bool resume = memoTarget == building;
         game = resume ? memoGame : building.BreakGame;
         IsOpen = true;
+        UiStack.Opened("repair", Close, 88);
         IndustryUi.Show(overlay, true);
         UiAudio.PlayModal();
         StartGame();
@@ -105,6 +111,7 @@ public class RepairUI : MonoBehaviour
         if (!IsOpen)
             return;
         IsOpen = false;
+        UiStack.Closed("repair");
         tick = null;
         if (target != null && target.IsBroken)
         {
@@ -136,8 +143,8 @@ public class RepairUI : MonoBehaviour
         float elapsed = Time.time - startedAt;
         if (timerLabel != null)
         {
-            timerLabel.text = UiLocale.T("repair.timer", Mathf.FloorToInt(elapsed), Mathf.RoundToInt(TimeLimit));
-            IndustryUi.SetOn(timerLabel, elapsed > TimeLimit, "warn");
+            timerLabel.text = UiLocale.T("repair.timer", Mathf.FloorToInt(elapsed), Mathf.RoundToInt(Limit));
+            IndustryUi.SetOn(timerLabel, elapsed > Limit, "warn");
         }
 
         tick?.Invoke();
@@ -151,15 +158,9 @@ public class RepairUI : MonoBehaviour
         overlay = IndustryUi.OverlayPanel(UiLocale.T("repair.window"), null, Close);
         VisualElement panel = IndustryUi.PanelOf(overlay);
         if (panel != null)
-        {
-            panel.RemoveFromClassList("panel-wide");
-            panel.style.width = 760;
-            panel.style.maxWidth = Length.Percent(94);
-            panel.style.height = StyleKeyword.Auto;
-            panel.style.maxHeight = Length.Percent(92);
-            panel.style.alignSelf = Align.Center;
-            panel.style.marginTop = 48;
-        }
+            panel.AddToClassList("win-auto");
+        IndustryUi.WindowHints(overlay,
+            ("Esc", UiLocale.T("repair.hint_later")));
 
         VisualElement body = overlay.Q("Body") ?? panel;
         heading = IndustryUi.Text("Heading", "", "heading-3");
@@ -167,7 +168,7 @@ public class RepairUI : MonoBehaviour
         info = IndustryUi.Text("Info", "", "muted");
         body.Add(info);
 
-        var status = IndustryUi.El("Status", "row");
+        var status = IndustryUi.El("Status", "row", "status-row");
         status.style.justifyContent = Justify.SpaceBetween;
         status.style.marginTop = 8;
         timerLabel = IndustryUi.Text("Timer", "", "body-text");
@@ -219,7 +220,7 @@ public class RepairUI : MonoBehaviour
     {
         if (target == null)
             return;
-        string name = target.data != null ? target.data.displayName : "Building";
+        string name = target.data != null ? target.data.Title : "Building";
         heading.text = UiLocale.T("repair.title", name);
         BreakdownSystem sys = BreakdownSystem.Instance;
         int surcharge = sys != null ? sys.RepairSurcharge(target) : 0;
@@ -228,8 +229,10 @@ public class RepairUI : MonoBehaviour
             + "  ·  " + UiLocale.T("repair.age", Mathf.FloorToInt(age));
         if (surcharge > 0)
             line += "  ·  " + UiLocale.T("repair.surcharge", surcharge);
+        if (RestBonus)
+            line += "  ·  " + DecorText.T("decor.perk_rest", Mathf.RoundToInt(DecorSystem.RestBonusSeconds));
         info.text = line;
-        mistakesLabel.text = UiLocale.T("repair.mistakes", mistakes, MaxMistakes);
+        mistakesLabel.text = UiLocale.T("repair.mistakes", mistakes, MistakeLimit);
 
         int rush = RushBaseCost + surcharge;
         int have = PlayerWallet.Instance != null ? PlayerWallet.Instance.Rubies : 0;
@@ -241,14 +244,14 @@ public class RepairUI : MonoBehaviour
     {
         mistakes++;
         UiAudio.PlayError();
-        mistakesLabel.text = UiLocale.T("repair.mistakes", mistakes, MaxMistakes);
-        if (mistakes < MaxMistakes)
+        mistakesLabel.text = UiLocale.T("repair.mistakes", mistakes, MistakeLimit);
+        if (mistakes < MistakeLimit)
             return;
 
         // Провал: рубин за сорванный ремонт и новая неисправность.
         if (PlayerWallet.Instance != null)
             PlayerWallet.Instance.PayRubyPenalty(1);
-        UiNotification.Push(UiLocale.T("repair.fail_title"), UiLocale.T("repair.fail_body"), UiStatus.Error);
+        UiNotification.Push(NotifyKind.Breakdown, UiLocale.T("repair.fail_title"), UiLocale.T("repair.fail_body"), UiStatus.Error);
         game = BreakdownSystem.RollGame(target);
         StartGame();
     }
@@ -259,7 +262,7 @@ public class RepairUI : MonoBehaviour
             return;
         BuildingBase done = target;
         BreakdownSystem sys = BreakdownSystem.Instance;
-        int penalty = (Time.time - startedAt > TimeLimit ? 1 : 0) + (sys != null ? sys.RepairSurcharge(done) : 0);
+        int penalty = (Time.time - startedAt > Limit ? 1 : 0) + (sys != null ? sys.RepairSurcharge(done) : 0);
         if (penalty > 0 && PlayerWallet.Instance != null)
             PlayerWallet.Instance.PayRubyPenalty(penalty);
         Finish(done, penalty);
@@ -282,13 +285,13 @@ public class RepairUI : MonoBehaviour
 
     void Finish(BuildingBase done, int paid)
     {
-        string name = done.data != null ? done.data.displayName : "Building";
+        string name = done.data != null ? done.data.Title : "Building";
         if (BreakdownSystem.Instance != null)
             BreakdownSystem.Instance.Repair(done, true);
         else
             done.ClearBroken();
         UiAudio.PlayNotify();
-        UiNotification.Push(
+        UiNotification.Push(NotifyKind.Breakdown,
             UiLocale.T("repair.done_title"),
             paid > 0 ? UiLocale.T("repair.done_paid", name, paid) : UiLocale.T("repair.done_body", name),
             UiStatus.Completed);
@@ -809,7 +812,7 @@ public class RepairUI : MonoBehaviour
         {
             gridEl.Clear();
             ItemData want = pool[UnityEngine.Random.Range(0, pool.Count)];
-            SetHint(UiLocale.T("repair.g_captcha_pick", want.displayName));
+            SetHint(UiLocale.T("repair.g_captcha_pick", want.Title));
             int count = UnityEngine.Random.Range(2, 5);
             int[] order = Shuffled(cells);
             for (int i = 0; i < cells; i++)

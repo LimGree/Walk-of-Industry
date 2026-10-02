@@ -254,7 +254,7 @@ public class Splitter : BuildingBase, IInteractable
 
     void SubmitCargoDraws()
     {
-        bool show = WorldView.InRange(transform.position);
+        bool show = WorldView.InRange(transform.position, WorldView.BeltItemRadius);
         for (int i = 0; i < cargo.Count; i++)
         {
             Cargo item = cargo[i];
@@ -405,8 +405,10 @@ public class Splitter : BuildingBase, IInteractable
             if (!nextBelt.AcceptsFromCell(Cell))
                 return false;
 
-            if (!nextBelt.TryAcceptTransfer(item.item, null, this))
+            // визуал едет дальше вместе с предметом (см. BeltItemView)
+            if (!nextBelt.TryAcceptTransfer(item.item, item.visual, this))
                 return false;
+            item.visual = null;
             return true;
         }
 

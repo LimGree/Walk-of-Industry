@@ -4,6 +4,9 @@ using System.Collections.Generic;
 [CreateAssetMenu(fileName = "New Research", menuName = "Builderment/Research Node")]
 public class ResearchNodeData : ScriptableObject
 {
+    public string Title => DataLocale.ResearchName(id, displayName);
+    public string Info => DataLocale.ResearchDesc(id, description);
+
     [Header("Basic Info")]
     public string id;
     public string displayName;

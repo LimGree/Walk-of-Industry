@@ -7,58 +7,8 @@ ModelImporter:
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
-      name: wi_base
-    second: {fileID: 2100000, guid: f9f9d8f78dea4cf891dde0bad65a6c73, type: 2}
-  - first:
-      type: UnityEngine:Material
-      assembly: UnityEngine.CoreModule
-      name: wi_chem
-    second: {fileID: 2100000, guid: 7b7cdb9adfd44673b545999d06b7e261, type: 2}
-  - first:
-      type: UnityEngine:Material
-      assembly: UnityEngine.CoreModule
-      name: wi_copper
-    second: {fileID: 2100000, guid: b6352af62c1243778402a4f842f38e37, type: 2}
-  - first:
-      type: UnityEngine:Material
-      assembly: UnityEngine.CoreModule
-      name: wi_dark
-    second: {fileID: 2100000, guid: 97324f044c434f82bbb641d374e3905a, type: 2}
-  - first:
-      type: UnityEngine:Material
-      assembly: UnityEngine.CoreModule
-      name: wi_glass
-    second: {fileID: 2100000, guid: 4389e61438c44d56b9717f2ae01f7cb1, type: 2}
-  - first:
-      type: UnityEngine:Material
-      assembly: UnityEngine.CoreModule
-      name: wi_lamp
-    second: {fileID: 2100000, guid: aba0217ced0f49569013a3ad4c173fd5, type: 2}
-  - first:
-      type: UnityEngine:Material
-      assembly: UnityEngine.CoreModule
-      name: wi_steel
-    second: {fileID: 2100000, guid: 52f76f84b76d434b95520573e1951b07, type: 2}
-  - first:
-      type: UnityEngine:Material
-      assembly: UnityEngine.CoreModule
-      name: wi_stone
-    second: {fileID: 2100000, guid: 3834c1b0c5b0421c8f543ad7fbf2506d, type: 2}
-  - first:
-      type: UnityEngine:Material
-      assembly: UnityEngine.CoreModule
-      name: wi_teal
-    second: {fileID: 2100000, guid: e0ea97f015a0496a9e9271e39dbf06df, type: 2}
-  - first:
-      type: UnityEngine:Material
-      assembly: UnityEngine.CoreModule
-      name: wi_teal2
-    second: {fileID: 2100000, guid: 86085539bb444e258afe0a11bde13d08, type: 2}
-  - first:
-      type: UnityEngine:Material
-      assembly: UnityEngine.CoreModule
-      name: wi_yellow
-    second: {fileID: 2100000, guid: 8d75480ba9854b23a9bbec092a24ad91, type: 2}
+      name: wi_palette
+    second: {fileID: 2100000, guid: 659b90c54d2f4226a23642fe1cc4ffbe, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0

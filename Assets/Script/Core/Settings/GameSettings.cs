@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 
-public static class GameSettings
+public static partial class GameSettings
 {
     public static event Action Changed;
 
@@ -77,6 +77,48 @@ public static class GameSettings
     {
         get => PlayerPrefs.GetInt("GameBreakdowns", 1) != 0;
         set { SetInt("GameBreakdowns", value ? 1 : 0); }
+    }
+
+    /// <summary>Множитель чувствительности мыши поверх PlayerMovement.mouseSensitivity.</summary>
+    public static float MouseSensitivity
+    {
+        get => Mathf.Clamp(PlayerPrefs.GetFloat("CtlMouseSens", 1f), 0.1f, 3f);
+        set { SetFloat("CtlMouseSens", Mathf.Clamp(value, 0.1f, 3f)); Changed?.Invoke(); }
+    }
+
+    public static bool InvertY
+    {
+        get => PlayerPrefs.GetInt("CtlInvertY", 0) != 0;
+        set { SetInt("CtlInvertY", value ? 1 : 0); Changed?.Invoke(); }
+    }
+
+    public const float FovMin = 50f;
+    public const float FovMax = 100f;
+
+    /// <summary>Поле зрения камеры игрока (зум считается от него).</summary>
+    public static float FieldOfView
+    {
+        get => Mathf.Clamp(PlayerPrefs.GetFloat("GfxFov", 60f), FovMin, FovMax);
+        set { SetFloat("GfxFov", Mathf.Clamp(value, FovMin, FovMax)); Changed?.Invoke(); }
+    }
+
+    /// <summary>Масштаб всего UI Toolkit-интерфейса, 0.8–1.3.</summary>
+    public static float UiScale
+    {
+        get => Mathf.Clamp(PlayerPrefs.GetFloat("UiScale", 1f), 0.8f, 1.3f);
+        set
+        {
+            SetFloat("UiScale", Mathf.Clamp(value, 0.8f, 1.3f));
+            IndustryUi.ApplyUiScale();
+            Changed?.Invoke();
+        }
+    }
+
+    /// <summary>Интервал автосохранения в минутах; 0 — выкл.</summary>
+    public static int AutosaveMinutes
+    {
+        get => Mathf.Clamp(PlayerPrefs.GetInt("GameAutosaveMin", 2), 0, 30);
+        set { SetInt("GameAutosaveMin", Mathf.Clamp(value, 0, 30)); Changed?.Invoke(); }
     }
 
     public static float DayLengthMinutes
@@ -238,6 +280,11 @@ public static class GameSettings
 
         QualitySettings.shadowCascades = 1;
         QualitySettings.shadowDistance = Mathf.Clamp(objects * 0.45f, 12f, Mathf.Min(40f, objects));
+        QualitySettings.shadows = Shadows == 0 ? UnityEngine.ShadowQuality.Disable
+            : Shadows == 1 ? UnityEngine.ShadowQuality.HardOnly
+            : UnityEngine.ShadowQuality.All;
+        QualitySettings.shadowResolution = Shadows >= 2 ? UnityEngine.ShadowResolution.High : UnityEngine.ShadowResolution.Low;
+        QualitySettings.antiAliasing = AntiAliasing == 3 ? 2 : AntiAliasing == 4 ? 4 : 0;
         ApplyAtmosphere();
         Camera[] cams = Camera.allCameras;
         for (int i = 0; i < cams.Length; i++)
@@ -320,7 +367,8 @@ public static class GameSettings
         tint.a = 1f;
         Shader.SetGlobalColor("_WalkLightTint", tint);
 
-        RenderSettings.ambientMode = AmbientMode.Trilight;
+        if (RenderSettings.ambientMode != AmbientMode.Trilight)
+            RenderSettings.ambientMode = AmbientMode.Trilight;
         RenderSettings.ambientIntensity = Mathf.Lerp(0.78f, 1f, sample.dayFactor) * Brightness;
         RenderSettings.ambientSkyColor = sample.sky * Mathf.Lerp(0.70f, 0.90f, sample.dayFactor) * Brightness;
         RenderSettings.ambientEquatorColor = sample.horizon * Mathf.Lerp(0.55f, 0.70f, sample.dayFactor) * Brightness;
@@ -332,8 +380,10 @@ public static class GameSettings
             fogColor = Color.Lerp(fogColor, sample.horizon, 0.35f);
         fogColor *= Mathf.Lerp(0.55f, 1.05f, sample.dayFactor);
         fogColor.a = 1f;
-        RenderSettings.fog = FogEnabled;
-        RenderSettings.fogMode = FogMode.Linear;
+        if (RenderSettings.fog != FogEnabled)
+            RenderSettings.fog = FogEnabled;
+        if (RenderSettings.fogMode != FogMode.Linear)
+            RenderSettings.fogMode = FogMode.Linear;
         RenderSettings.fogColor = fogColor;
         ApplyFogKeywords();
         if (FogEnabled)
@@ -405,7 +455,8 @@ public static class GameSettings
             skyRuntime.SetFloat("_StarStrength", sample.stars);
         if (skyRuntime.HasProperty("_Exposure"))
             skyRuntime.SetFloat("_Exposure", Mathf.Clamp(sample.exposure * Mathf.Lerp(0.85f, 1.05f, Mathf.InverseLerp(0.12f, 2f, userMul)), 0.45f, 1.45f));
-        RenderSettings.skybox = skyRuntime;
+        if (RenderSettings.skybox != skyRuntime)
+            RenderSettings.skybox = skyRuntime;
     }
 
     public static void ApplyDisplay()

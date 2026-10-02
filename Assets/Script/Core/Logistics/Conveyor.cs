@@ -470,7 +470,7 @@ public class Conveyor : BuildingBase, IInteractable
 
     void SubmitCargoDraws()
     {
-        bool show = ShowCargoVisual && WorldView.InRange(transform.position);
+        bool show = ShowCargoVisual && WorldView.InRange(transform.position, WorldView.BeltItemRadius);
         for (int i = 0; i < cargo.Count; i++)
         {
             BeltCargo item = cargo[i];
@@ -497,7 +497,13 @@ public class Conveyor : BuildingBase, IInteractable
 
         Conveyor nextBelt = dest as Conveyor;
         if (nextBelt != null)
-            return nextBelt.TryAcceptTransfer(item.item, null, this);
+        {
+            // Визуал едет дальше вместе с предметом — без возврата в пул и новой выдачи на каждой клетке.
+            if (!nextBelt.TryAcceptTransfer(item.item, item.visual, this))
+                return false;
+            item.visual = null;
+            return true;
+        }
 
         Splitter nextSplit = dest as Splitter;
         if (nextSplit != null)
@@ -537,7 +543,7 @@ public class Conveyor : BuildingBase, IInteractable
             entryDir = entryDir
         };
 
-        bool show = ShowCargoVisual && WorldView.InRange(transform.position);
+        bool show = ShowCargoVisual && WorldView.InRange(transform.position, WorldView.BeltItemRadius);
         if (show)
         {
             if (cargoItem.visual == null)
@@ -568,6 +574,8 @@ public class Conveyor : BuildingBase, IInteractable
         cargo.Clear();
     }
 
+    static readonly BeltInMask[] ServeOrder = { BeltInMask.Back, BeltInMask.Left, BeltInMask.Right };
+
     BeltInMask NextServedSide()
     {
         BeltInMask waiting = BeltInMask.None;
@@ -588,7 +596,7 @@ public class Conveyor : BuildingBase, IInteractable
                 waiting |= BeltInMask.Right;
         }
 
-        BeltInMask[] order = { BeltInMask.Back, BeltInMask.Left, BeltInMask.Right };
+        BeltInMask[] order = ServeOrder;
         int start = 0;
         for (int i = 0; i < order.Length; i++)
         {

@@ -5,7 +5,7 @@ public class OilExtractor : BuildingBase, IInteractable
     public const int RichnessCount = 4;
 
     static readonly float[] Intervals = { 2.2f, 1.45f, 0.9f, 0.55f };
-    static readonly string[] RichnessNames = { "Скудная", "Обычная", "Богатая", "Очень богатая" };
+    static readonly string[] RichnessNames = { "oil.rich_0", "oil.rich_1", "oil.rich_2", "oil.rich_3" };
 
     [Header("Oil")]
     public ItemData resource;
@@ -23,7 +23,7 @@ public class OilExtractor : BuildingBase, IInteractable
         get
         {
             int i = Mathf.Clamp(richness, 0, RichnessCount - 1);
-            return RichnessNames[i];
+            return UiLocale.T(RichnessNames[i]);
         }
     }
 

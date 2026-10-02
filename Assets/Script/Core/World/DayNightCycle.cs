@@ -52,9 +52,15 @@ public class DayNightCycle : MonoBehaviour
         SyncFromWorld();
     }
 
+    float nextAtmosphere;
+
     void LateUpdate()
     {
         SyncFromWorld();
+        // Солнце и небо меняются медленно: 10 раз в секунду хватает. Вспышка молнии — каждый кадр.
+        if (Weather.Flash <= 0.01f && Time.unscaledTime < nextAtmosphere)
+            return;
+        nextAtmosphere = Time.unscaledTime + 0.1f;
         GameSettings.ApplyAtmosphere();
     }
 

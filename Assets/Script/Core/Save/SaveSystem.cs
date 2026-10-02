@@ -7,23 +7,22 @@ public class SaveSystem : MonoBehaviour
 {
     public static SaveSystem Instance { get; private set; }
 
-    [Header("Autosave")]
-    public float autoSaveInterval = 120f;
-
+    // Интервал автосохранения — GameSettings.AutosaveMinutes (настройки → Игра).
     float nextAutoSave;
 
     void Awake()
     {
         if (Instance == null) Instance = this;
         else Destroy(gameObject);
-        nextAutoSave = Time.unscaledTime + Mathf.Max(30f, autoSaveInterval);
+        nextAutoSave = Time.unscaledTime + Mathf.Max(30f, GameSettings.AutosaveMinutes * 60f);
     }
 
     void Update()
     {
         if (!WorldCatalog.HasActive)
             return;
-        if (autoSaveInterval <= 0f)
+        float interval = GameSettings.AutosaveMinutes * 60f;
+        if (interval <= 0f)
             return;
         if (Time.unscaledTime < nextAutoSave)
             return;
@@ -31,18 +30,20 @@ public class SaveSystem : MonoBehaviour
             return;
 
         SaveGame();
-        nextAutoSave = Time.unscaledTime + autoSaveInterval;
+        nextAutoSave = Time.unscaledTime + interval;
+        if (GameSettings.AutosaveNotice)
+            UiNotification.Push(UiLocale.T("save.auto_title"), "", UiStatus.Completed);
     }
 
     void OnApplicationQuit()
     {
-        if (WorldCatalog.HasActive)
+        if (WorldCatalog.HasActive && GameSettings.SaveOnQuit)
             SaveGame();
     }
 
     void OnApplicationPause(bool paused)
     {
-        if (paused && WorldCatalog.HasActive)
+        if (paused && WorldCatalog.HasActive && GameSettings.SaveOnQuit)
             SaveGame();
     }
 
@@ -92,6 +93,8 @@ public class SaveSystem : MonoBehaviour
 
         if (ResearchSystem.Instance != null)
             data.research = ResearchSystem.Instance.CaptureSave();
+        if (DecorSystem.Instance != null)
+            DecorSystem.Instance.CaptureSave(data);
         if (PlayerWallet.Instance != null)
             PlayerWallet.Instance.CaptureSave(data);
         if (BeltSpeedSystem.Instance != null)
@@ -119,6 +122,7 @@ public class SaveSystem : MonoBehaviour
             AchievementSystem.Instance.CaptureSave(data);
         if (BreakdownSystem.Instance != null)
             BreakdownSystem.Instance.CaptureSave(data);
+        TestYard.CaptureSave(data);
 
         PlayerInventory inv = Object.FindFirstObjectByType<PlayerInventory>();
         if (inv != null)
@@ -163,6 +167,8 @@ public class SaveSystem : MonoBehaviour
         {
             if (PlayerWallet.Instance != null)
                 PlayerWallet.Instance.ResetToNewWorld();
+            if (DecorSystem.Instance != null)
+                DecorSystem.Instance.ResetToNewWorld();
             if (BeltSpeedSystem.Instance != null)
                 BeltSpeedSystem.Instance.ResetToNewWorld();
             if (MapMarkerSystem.Instance != null)
@@ -244,6 +250,10 @@ public class SaveSystem : MonoBehaviour
 
         UndergroundConveyor.FinishLoad();
         Report(0.92f);
+        // Декорации до исследований: ApplySave исследований поднимает OnUnlocksChanged, хотбар
+        // перечитывает открытое — купленные декорации уже должны считаться открытыми.
+        if (DecorSystem.Instance != null)
+            DecorSystem.Instance.ApplySave(data);
         if (ResearchSystem.Instance != null)
             ResearchSystem.Instance.ApplySave(data.research);
         if (PlayerWallet.Instance != null)
@@ -291,9 +301,10 @@ public class SaveSystem : MonoBehaviour
                 player.ApplySavedPose(data.playerPos, data.playerYaw, data.playerPitch);
         }
 
-        if (WorldCatalog.Active != null && WorldCatalog.Active.sandbox && count == 0)
+        if (WorldCatalog.Active != null && WorldCatalog.Active.sandbox)
         {
-            TestYard.Populate();
+            // Пустой или устаревший двор — пересборка; иначе вернуть жилы двора (их нет в генерации мира).
+            TestYard.OnSandboxLoaded(data, count);
             BuildingBase[] after = Object.FindObjectsByType<BuildingBase>(FindObjectsSortMode.None);
             count = after != null ? after.Length : count;
         }
@@ -302,7 +313,7 @@ public class SaveSystem : MonoBehaviour
             TutorialSystem.Instance.OnWorldReady(true, data);
 
         AchievementSystem.Mute = false;
-        nextAutoSave = Time.unscaledTime + Mathf.Max(30f, autoSaveInterval);
+        nextAutoSave = Time.unscaledTime + Mathf.Max(30f, GameSettings.AutosaveMinutes * 60f);
         BuildUndo.Load();
         Debug.Log($"[Save] Загружено зданий: {count}  (файл v{data.version})");
         Report(1f);
@@ -334,7 +345,7 @@ public class SaveSystem : MonoBehaviour
         return GameDatabase.FindBuilding(id);
     }
 
-    static void ClearWorldBuildings()
+    public static void ClearWorldBuildings()
     {
         UndergroundConveyor.SuppressPairDestroy = true;
         BuildingBase[] buildings = Object.FindObjectsByType<BuildingBase>(FindObjectsSortMode.None);

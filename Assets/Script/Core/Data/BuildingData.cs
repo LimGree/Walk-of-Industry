@@ -3,6 +3,10 @@ using UnityEngine;
 [CreateAssetMenu(fileName = "New Building", menuName = "Builderment/Building Data")]
 public class BuildingData : ScriptableObject
 {
+    /// <summary>Название на языке интерфейса ([[DataLocale]]).</summary>
+    public string Title => DataLocale.BuildingName(id, displayName);
+    public string Info => DataLocale.BuildingDesc(id, description);
+
     [Header("Basic Info")]
     public string id;
     public string displayName;

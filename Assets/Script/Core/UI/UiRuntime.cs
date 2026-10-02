@@ -38,6 +38,7 @@ public class UiRuntime : MonoBehaviour
         StyleSheet theme = IndustryUi.Theme();
         if (theme != null && !root.styleSheets.Contains(theme))
             root.styleSheets.Add(theme);
+        UiLook.Register(root);
         debugLabel = IndustryUi.Text("Debug", "UI DEBUG", "badge", "badge-warn");
         debugLabel.style.position = Position.Absolute;
         debugLabel.style.left = 24;

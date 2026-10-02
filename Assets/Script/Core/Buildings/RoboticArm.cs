@@ -204,7 +204,7 @@ public class RoboticArm : BuildingBase, IInteractable
         {
             Hold(stolen, visual);
             if (showDebug)
-                Debug.Log($"[Arm] взяла {stolen.displayName} у {source.name}");
+                Debug.Log($"[Arm] взяла {stolen.Title} у {source.name}");
             return true;
         }
 
@@ -243,7 +243,7 @@ public class RoboticArm : BuildingBase, IInteractable
             return false;
 
         if (showDebug)
-            Debug.Log($"[Arm] drop {dropping.displayName} to {dest.name}");
+            Debug.Log($"[Arm] drop {dropping.Title} to {dest.name}");
         return true;
     }
 

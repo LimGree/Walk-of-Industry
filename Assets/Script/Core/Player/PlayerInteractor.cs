@@ -7,12 +7,15 @@ public class PlayerInteractor : MonoBehaviour
     public float interactDistance = 4f;
     public LayerMask interactLayer = ~0; // всё по умолчанию
 
-    public bool HasInteractableTarget => currentInteractable != null;
+    public bool HasInteractableTarget => currentInteractable != null
+        && !(currentInteractable is Decoration decor && !decor.CanInteract);
 
     public string InteractableHint
     {
         get
         {
+            if (currentInteractable is Decoration decoration)
+                return decoration.InteractHint;
             if (currentInteractable is Conveyor || currentInteractable is Splitter)
             {
                 if (!BeltRide.BuildModeOn())
@@ -22,11 +25,11 @@ public class PlayerInteractor : MonoBehaviour
                 return UiLocale.T("hint.belt_menu");
             }
             if (currentInteractable is BuildingBase broken && broken.IsBroken)
-                return UiLocale.T("hint.repair", broken.data != null ? broken.data.displayName : "");
+                return UiLocale.T("hint.repair", broken.data != null ? broken.data.Title : "");
             if (currentInteractable is BuildingBase building && building.data != null
-                && !string.IsNullOrEmpty(building.data.displayName))
-                return building.data.displayName;
-            return "взаимодействие";
+                && !string.IsNullOrEmpty(building.data.Title))
+                return building.data.Title;
+            return UiLocale.T("hint.interact");
         }
     }
 
@@ -75,21 +78,7 @@ public class PlayerInteractor : MonoBehaviour
             BeltRide.Instance.Stop();
             return;
         }
-        if (GameManager.Instance != null && GameManager.Instance.IsPaused)
-            return;
-        if (MachineUI.Instance != null && MachineUI.Instance.IsOpen)
-            return;
-        if (WorldOverlayGate.IsOpen)
-            return;
-        if (ResearchUI.Instance != null && ResearchUI.Instance.IsOpen)
-            return;
-        if (WalletHud.Instance != null && WalletHud.Instance.IsShopOpen)
-            return;
-        if (SelectionActionsUI.Instance != null && SelectionActionsUI.Instance.IsOpen)
-            return;
-        if (WorldMapUI.Instance != null && WorldMapUI.Instance.IsOpen)
-            return;
-        if (BlueprintLibraryUI.Instance != null && BlueprintLibraryUI.Instance.IsOpen)
+        if (UiStack.GameplayBlocked)
             return;
         if (currentInteractable != null)
             currentInteractable.Interact(gameObject);

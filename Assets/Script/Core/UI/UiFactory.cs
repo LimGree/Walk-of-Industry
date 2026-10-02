@@ -20,7 +20,7 @@ public static class UiFactory
         ItemData outItem = FirstItem(recipe != null ? recipe.outputs : null);
         SetIcon(output, outItem != null ? outItem.icon : null);
 
-        TextMeshProUGUI title = UiTheme.AddText(card.transform, "Title", recipe != null ? recipe.displayName : "Recipe", 22f, UiTheme.Text);
+        TextMeshProUGUI title = UiTheme.AddText(card.transform, "Title", recipe != null ? recipe.Title : "Recipe", 22f, UiTheme.Text);
         title.fontStyle = FontStyles.Bold;
         RectTransform titleRt = title.rectTransform;
         titleRt.anchorMin = new Vector2(0f, 1f);
@@ -128,7 +128,7 @@ public static class UiFactory
         if (!unlocked)
             icon.color = new Color(1f, 1f, 1f, 0.35f);
 
-        string titleValue = data != null ? data.displayName : "Building";
+        string titleValue = data != null ? data.Title : "Building";
         int cost = Economy.BuildCost(data);
         if (cost > 0)
             titleValue += "  ·  " + cost + "¤";
@@ -174,7 +174,7 @@ public static class UiFactory
         iconRt.anchoredPosition = new Vector2(16f, 4f);
         SetIcon(icon, node != null ? node.icon : null);
 
-        TextMeshProUGUI title = UiTheme.AddText(card.transform, "Title", node != null ? node.displayName : "Research", 22f, UiTheme.Text);
+        TextMeshProUGUI title = UiTheme.AddText(card.transform, "Title", node != null ? node.Title : "Research", 22f, UiTheme.Text);
         title.fontStyle = FontStyles.Bold;
         RectTransform titleRt = title.rectTransform;
         titleRt.anchorMin = new Vector2(0f, 1f);

@@ -53,14 +53,21 @@ public static class Economy
             || id == "crude_oil" || id == "water";
     }
 
+    /// <summary>Цена постройки с учётом настроек «Цены на постройку» и чита «Бесплатная стройка».</summary>
     public static int BuildCost(BuildingData data)
     {
-        return data != null ? Mathf.Max(0, data.buildCost) : 0;
+        if (data == null || GameSettings.Sandbox)
+            return 0;
+        return Mathf.Max(0, Mathf.RoundToInt(data.buildCost * GameSettings.CostMultiplier));
     }
 
+    /// <summary>Возврат при сносе. Не выше базовой цены, чтобы смена множителя не давала фармить деньги.</summary>
     public static int RefundCoins(BuildingData data)
     {
-        return Mathf.Max(0, Mathf.RoundToInt(BuildCost(data) * 0.75f));
+        if (data == null || GameSettings.Sandbox)
+            return 0;
+        float mul = Mathf.Min(1f, GameSettings.CostMultiplier);
+        return Mathf.Max(0, Mathf.RoundToInt(Mathf.Max(0, data.buildCost) * mul * 0.75f));
     }
 
     public static void PayRefund(BuildingBase building)

@@ -8,7 +8,7 @@
 - `Assets/Script/Core/Logistics/DroneModels.cs` — модели станций и дрона через [[Models]] (`ModelLibrary`)
 - `Assets/Script/Core/UI/DroneStationUI.cs` — окно станций (E)
 
-Модели: `Assets/Resources/Models/drone*.obj` (копии для Blender — `models/Builders/generated`). Материалы — общая палитра `wi_*`, см. [[Models]]. Префабы: `prefabs/Builders/DroneLoadStation.prefab`, `DroneUnloadStation.prefab`. Модель в них подставляет код в `Awake`, в child `Visual`. Иконки: `images/Builder_icon/drone*.png`.
+Модели: `Assets/Resources/Models/drone*.obj` (копии для Blender — `Art/Models/Buildings/generated`). Материалы — общая палитра `wi_*`, см. [[Models]]. Префабы: `Prefabs/Buildings/DroneLoadStation.prefab`, `DroneUnloadStation.prefab`. Модель в них подставляет код в `Awake`, в child `Visual`. Иконки: `Art/Icons/Buildings/drone*.png`.
 
 ## Как работает
 

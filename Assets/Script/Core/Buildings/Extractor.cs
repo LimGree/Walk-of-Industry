@@ -193,7 +193,7 @@ public class Extractor : BuildingBase, IInteractable
             boundNode = node;
             resource = node.resource;
             if (showDebug)
-                Debug.Log($"[Extractor] Bound to {resource.displayName} at {cell}");
+                Debug.Log($"[Extractor] Bound to {resource.Title} at {cell}");
             return;
         }
 
@@ -250,7 +250,7 @@ public class Extractor : BuildingBase, IInteractable
                 BuildingFx.Burst(this, resource, 5);
 
             if (showDebug)
-                Debug.Log($"[Extractor] Выдал {resource.displayName}");
+                Debug.Log($"[Extractor] Выдал {resource.Title}");
         }
     }
 

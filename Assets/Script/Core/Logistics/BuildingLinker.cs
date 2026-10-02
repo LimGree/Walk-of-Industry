@@ -491,15 +491,11 @@ public static class BuildingLinker
         if (building == null)
             return false;
 
-        var cells = new List<Vector2Int>(8);
-        GridFootprint.CollectCells(building.transform.position, building.FootprintSize, cells);
-        for (int i = 0; i < cells.Count; i++)
-        {
-            if (cells[i] == cell)
-                return true;
-        }
-
-        return false;
+        // Зовётся на каждую передачу предмета — без списка клеток, просто попадание в прямоугольник.
+        Vector2Int size = GridOccupancy.NormalizeSize(building.FootprintSize);
+        Vector2Int min = GridFootprint.GetMinCell(building.transform.position, size);
+        return cell.x >= min.x && cell.x < min.x + size.x
+            && cell.y >= min.y && cell.y < min.y + size.y;
     }
 
     public static bool IsAdjacentTo(BuildingBase building, Vector2Int cell)

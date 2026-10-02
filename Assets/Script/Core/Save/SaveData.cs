@@ -40,6 +40,9 @@ public class SaveData
     public List<string> achievements = new List<string>();
     public bool timeCheated;
     public List<SaveKeyValue> extras = new List<SaveKeyValue>();
+    /// <summary>Купленные декорации (id decor_*) и полученные награды за красоту/коллекции ([[DecorSystem]]).</summary>
+    public List<string> decorOwned = new List<string>();
+    public List<string> decorClaims = new List<string>();
 
     public static SaveData Normalize(SaveData data)
     {
@@ -66,6 +69,10 @@ public class SaveData
             data.markers = new List<MapMarkerSave>();
         if (data.achievements == null)
             data.achievements = new List<string>();
+        if (data.decorOwned == null)
+            data.decorOwned = new List<string>();
+        if (data.decorClaims == null)
+            data.decorClaims = new List<string>();
         if (data.version < 6)
             data.worldHour = 9f;
         data.worldHour = DayNight.WrapHour(data.worldHour);

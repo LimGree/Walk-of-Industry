@@ -164,8 +164,8 @@ public class BuildMenuUI : MonoBehaviour
         if (cat != "All" && IndustryUi.BuildingCategory(building) != cat)
             return false;
         return string.IsNullOrEmpty(query)
-            || (building.displayName != null
-                && building.displayName.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0)
+            || (building.Title != null
+                && building.Title.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0)
             || (building.id != null
                 && building.id.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0);
     }
@@ -196,6 +196,7 @@ public class BuildMenuUI : MonoBehaviour
         if (!gameObject.activeSelf)
             gameObject.SetActive(true);
         IsOpen = true;
+        UiStack.Opened("build", () => CloseMenu(true), 100);
         if (overlay == null)
             Build();
         CreateButtons();
@@ -222,6 +223,7 @@ public class BuildMenuUI : MonoBehaviour
     public void CloseMenu(bool restorePlayerControl = true)
     {
         IsOpen = false;
+        UiStack.Closed("build");
         IndustryUi.Show(overlay, false);
         if (!restorePlayerControl)
             return;

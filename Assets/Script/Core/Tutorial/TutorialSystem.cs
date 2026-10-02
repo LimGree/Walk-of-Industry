@@ -139,6 +139,13 @@ public class TutorialSystem : MonoBehaviour
         if (!IsRunning)
             return;
 
+        // «Пропускать обучение в новых мирах».
+        if (!hadSave && GameSettings.TutorialSkip)
+        {
+            Skip();
+            return;
+        }
+
         if (!hadSave)
         {
             ClearHotbar();

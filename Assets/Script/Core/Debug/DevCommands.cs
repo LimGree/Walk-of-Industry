@@ -53,6 +53,7 @@ public static class DevCommands
         "/load",
         "/godsave",
         "/fps",
+        "/perf",
         "/log on belts",
         "/log off belts",
         "/spawn vein ",
@@ -64,7 +65,11 @@ public static class DevCommands
         "/repair all",
         "/repair here",
         "/breakdown info",
-        "/breakdown now"
+        "/breakdown now",
+        "/decor all",
+        "/decor reset",
+        "/decor info",
+        "/decor give "
     };
 
     public static void Suggest(string raw, List<string> into)
@@ -81,6 +86,7 @@ public static class DevCommands
 
         AddPrefixed(into, q, "/spawn builder ", BuildingIds());
         AddPrefixed(into, q, "/unlock build ", BuildingIds());
+        AddPrefixed(into, q, "/decor give ", DecorIds());
         AddPrefixed(into, q, "/unlock recipe ", RecipeIds());
         AddPrefixed(into, q, "/research skip ", ResearchIds());
         AddPrefixed(into, q, "/spawn vein ", VeinIds());
@@ -242,7 +248,7 @@ public static class DevCommands
                 return Load();
             if (a0 == "godsave")
                 return GodSave();
-            if (a0 == "fps")
+            if (a0 == "fps" || a0 == "perf")
                 return Fps();
             if (a0 == "log")
                 return Log(a1, a2);
@@ -254,6 +260,8 @@ public static class DevCommands
                 return Repair(a1);
             if (a0 == "breakdown")
                 return Breakdown(a1);
+            if (a0 == "decor")
+                return Decor(a1, a2);
             return "unknown: /" + line;
         }
         catch (System.Exception e)
@@ -359,12 +367,55 @@ public static class DevCommands
         sb.AppendLine("stat cluster|veins|biome");
         sb.AppendLine("locate biome|cluster|veins [id]");
         sb.AppendLine("regenWorldMap | belts | conveer speed X | clearcargo | killitems | dump cell");
-        sb.AppendLine("save | load | godsave | fps");
+        sb.AppendLine("save | load | godsave | fps | perf");
         sb.AppendLine("log on|off belts");
         sb.AppendLine("spawn vein <type> | spawn builder <id>");
         sb.AppendLine("break N% | break here | repair N% | repair all|here | breakdown info|now");
+        sb.AppendLine("decor all|reset|info | decor give <id>");
         sb.Append("help research");
         return sb.ToString();
+    }
+
+    static List<string> DecorIds()
+    {
+        var list = new List<string>();
+        IReadOnlyList<DecorCatalog.Def> all = DecorCatalog.All;
+        for (int i = 0; i < all.Count; i++)
+            list.Add(all[i].id);
+        return list;
+    }
+
+    static string Decor(string op, string id)
+    {
+        DecorSystem sys = DecorSystem.Instance;
+        if (sys == null)
+            return "no decor system";
+        if (op == "all")
+        {
+            sys.GrantAll(true);
+            return "декорации открыты: " + sys.OwnedCount() + " / " + DecorCatalog.All.Count;
+        }
+
+        if (op == "reset")
+        {
+            sys.GrantAll(false);
+            return "покупки декораций сброшены";
+        }
+
+        if (op == "give")
+        {
+            DecorCatalog.Def def = DecorCatalog.Find(id);
+            if (def == null)
+                return "нет декорации " + id;
+            return sys.Grant(def) ? "открыта: " + def.id : "уже есть или не продаётся: " + def.id;
+        }
+
+        DecorCatalog.Def deal = DecorSystem.Deal();
+        return "куплено " + sys.OwnedCount() + " / " + DecorCatalog.All.Count
+            + " · красота " + DecorSystem.Beauty.ToString("0.#", CultureInfo.InvariantCulture)
+            + " · поставлено " + DecorSystem.All.Count
+            + " · скидка дня: " + (deal != null ? deal.id : "-")
+            + " · ночь: " + (DecorSystem.IsNight ? "да" : "нет");
     }
 
     static string HelpResearch()
@@ -416,7 +467,7 @@ public static class DevCommands
                 ResearchNodeData n = all[i];
                 if (n == null)
                     continue;
-                sb.Append(n.displayName);
+                sb.Append(n.Title);
                 sb.Append(" - ");
                 sb.Append(n.id);
                 if (rs.IsResearchUnlocked(n))
@@ -927,11 +978,40 @@ public static class DevCommands
                 items++;
         }
         MeshRenderer[] mesh = Object.FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None);
-        return "fps " + fps.ToString("0.0")
-            + " belts " + belts.Length
-            + " beltItems " + items
-            + " pool " + BeltItemView.PooledCount
-            + " meshR " + mesh.Length;
+        int shown = 0, shadow = 0;
+        for (int i = 0; i < mesh.Length; i++)
+        {
+            if (mesh[i] == null || !mesh[i].enabled || !mesh[i].isVisible)
+                continue;
+            shown++;
+            if (mesh[i].shadowCastingMode != UnityEngine.Rendering.ShadowCastingMode.Off)
+                shadow++;
+        }
+
+        int lights = 0;
+        foreach (Light l in Object.FindObjectsByType<Light>(FindObjectsSortMode.None))
+        {
+            if (l != null && l.enabled)
+                lights++;
+        }
+
+        int audio = 0;
+        foreach (AudioSource a in Object.FindObjectsByType<AudioSource>(FindObjectsSortMode.None))
+        {
+            if (a != null && a.isPlaying)
+                audio++;
+        }
+
+        BuildingBase[] buildings = Object.FindObjectsByType<BuildingBase>(FindObjectsSortMode.None);
+        long managed = System.GC.GetTotalMemory(false) / (1024 * 1024);
+        long unity = UnityEngine.Profiling.Profiler.GetTotalAllocatedMemoryLong() / (1024 * 1024);
+        // Сравнивай в начале игры и через 40 минут: что растёт, то и тормозит.
+        return "fps " + fps.ToString("0.0") + " (≈" + (1f / Mathf.Max(0.0001f, Time.smoothDeltaTime)).ToString("0") + ")"
+            + "\nздания " + buildings.Length + " · ленты " + belts.Length + " · декор " + DecorSystem.All.Count
+            + "\nгруз на лентах " + items + " · пул " + BeltItemView.PooledCount
+            + "\nобъектов " + tr.Length + " · мешей " + mesh.Length + " · видно " + shown + " · с тенью " + shadow
+            + "\nсвет " + lights + " · звуки " + audio
+            + "\nпамять C# " + managed + " МБ · Unity " + unity + " МБ";
     }
 
     static string Log(string onOff, string target)

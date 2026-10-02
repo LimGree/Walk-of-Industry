@@ -2,14 +2,14 @@
 
 **Файлы:**
 - `Assets/Script/Core/Buildings/BuildingFx.cs` — рантайм на корне префаба;
-- `Assets/Script/Core/Editor/BuildingFxBuilder.cs` — сборщик ассетов (меню **Walk of Industry → Rebuild building animations + FX**; сам запускается после компиляции, если `Assets/Animations/Buildings/BUILD_VERSION.txt` устарел);
-- `Assets/Animations/Buildings/*.anim`, `*.controller` — клипы и контроллеры (правятся в окнах Animation / Animator);
+- `Assets/Script/Core/Editor/BuildingFxBuilder.cs` — сборщик ассетов (меню **Walk of Industry → Rebuild building animations + FX**; сам запускается после компиляции, если `Assets/Art/Animations/Buildings/BUILD_VERSION.txt` устарел);
+- `Assets/Art/Animations/Buildings/*.anim`, `*.controller` — клипы и контроллеры (правятся в окнах Animation / Animator);
 - `Assets/Resources/FX/fx_alpha.mat`, `fx_add.mat`, `fx_chunk.mat`, `fx_puff.png`, `fx_dot.png` — материалы и текстуры частиц;
 - шейдеры `Resources/WalkToBiomeParticle.shader` (дым, пар), `WalkToBiomeParticleAdd.shader` (искры, огонь), `WalkToBiomeBeltScroll.shader` (полотно ленты).
 
 ## Как устроено
 
-- **Подвижные детали** — отдельные OBJ (`<модель>_<деталь>.obj`), ось в нуле. В префабе: `<родитель>/Anim_X` (неподвижная ось) → `Move` (его крутит/двигает клип) → модель. Список деталей и осей — `models/Builders/generated/parts.json` (пишет `wi_models.py`, таблица `SPLITS`).
+- **Подвижные детали** — отдельные OBJ (`<модель>_<деталь>.obj`), ось в нуле. В префабе: `<родитель>/Anim_X` (неподвижная ось) → `Move` (его крутит/двигает клип) → модель. Список деталей и осей — `Art/Models/Buildings/generated/parts.json` (пишет `wi_models.py`, таблица `SPLITS`).
 - **Animator** на корне здания. Параметры: `Working` (bool), `Speed` (float), `Transfer` (trigger). Состояния: `Idle` ⇄ `Work` (петля, скорость = `Speed`); у руки `Idle` → `Swing` по `Transfer`.
 - **Частицы** — дети `FX`: `FX_Smoke/Steam/Sparks/Dust/Fire/Splash/Mist` идут, пока здание работает; `FX_Burst`, `FX_BurstBlue`, `FX_Chunks` выстреливают на готовый крафт или добычу (`BuildingFx.Burst`). Кусочки красятся в цвет продукта (`Conveyor.FilterTint`).
 - **BuildingFx** раз в 0.25 с: работает ли здание (есть рецепт и нет простоя, добыча не забита, генератор горит, у дронов есть полёты…), рядом ли игрок (радиус прогрузки), настройка «Эффекты зданий» (выкл / мало / полные). Сломанное здание стоит. `Speed`: 2-й уровень ×1.5, «¼ силы» ×0.25, генератор рядом ускоряет.

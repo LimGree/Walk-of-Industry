@@ -22,6 +22,12 @@ public class SocketArrow : MonoBehaviour
         return owner.GetComponentInChildren<SocketArrow>(true);
     }
 
+    /// <summary>Перечитать настройку «Стрелки входов и выходов».</summary>
+    public static void RefreshFromSettings()
+    {
+        RefreshAll();
+    }
+
     public static void SetBuildMode(bool on)
     {
         buildMode = on;
@@ -148,7 +154,7 @@ public class SocketArrow : MonoBehaviour
 
     public void Apply()
     {
-        bool show = !Application.isPlaying || (buildMode && ShouldShowHere());
+        bool show = !Application.isPlaying || (buildMode && GameSettings.IoArrows && ShouldShowHere());
         if (show && Application.isPlaying)
         {
             Conveyor belt = GetComponentInParent<Conveyor>();

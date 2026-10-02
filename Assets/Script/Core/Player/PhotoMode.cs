@@ -173,16 +173,21 @@ public class PhotoMode : MonoBehaviour
             {
                 if (docs[i] == null || !docs[i].enabled)
                     continue;
+                // Не выключаем UIDocument: при enabled=false Unity уничтожает дерево,
+                // а весь UI собран кодом и обратно не восстановится.
+                VisualElement root = docs[i].rootVisualElement;
+                if (root == null || root.resolvedStyle.display == DisplayStyle.None)
+                    continue;
                 hidden.Add(docs[i]);
-                docs[i].enabled = false;
+                root.style.display = DisplayStyle.None;
             }
         }
         else
         {
             for (int i = 0; i < hidden.Count; i++)
             {
-                if (hidden[i] != null)
-                    hidden[i].enabled = true;
+                if (hidden[i] != null && hidden[i].rootVisualElement != null)
+                    hidden[i].rootVisualElement.style.display = StyleKeyword.Null;
             }
 
             hidden.Clear();

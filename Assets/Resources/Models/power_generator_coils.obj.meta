@@ -7,8 +7,8 @@ ModelImporter:
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
-      name: wi_blue
-    second: {fileID: 2100000, guid: cdb21e9ec75041269cb36a9d029698a2, type: 2}
+      name: wi_palette
+    second: {fileID: 2100000, guid: 659b90c54d2f4226a23642fe1cc4ffbe, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0

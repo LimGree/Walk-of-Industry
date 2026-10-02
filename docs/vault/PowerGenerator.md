@@ -1,9 +1,9 @@
 # PowerGenerator
 
-**Файлы:** `Assets/Script/Core/Buildings/PowerGenerator.cs`, префаб `Assets/prefabs/Builders/PowerGenerator.prefab`, данные `PowerGenerator.asset`  
+**Файлы:** `Assets/Script/Core/Buildings/PowerGenerator.cs`, префаб `Assets/Prefabs/Buildings/PowerGenerator.prefab`, данные `PowerGenerator.asset`  
 **Предок:** [[BuildingBase]]
 
-Модель `Assets/models/Builders/Generator from blender/Generator.fbx`, иконка `Assets/images/Builder_icon/Generator.png`. Исследование `research_power_generator` после шестерёнок. Топливо — уголь, вход сзади.
+Модель `Assets/Art/Models/Buildings/Generator from blender/Generator.fbx`, иконка `Assets/Art/Icons/Buildings/Generator.png`. Исследование `research_power_generator` после шестерёнок. Топливо — уголь, вход сзади.
 
 ## Зачем задуман
 

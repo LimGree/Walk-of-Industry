@@ -26,16 +26,23 @@ public class GhostTint : MonoBehaviour
             tint = root.AddComponent<GhostTint>();
         Color ok = validMat != null ? validMat.color : FallbackValid;
         Color bad = invalidMat != null ? invalidMat.color : FallbackInvalid;
-        if (ok.a < 0.12f)
-            ok.a = 0.45f;
-        if (bad.a < 0.12f)
-            bad.a = 0.45f;
+        // Прозрачность призрака — настройка «Прозрачность призрака здания».
+        ok.a = GameSettings.GhostOpacity;
+        bad.a = GameSettings.GhostOpacity;
         tint.Apply(valid, ok, bad);
     }
+
+    float lastAlpha = -1f;
 
     public void Apply(bool valid, Color validTint, Color invalidTint)
     {
         Color tint = valid ? validTint : invalidTint;
+        if (!Mathf.Approximately(tint.a, lastAlpha))
+        {
+            dstValid.Clear();
+            dstInvalid.Clear();
+            lastAlpha = tint.a;
+        }
         Renderer[] all = GetComponentsInChildren<Renderer>(true);
         for (int i = 0; i < all.Length; i++)
         {
@@ -97,6 +104,9 @@ public class GhostTint : MonoBehaviour
         }
 
         Color c = new Color(albedo.r * tint.r, albedo.g * tint.g, albedo.b * tint.b, tint.a);
+        // Палитра моделей (wi_palette) хранит в альфе глянец, а не прозрачность.
+        bool glossAlpha = source != null && source.IsKeywordEnabled("_SMOOTHNESS_TEXTURE_ALBEDO_CHANNEL_A");
+        mat.SetFloat("_TexAlpha", glossAlpha ? 0f : 1f);
         mat.SetColor("_Color", c);
         mat.color = c;
         mat.renderQueue = 3000;

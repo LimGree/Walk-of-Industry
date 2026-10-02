@@ -2,36 +2,98 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 
+/// <summary>
+/// Визуалы предметов на лентах/сплиттерах/руке: пул по типу предмета и кеш на каждый визуал
+/// (рендереры, спрайт, ключ, последняя поза). Каждый кадр — только позиция, и та лишь если изменилась.
+/// Владелец (лента, сплиттер, рука) держит ссылку на визуал; «брошенным» считается визуал,
+/// который никто не рисовал два кадра подряд — он уходит в пул своего типа.
+/// </summary>
 public static class BeltItemView
 {
+    /// <summary>Больше этого в пуле одного типа не держим — лишнее удаляется.</summary>
+    const int MaxPooledPerKey = 256;
+    const int PruneEvery = 600;
+
+    sealed class Info
+    {
+        public int key;
+        public Renderer[] rends;
+        public SpriteRenderer sprite;
+        public bool prepared;
+        public int lastDraw;
+        public bool placed;
+        public Vector3 pos;
+        public Quaternion rot;
+    }
+
     static readonly Dictionary<int, Stack<Transform>> pool = new Dictionary<int, Stack<Transform>>(16);
+    static readonly Dictionary<Transform, Info> infos = new Dictionary<Transform, Info>(256);
     static readonly HashSet<Transform> pooled = new HashSet<Transform>();
     static readonly HashSet<Transform> live = new HashSet<Transform>();
-    static readonly HashSet<Transform> drawn = new HashSet<Transform>();
     static readonly List<Transform> flushScratch = new List<Transform>(64);
+    static readonly List<Transform> pruneScratch = new List<Transform>(64);
+    static int cullLayer = int.MinValue;
+    static int nextPrune;
+
+    public static int LiveCount => live.Count;
 
     public static void BeginFrame()
     {
-        drawn.Clear();
     }
 
     public static void Flush()
     {
+        int frame = Time.frameCount;
         flushScratch.Clear();
         foreach (Transform visual in live)
         {
-            if (visual == null || !drawn.Contains(visual))
+            if (visual == null)
+            {
                 flushScratch.Add(visual);
+                continue;
+            }
+
+            // Рисовали в этом или прошлом кадре — у визуала есть владелец (порядок Update у скриптов не задан).
+            if (infos.TryGetValue(visual, out Info info) && info.lastDraw >= frame - 1)
+                continue;
+            // Висит на ком-то (рука держит предмет, спрятанный вдали) — тоже не брошен.
+            if (visual.parent != null)
+                continue;
+            flushScratch.Add(visual);
         }
 
         for (int i = 0; i < flushScratch.Count; i++)
         {
             Transform visual = flushScratch[i];
             live.Remove(visual);
-            if (visual == null)
-                continue;
-            Release(visual, null);
+            if (visual != null)
+                Release(visual, null);
         }
+
+        if (frame >= nextPrune)
+        {
+            nextPrune = frame + PruneEvery;
+            Prune();
+        }
+    }
+
+    /// <summary>Убрать из кеша визуалы, уничтоженные в обход пула.</summary>
+    static void Prune()
+    {
+        pruneScratch.Clear();
+        foreach (KeyValuePair<Transform, Info> pair in infos)
+        {
+            if (pair.Key == null)
+                pruneScratch.Add(pair.Key);
+        }
+
+        for (int i = 0; i < pruneScratch.Count; i++)
+        {
+            infos.Remove(pruneScratch[i]);
+            pooled.Remove(pruneScratch[i]);
+        }
+
+        live.RemoveWhere(t => t == null);
     }
 
     public static void ClearPool()
@@ -41,8 +103,10 @@ public static class BeltItemView
             while (pair.Value.Count > 0)
             {
                 Transform t = pair.Value.Pop();
-                if (t != null)
-                    Object.Destroy(t.gameObject);
+                if (t == null)
+                    continue;
+                infos.Remove(t);
+                Object.Destroy(t.gameObject);
             }
         }
         pool.Clear();
@@ -60,26 +124,54 @@ public static class BeltItemView
         }
     }
 
+    static int KeyOf(ItemData item)
+    {
+        return item != null ? item.GetInstanceID() : 0;
+    }
+
+    static Info InfoOf(Transform visual, ItemData item)
+    {
+        if (infos.TryGetValue(visual, out Info info))
+            return info;
+        info = new Info
+        {
+            key = KeyOf(item),
+            rends = visual.GetComponentsInChildren<Renderer>(true)
+        };
+        // TryGetComponent не создаёт в редакторе объект-ошибку при промахе (в отличие от GetComponent)
+        visual.TryGetComponent(out info.sprite);
+        infos[visual] = info;
+        return info;
+    }
+
     public static Transform Rent(ItemData item, float itemScale)
     {
-        int key = item != null ? item.GetInstanceID() : 0;
-        Stack<Transform> stack;
-        if (pool.TryGetValue(key, out stack) && stack.Count > 0)
+        int key = KeyOf(item);
+        if (pool.TryGetValue(key, out Stack<Transform> stack))
         {
-            Transform recycled = stack.Pop();
-            if (recycled != null)
+            while (stack.Count > 0)
             {
+                Transform recycled = stack.Pop();
+                if (recycled == null)
+                    continue;
                 pooled.Remove(recycled);
-                live.Add(recycled);
+                Info info = InfoOf(recycled, item);
+                info.key = key;
+                info.placed = false;
+                info.lastDraw = Time.frameCount;
                 recycled.gameObject.SetActive(true);
-                EnableRenderers(recycled.gameObject);
+                EnableRenderers(info);
                 Prepare(recycled);
                 return recycled;
             }
         }
+
         Transform created = Create(item, itemScale);
         if (created != null)
+        {
+            InfoOf(created, item).lastDraw = Time.frameCount;
             live.Add(created);
+        }
         return created;
     }
 
@@ -88,18 +180,26 @@ public static class BeltItemView
         if (visual == null)
             return;
         live.Remove(visual);
-        drawn.Remove(visual);
-        visual.SetParent(null, false);
-        visual.gameObject.SetActive(false);
         if (!pooled.Add(visual))
             return;
-        int key = item != null ? item.GetInstanceID() : 0;
-        Stack<Transform> stack;
-        if (!pool.TryGetValue(key, out stack))
+        Info info = InfoOf(visual, item);
+        visual.SetParent(null, false);
+        visual.gameObject.SetActive(false);
+        info.placed = false;
+        if (!pool.TryGetValue(info.key, out Stack<Transform> stack))
         {
             stack = new Stack<Transform>(8);
-            pool[key] = stack;
+            pool[info.key] = stack;
         }
+
+        if (stack.Count >= MaxPooledPerKey)
+        {
+            pooled.Remove(visual);
+            infos.Remove(visual);
+            Object.Destroy(visual.gameObject);
+            return;
+        }
+
         stack.Push(visual);
     }
 
@@ -107,50 +207,72 @@ public static class BeltItemView
     {
         GameObject root = new GameObject(item != null ? "BeltItem_" + item.id : "BeltItem");
         root.hideFlags = HideFlags.DontSave;
-        if (!TryAttachWorldModel(root, item, itemScale) && !TryAttachIcon(root, item, itemScale))
+        if (!BeltItemBake.TryAttach(root, item, itemScale)
+            && !TryAttachWorldModel(root, item, itemScale)
+            && !TryAttachIcon(root, item, itemScale))
             AttachFallbackCube(root, itemScale);
 
+        DisableShadows(root);
         DisableColliders(root);
         ApplyWorldCullLayer(root);
+        Info info = InfoOf(root.transform, item);
+        info.prepared = true;
         return root.transform;
     }
 
+    /// <summary>Визуал перешёл к новому владельцу (лента приняла предмет вместе с ним).</summary>
     public static void Prepare(Transform visual)
     {
         if (visual == null)
             return;
         visual.SetParent(null, true);
-        DisableColliders(visual.gameObject);
-        ApplyWorldCullLayer(visual.gameObject);
+        Info info = InfoOf(visual, null);
+        if (!info.prepared)
+        {
+            DisableColliders(visual.gameObject);
+            ApplyWorldCullLayer(visual.gameObject);
+            info.prepared = true;
+        }
+
+        info.lastDraw = Time.frameCount;
+        live.Add(visual);
     }
 
     public static void Update(Transform visual, Vector3 position, Vector3 look)
     {
         if (visual == null)
             return;
-        drawn.Add(visual);
+        Info info = InfoOf(visual, null);
+        info.lastDraw = Time.frameCount;
         live.Add(visual);
-        visual.gameObject.SetActive(true);
-        EnableRenderers(visual.gameObject);
+        GameObject go = visual.gameObject;
+        if (!go.activeSelf)
+        {
+            go.SetActive(true);
+            info.placed = false;
+        }
+        EnableRenderers(info);
 
-        visual.position = position;
-
-        SpriteRenderer sprite = visual.GetComponent<SpriteRenderer>();
-        if (sprite != null)
+        Quaternion rot;
+        if (info.sprite != null)
         {
             Camera cam = WorldView.Cam;
-            if (cam != null)
-            {
-                Vector3 toCam = visual.position - cam.transform.position;
-                if (toCam.sqrMagnitude > 0.0001f)
-                    visual.rotation = Quaternion.LookRotation(toCam.normalized, Vector3.up);
-            }
-            return;
+            Vector3 toCam = cam != null ? position - cam.transform.position : Vector3.zero;
+            rot = toCam.sqrMagnitude > 0.0001f ? Quaternion.LookRotation(toCam.normalized, Vector3.up) : info.rot;
+        }
+        else
+        {
+            look.y = 0f;
+            rot = look.sqrMagnitude > 0.0001f ? Quaternion.LookRotation(look.normalized, Vector3.up) : info.rot;
         }
 
-        look.y = 0f;
-        if (look.sqrMagnitude > 0.0001f)
-            visual.rotation = Quaternion.LookRotation(look.normalized, Vector3.up);
+        // Стоящий груз (забитая лента) не трогаем: запись в Transform — самое дорогое здесь.
+        if (info.placed && info.pos == position && info.rot == rot)
+            return;
+        visual.SetPositionAndRotation(position, rot);
+        info.pos = position;
+        info.rot = rot;
+        info.placed = true;
     }
 
     public static void Destroy(Transform visual)
@@ -158,19 +280,19 @@ public static class BeltItemView
         if (visual == null)
             return;
         live.Remove(visual);
-        drawn.Remove(visual);
         pooled.Remove(visual);
+        infos.Remove(visual);
         Object.Destroy(visual.gameObject);
     }
 
-    static void EnableRenderers(GameObject go)
+    static void EnableRenderers(Info info)
     {
-        if (go == null)
+        Renderer[] rends = info.rends;
+        if (rends == null)
             return;
-        Renderer[] rends = go.GetComponentsInChildren<Renderer>(true);
         for (int i = 0; i < rends.Length; i++)
         {
-            if (rends[i] != null)
+            if (rends[i] != null && !rends[i].enabled)
                 rends[i].enabled = true;
         }
     }
@@ -188,7 +310,7 @@ public static class BeltItemView
 
         if (!FitChildToSize(root.transform, model.transform, itemScale))
         {
-            Object.Destroy(model);
+            Object.DestroyImmediate(model);
             return false;
         }
 
@@ -249,6 +371,14 @@ public static class BeltItemView
         return true;
     }
 
+    /// <summary>Груз мелкий и его много — тени от него почти не видны, а теневых проходов добавляют.</summary>
+    static void DisableShadows(GameObject go)
+    {
+        Renderer[] rends = go.GetComponentsInChildren<Renderer>(true);
+        for (int i = 0; i < rends.Length; i++)
+            rends[i].shadowCastingMode = ShadowCastingMode.Off;
+    }
+
     static void DisableColliders(GameObject go)
     {
         if (go == null)
@@ -264,9 +394,10 @@ public static class BeltItemView
 
     public static void ApplyWorldCullLayer(GameObject go)
     {
-        int layer = LayerMask.NameToLayer("buildings");
-        if (layer >= 0)
-            SetLayer(go, layer);
+        if (cullLayer == int.MinValue)
+            cullLayer = LayerMask.NameToLayer("buildings");
+        if (cullLayer >= 0)
+            SetLayer(go, cullLayer);
     }
 
     static void SetLayer(GameObject go, int layer)

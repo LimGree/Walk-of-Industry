@@ -140,7 +140,7 @@ public abstract class CrafterBuilding : BuildingBase, IInteractable
 
         inputBuffer[item] = have + 1;
         if (showDebug)
-            Debug.Log(GetType().Name + " получил: " + item.displayName + ". Теперь: " + inputBuffer[item]);
+            Debug.Log(GetType().Name + " получил: " + item.Title + ". Теперь: " + inputBuffer[item]);
         return true;
     }
 
@@ -232,7 +232,7 @@ public abstract class CrafterBuilding : BuildingBase, IInteractable
             for (int n = 0; n < output.amount; n++)
             {
                 if (!TryOutputToAny(output.item) && showDebug)
-                    Debug.LogWarning(GetType().Name + ": буфер переполнен при выдаче " + output.item.displayName);
+                    Debug.LogWarning(GetType().Name + ": буфер переполнен при выдаче " + output.item.Title);
             }
         }
 

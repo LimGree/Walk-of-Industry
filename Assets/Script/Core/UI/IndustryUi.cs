@@ -36,6 +36,7 @@ public static class IndustryUi
         if (theme != null && !root.styleSheets.Contains(theme))
             root.styleSheets.Add(theme);
         UiRuntime.Ensure();
+        UiLook.Register(root);
         return root;
     }
 
@@ -57,11 +58,23 @@ public static class IndustryUi
         settings.screenMatchMode = PanelScreenMatchMode.MatchWidthOrHeight;
         settings.referenceResolution = new Vector2Int(1920, 1080);
         settings.match = 0.5f;
+        settings.scale = GameSettings.UiScale;
         settings.sortingOrder = sortingOrder;
         if (settings.themeStyleSheet == null)
             settings.themeStyleSheet = RuntimeTheme();
         Panels[sortingOrder] = settings;
         return settings;
+    }
+
+    /// <summary>Применяет GameSettings.UiScale ко всем панелям.</summary>
+    public static void ApplyUiScale()
+    {
+        float scale = GameSettings.UiScale;
+        foreach (var pair in Panels)
+        {
+            if (pair.Value != null)
+                pair.Value.scale = scale;
+        }
     }
 
     static PanelSettings LoadPanelTemplate()
@@ -87,9 +100,6 @@ public static class IndustryUi
 #if UNITY_EDITOR
         runtimeTheme = UnityEditor.AssetDatabase.LoadAssetAtPath<ThemeStyleSheet>(
             "Packages/com.unity.ui/PackageResources/StyleSheets/Generated/Default.tss");
-        if (runtimeTheme == null)
-            runtimeTheme = UnityEditor.AssetDatabase.LoadAssetAtPath<ThemeStyleSheet>(
-                "Assets/UI Toolkit/UnityThemes/UnityDefaultRuntimeTheme.tss");
 #endif
         return runtimeTheme;
     }
@@ -210,40 +220,128 @@ public static class IndustryUi
         image.style.display = sprite != null ? DisplayStyle.Flex : DisplayStyle.None;
     }
 
+    /// <summary>
+    /// Каркас игрового окна в стиле настроек: затемнение, панель с янтарной кромкой,
+    /// шапка (иконка, заголовок, подзаголовок, «Esc — закрыть»), тело и подвал с подсказками (WindowHints).
+    /// Имена Overlay / Dim / Panel / Header / Title / Close / Body сохранены для старых окон.
+    /// </summary>
     public static VisualElement OverlayPanel(string title, Sprite icon, Action onClose)
     {
-        VisualTreeAsset tree = Resources.Load<VisualTreeAsset>("UI/Overlay");
-        VisualElement screen;
-        if (tree != null)
-        {
-            var host = new VisualElement { name = "OverlayHost" };
-            tree.CloneTree(host);
-            screen = host.Q("Overlay") ?? host;
-        }
-        else
-        {
-            screen = Screen("Overlay");
-            screen.Add(El("Dim", "dim"));
-            var panel = El("Panel", "panel", "panel-wide");
-            var header = El("Header", "header");
-            header.Add(Icon(icon, "header-icon"));
-            header.Add(Text("Title", title, "title"));
-            header.Add(Btn("✕", onClose, "close"));
-            panel.Add(header);
-            screen.Add(panel);
-        }
+        VisualElement screen = Screen("Overlay");
+        screen.pickingMode = PickingMode.Position;
+        var dim = El("Dim", "dim");
+        dim.pickingMode = PickingMode.Position;
+        screen.Add(dim);
 
-        Label titleLabel = screen.Q<Label>("Title");
-        if (titleLabel != null)
-            titleLabel.text = title ?? "";
-        Image headerIcon = screen.Q<Image>("HeaderIcon");
-        if (headerIcon == null)
-            headerIcon = screen.Q<Image>(className: "header-icon");
-        SetIcon(headerIcon, icon);
-        Button close = screen.Q<Button>("Close");
-        if (close != null)
-            close.clicked += () => onClose?.Invoke();
+        var panel = El("Panel", "panel", "panel-wide", "win");
+        var header = El("Header", "header", "win-header");
+        header.Add(Icon(icon, "header-icon", "win-icon"));
+        var titles = El("Titles", "win-titles");
+        titles.Add(Text("Title", title ?? "", "title", "win-title"));
+        var sub = Text("Sub", "", "win-sub");
+        Show(sub, false);
+        titles.Add(sub);
+        header.Add(titles);
+        header.Add(El("Spacer", "grow"));
+
+        var close = new Button(() => onClose?.Invoke()) { name = "Close", text = "" };
+        AddClasses(close, "win-close");
+        ApplyFont(close);
+        close.Add(Keycap("Esc"));
+        close.Add(Text("L", UiLocale.T("win.close"), "hint-label"));
+        header.Add(close);
+        panel.Add(header);
+
+        panel.Add(El("Body", "col", "grow", "panel-body", "win-body"));
+        screen.Add(panel);
         return screen;
+    }
+
+    /// <summary>Серый подзаголовок под названием окна (счётчик, состояние, подсказка).</summary>
+    public static void WindowSubtitle(VisualElement overlay, string text)
+    {
+        Label sub = overlay != null ? overlay.Q<Label>("Sub") : null;
+        if (sub == null)
+            return;
+        sub.text = text ?? "";
+        Show(sub, !string.IsNullOrEmpty(text));
+    }
+
+    /// <summary>Подвал окна со строкой подсказок «клавиша — действие». Всегда последним в панели.</summary>
+    public static void WindowHints(VisualElement overlay, params (string key, string label)[] hints)
+    {
+        VisualElement panel = PanelOf(overlay);
+        if (panel == null)
+            return;
+        VisualElement footer = panel.Q("WinFooter");
+        if (footer == null)
+            footer = El("WinFooter", "win-footer");
+        footer.Clear();
+        for (int i = 0; i < hints.Length; i++)
+        {
+            var hint = El("Hint", "win-hint");
+            hint.Add(Keycap(hints[i].key));
+            hint.Add(Text("L", hints[i].label, "hint-label"));
+            footer.Add(hint);
+        }
+        panel.Add(footer);
+        Show(footer, hints.Length > 0);
+    }
+
+    /// <summary>
+    /// Боковая колонка вкладок как в настройках. Возвращает колонку; onSelect зовётся с id вкладки.
+    /// SetNav(nav, id) подсвечивает выбранную.
+    /// </summary>
+    public static VisualElement SideNav(IList<(string id, string title, string desc)> tabs, Action<string> onSelect)
+    {
+        var nav = El("Nav", "set-nav", "win-nav");
+        for (int i = 0; i < tabs.Count; i++)
+        {
+            var t = tabs[i];
+            var btn = El("Nav_" + t.id, "set-nav-btn");
+            btn.userData = t.id;
+            btn.Add(El("Bar", "set-nav-bar"));
+            var col = El("Col", "set-nav-text");
+            col.Add(Text("T", t.title, "set-nav-title"));
+            if (!string.IsNullOrEmpty(t.desc))
+                col.Add(Text("D", t.desc, "set-nav-desc"));
+            btn.Add(col);
+            string id = t.id;
+            btn.AddManipulator(new Clickable(() =>
+            {
+                UiAudio.PlayToggle();
+                onSelect?.Invoke(id);
+            }));
+            nav.Add(btn);
+        }
+        return nav;
+    }
+
+    public static void SetNav(VisualElement nav, string id)
+    {
+        if (nav == null)
+            return;
+        foreach (VisualElement child in nav.Children())
+            SetOn(child, (child.userData as string) == id, "is-selected");
+    }
+
+    /// <summary>Заголовок секции внутри окна (как группы в настройках).</summary>
+    public static VisualElement Section(string title)
+    {
+        var head = El("Section", "set-group");
+        head.Add(Text("T", title, "set-group-title"));
+        head.Add(El("Line", "set-group-line"));
+        return head;
+    }
+
+    /// <summary>Пустое состояние: крупная серая строка + пояснение.</summary>
+    public static VisualElement Empty(string title, string body = null)
+    {
+        var box = El("Empty", "win-empty");
+        box.Add(Text("T", title, "win-empty-title"));
+        if (!string.IsNullOrEmpty(body))
+            box.Add(Text("B", body, "win-empty-body"));
+        return box;
     }
 
     public static VisualElement PanelOf(VisualElement overlay)
@@ -310,11 +408,13 @@ public static class IndustryUi
     {
         if (data == null)
             return "Special";
+        if (DecorCatalog.IsDecor(data))
+            return "Decor";
         if (data.IsConveyor)
             return "Logistics";
         if (data.requiresResourceNode || data.requiresWater || data.allowOnWater)
             return "Extraction";
-        string hay = ((data.id ?? "") + " " + (data.displayName ?? "")).ToLowerInvariant();
+        string hay = ((data.id ?? "") + " " + (data.Title ?? "")).ToLowerInvariant();
         if (hay.IndexOf("storage", StringComparison.Ordinal) >= 0
             || hay.IndexOf("tank", StringComparison.Ordinal) >= 0
             || hay.IndexOf("container", StringComparison.Ordinal) >= 0)
@@ -468,7 +568,7 @@ public static class IndustryUi
         if (item != null)
         {
             string qty = have >= 0 ? have + " / " + need : need.ToString();
-            UiTooltip.Bind(chip, item.displayName, string.IsNullOrEmpty(item.description) ? qty : item.description + "\n" + qty);
+            UiTooltip.Bind(chip, item.Title, string.IsNullOrEmpty(item.Info) ? qty : item.Info + "\n" + qty);
         }
 
         return chip;
@@ -498,7 +598,7 @@ public static class IndustryUi
     public static VisualElement RecipeCard(RecipeData recipe, bool selected, Action onClick)
     {
         return RecipeCard(
-            recipe != null ? recipe.displayName : "Recipe",
+            recipe != null ? recipe.Title : "Recipe",
             recipe != null ? recipe.inputs : null,
             recipe != null ? recipe.outputs : null,
             selected,
@@ -513,10 +613,11 @@ public static class IndustryUi
         Action onClick)
     {
         Button card = CardButton(onClick, selected ? "card-on" : null);
+        card.AddToClassList("card-row");
         ItemData first = FirstItem(outputs);
-        card.Add(Icon(first != null ? first.icon : null, "card-icon"));
+        card.Add(Well(first != null ? first.icon : null));
         var col = El("Col", "col", "grow");
-        col.Add(Text("T", title ?? "Recipe", "body-text"));
+        col.Add(Text("T", title ?? UiLocale.T("machine.recipe"), "body-text"));
         var io = El("IO", "row", "io-row");
         AddStacks(io, inputs);
         io.Add(Text("Arr", " → ", "gold"));
@@ -524,6 +625,19 @@ public static class IndustryUi
         col.Add(io);
         card.Add(col);
         return card;
+    }
+
+    /// <summary>Иконка в круглой подложке — как в плитках сумки.</summary>
+    public static VisualElement Well(Sprite icon, string extraClass = null)
+    {
+        var well = El("Well", "card-well");
+        if (!string.IsNullOrEmpty(extraClass))
+            well.AddToClassList(extraClass);
+        var img = Icon(icon, "card-well-icon");
+        img.pickingMode = PickingMode.Ignore;
+        well.pickingMode = PickingMode.Ignore;
+        well.Add(img);
+        return well;
     }
 
     public static VisualElement ActionCard(string title, string subtitle, bool enabled, Action onClick)
@@ -544,7 +658,8 @@ public static class IndustryUi
     public static VisualElement FilterCard(Sprite icon, string title, string subtitle, bool selected, Action onClick)
     {
         Button card = CardButton(onClick, selected ? "card-on" : null);
-        card.Add(Icon(icon, "icon-48"));
+        card.AddToClassList("card-row");
+        card.Add(Well(icon));
         var col = El("Col", "col", "grow");
         col.Add(Text("T", title ?? "", selected ? "gold" : "body-text"));
         col.Add(Text("S", subtitle ?? "", "muted"));
@@ -585,23 +700,23 @@ public static class IndustryUi
         var col = El("Meta", "col", "grow");
         string cat = BuildingCategory(data);
         col.Add(Text("Cat", UiLocale.T("cat." + cat.ToLowerInvariant()), "card-cat"));
-        col.Add(Text("T", data != null ? data.displayName : "Building", unlocked ? "heading-3" : "muted"));
+        col.Add(Text("T", data != null ? data.Title : UiLocale.T("b.building"), unlocked ? "heading-3" : "muted"));
         int cost = Economy.BuildCost(data);
         if (cost > 0)
             col.Add(Text("Cost", "◈  " + Money(cost), "card-cost"));
         if (!unlocked)
-            col.Add(Text("Lock", "LOCKED", "badge", "badge-locked"));
+            col.Add(Text("Lock", UiLocale.T("build.locked"), "badge", "badge-locked"));
         else if (!string.IsNullOrEmpty(subtitle))
             col.Add(Text("Sub", subtitle, marked ? "gold" : "caption"));
-        else if (!compact && data != null && !string.IsNullOrEmpty(data.description))
-            col.Add(Text("D", data.description, "caption"));
+        else if (!compact && data != null && !string.IsNullOrEmpty(data.Info))
+            col.Add(Text("D", data.Info, "caption"));
         card.Add(col);
 
-        string tipTitle = data != null ? data.displayName : "Building";
+        string tipTitle = data != null ? data.Title : UiLocale.T("b.building");
         string tipBody = unlocked
-            ? (string.IsNullOrEmpty(data != null ? data.description : null) ? cat : data.description)
-            : "Требуется исследование";
-        UiTooltip.Bind(card, tipTitle, tipBody, cost > 0 ? Money(cost) + " монет" : null);
+            ? (string.IsNullOrEmpty(data != null ? data.Info : null) ? cat : data.Info)
+            : UiLocale.T("build.needs_research");
+        UiTooltip.Bind(card, tipTitle, tipBody, cost > 0 ? UiLocale.T("wallet.coins_n", Money(cost)) : null);
         return card;
     }
 
@@ -619,7 +734,7 @@ public static class IndustryUi
         card.Add(Icon(node != null ? node.icon : null, "icon-32"));
         var col = El("Col", "col", "grow");
         var head = El("H", "row");
-        head.Add(Text("T", node != null ? node.displayName : "Research", "body-text", "grow"));
+        head.Add(Text("T", node != null ? node.Title : UiLocale.T("machine.tab_research"), "body-text", "grow"));
         string badgeClass = status == "DONE" ? "badge-done"
             : status == "ACTIVE" ? "badge-running"
             : status == "LOCKED" ? "badge-locked"
@@ -634,8 +749,8 @@ public static class IndustryUi
         AddStacks(need, node != null ? node.requiredItems : null);
         col.Add(need);
         card.Add(col);
-        string req = node != null ? node.description : "";
-        UiTooltip.Bind(card, node != null ? node.displayName : "Research", req, status);
+        string req = node != null ? node.Info : "";
+        UiTooltip.Bind(card, node != null ? node.Title : UiLocale.T("machine.tab_research"), req, status);
         return card;
     }
 
@@ -651,7 +766,7 @@ public static class IndustryUi
     public static VisualElement RateBar(Sprite icon, string name, float plus, float minus, float max)
     {
         var col = El("Rate", "col", "rate-block");
-        col.Add(StatRow(icon, name, "+" + plus.ToString("0.#") + "/мин   −" + minus.ToString("0.#") + "/мин"));
+        col.Add(StatRow(icon, name, "+" + plus.ToString("0.#") + UiLocale.T("unit.per_min") + "   −" + minus.ToString("0.#") + UiLocale.T("unit.per_min")));
         var track = El("Track", "rate-track");
         var up = El("Up", "rate-fill", "rate-fill-up");
         var down = El("Dn", "rate-fill", "rate-fill-down");
@@ -668,9 +783,9 @@ public static class IndustryUi
     {
         var chip = El("Bld", "codex-building");
         chip.Add(Icon(building != null ? building.icon : null, "icon-32"));
-        chip.Add(Text("N", building != null ? building.displayName : "—", "caption"));
+        chip.Add(Text("N", building != null ? building.Title : "—", "caption"));
         if (building != null)
-            UiTooltip.Bind(chip, building.displayName, building.description);
+            UiTooltip.Bind(chip, building.Title, building.Info);
         return chip;
     }
 
@@ -682,15 +797,15 @@ public static class IndustryUi
             card.name = "Codex_" + item.id.Trim();
 
         var head = El("Head", "codex-head");
-        head.Add(Icon(item != null ? item.icon : null, "codex-icon"));
+        head.Add(Well(item != null ? item.icon : null, "card-well-lg"));
         var meta = El("Meta", "col", "grow");
         var titleRow = El("TitleRow", "row");
-        titleRow.Add(Text("T", item != null ? item.displayName : "Item", "heading-3", "grow"));
+        titleRow.Add(Text("T", item != null ? item.Title : "—", "heading-3", "grow"));
         if (item != null && item.isFluid)
             titleRow.Add(Text("Fluid", UiLocale.T("codex.fluid"), "badge", "badge-ready"));
         meta.Add(titleRow);
-        if (item != null && !string.IsNullOrEmpty(item.description))
-            meta.Add(Text("D", item.description, "muted"));
+        if (item != null && !string.IsNullOrEmpty(item.Info))
+            meta.Add(Text("D", item.Info, "muted"));
         head.Add(meta);
         card.Add(head);
 
@@ -736,7 +851,7 @@ public static class IndustryUi
         if (!any)
             card.Add(Text("None", UiLocale.T("codex.none"), "muted"));
 
-        UiTooltip.Bind(card, item != null ? item.displayName : "Item", item != null ? item.description : "");
+        UiTooltip.Bind(card, item != null ? item.Title : "—", item != null ? item.Info : "");
         return card;
     }
 

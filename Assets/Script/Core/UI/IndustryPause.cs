@@ -11,7 +11,7 @@ public class IndustryPause
     ScrollView achieveList;
     Label sessionStats;
     bool listening;
-    string settingsTab = "general";
+    string settingsTab = "display";
 
     public bool Visible => root != null && root.style.display == DisplayStyle.Flex;
 
@@ -44,7 +44,7 @@ public class IndustryPause
         home.Add(sessionStats);
         home.Add(IndustryUi.El("Div1", "divider"));
         home.Add(IndustryUi.Btn(UiLocale.T("pause.achievements"), ShowAchievements));
-        home.Add(IndustryUi.Btn(UiLocale.T("menu.settings"), () => ShowSettings("general")));
+        home.Add(IndustryUi.Btn(UiLocale.T("menu.settings"), () => ShowSettings(null)));
         home.Add(IndustryUi.El("Div2", "divider"));
         home.Add(IndustryUi.Btn(UiLocale.T("pause.exit"), () =>
         {
@@ -66,6 +66,13 @@ public class IndustryPause
 
         settings = IndustryUi.El("Settings", "panel", "panel-menu");
         settings.AddToClassList("settings-shell");
+        // Режим «переместить миникарту» прячет паузу, пока игрок тащит карту.
+        SettingsHub.HostVisibility = visible =>
+        {
+            IndustryUi.Show(root, visible);
+            if (visible)
+                ShowSettings("minimap");
+        };
         SettingsHub.Fill(settings, ShowHome, settingsTab);
         root.Add(settings);
 
@@ -143,7 +150,7 @@ public class IndustryPause
         achieveList.Insert(0, IndustryUi.Text("Sum", done + " / " + AchievementSystem.Catalog.Length, "caption"));
     }
 
-    void ShowSettings(string tab = "general")
+    void ShowSettings(string tab = null)
     {
         settingsTab = string.IsNullOrEmpty(tab) ? SettingsHub.CurrentTab : tab;
         SettingsHub.Fill(settings, ShowHome, settingsTab);

@@ -1,6 +1,6 @@
 # InputSystem_Actions
 
-**Файлы:** `Assets/InputSystem_Actions.inputactions` + `Assets/InputSystem_Actions.cs`
+**Файлы:** `Assets/Input/InputSystem_Actions.inputactions` + `Assets/Input/InputSystem_Actions.cs`
 
 ## Это сгенерированный код
 

@@ -53,13 +53,16 @@ public class SelectionActionsUI : MonoBehaviour
             panelAction.performed += OnPanelPerformed;
     }
 
+    public const string WindowId = "selection";
+
     void OnPanelPerformed(InputAction.CallbackContext ctx)
     {
-        if (KeybindStore.BlocksGameplayInput)
-            return;
-        if (GameManager.Instance != null && GameManager.Instance.IsPaused)
-            return;
-        Toggle();
+        HotkeyToggle();
+    }
+
+    void HotkeyToggle()
+    {
+        UiStack.Hotkey(WindowId, () => SetOpen(true), () => SetOpen(false), 85);
     }
 
     void Update()
@@ -70,7 +73,7 @@ public class SelectionActionsUI : MonoBehaviour
             && !KeybindStore.BlocksGameplayInput
             && Keyboard.current != null
             && Keyboard.current.oKey.wasPressedThisFrame)
-            Toggle();
+            HotkeyToggle();
 
         int count = selection != null ? selection.SelectedBuildings.Count : 0;
         if (count != lastCount)
@@ -87,7 +90,12 @@ public class SelectionActionsUI : MonoBehaviour
         overlay = IndustryUi.OverlayPanel(UiLocale.T("overlay.selected"), null, () => SetOpen(false));
         VisualElement panel = IndustryUi.PanelOf(overlay);
         summary = IndustryUi.Text("Summary", "", "muted");
+        IndustryUi.Show(summary, false);
         panel.Add(summary);
+        IndustryUi.WindowHints(overlay,
+            (UiLocale.T("bag.lmb"), UiLocale.T("select.hint_click")),
+            ("Del", UiLocale.T("select.hint_delete")),
+            (KeybindStore.Hint("SelectionPanel"), UiLocale.T("win.close")));
         mainView = IndustryUi.El("Main", "col", "grow");
         list = new ScrollView();
         list.AddToClassList("scroll");
@@ -118,10 +126,13 @@ public class SelectionActionsUI : MonoBehaviour
         IndustryUi.Show(overlay, open);
         if (!open)
             ShowMain();
-        if (open && WalletHud.Instance != null && WalletHud.Instance.IsShopOpen)
-            WalletHud.Instance.SetShopOpen(false);
         if (open)
+        {
+            UiStack.Opened(WindowId, () => SetOpen(false), 85);
             Rebuild();
+        }
+        else
+            UiStack.Closed(WindowId);
         if (GameManager.Instance != null)
             GameManager.Instance.RestoreGameplayFocus();
     }
@@ -163,6 +174,9 @@ public class SelectionActionsUI : MonoBehaviour
         summary.text = buildings.Count == 0
             ? UiLocale.T("select.empty")
             : UiLocale.T("select.count", buildings.Count, groups.Count);
+        IndustryUi.WindowSubtitle(overlay, summary.text);
+        if (buildings.Count == 0)
+            list.Add(IndustryUi.Empty(UiLocale.T("select.empty_title"), UiLocale.T("select.empty")));
 
         for (int i = 0; i < order.Count; i++)
             AddGroupCard(groups[order[i]]);
@@ -200,11 +214,14 @@ public class SelectionActionsUI : MonoBehaviour
         else if (node != null)
             icon = node.icon;
 
-        string title = (data != null ? data.displayName : "Здание").ToUpperInvariant() + "  ×" + bucket.Count;
-        string detail = "ур. " + level + (recipe != null ? "  ·  " + recipe.displayName : crafter != null ? "  ·  рецепт не выбран" : node != null ? "  ·  " + node.displayName : "");
+        string title = data != null ? data.Title : UiLocale.T("b.building");
+        string detail = UiLocale.T("machine.level", level) + (recipe != null ? "  ·  " + recipe.Title : crafter != null ? "  ·  " + UiLocale.T("machine.no_recipe") : node != null ? "  ·  " + node.Title : "");
 
-        var card = IndustryUi.El("G", "card");
-        card.Add(IndustryUi.Icon(icon, "icon-48"));
+        var card = IndustryUi.El("G", "card", "sel-card");
+        var well = IndustryUi.El("Well", "sel-well");
+        well.Add(IndustryUi.Icon(icon, "sel-icon"));
+        well.Add(IndustryUi.Text("Count", "×" + bucket.Count, "sel-count"));
+        card.Add(well);
         var col = IndustryUi.El("C", "col", "grow");
         col.Add(IndustryUi.Text("T", title, "heading-3"));
         col.Add(IndustryUi.Text("D", detail, "caption"));
@@ -259,8 +276,8 @@ public class SelectionActionsUI : MonoBehaviour
         IndustryUi.Show(mainView, false);
         IndustryUi.Show(recipeView, true);
         recipeTitle.text = bucket[0].data != null
-            ? "Рецепт: " + bucket[0].data.displayName + "  ур. " + bucket[0].ReadLevel()
-            : "Рецепт";
+            ? UiLocale.T("machine.recipe_for", bucket[0].data.Title, bucket[0].ReadLevel())
+            : UiLocale.T("machine.recipe");
         recipeList.Clear();
         BuildingData data = bucket[0].data;
         RecipeData[] catalog = GameDatabase.AllRecipes();
@@ -278,7 +295,7 @@ public class SelectionActionsUI : MonoBehaviour
             var card = IndustryUi.El("R", "card");
             card.Add(IndustryUi.Icon(icon, "card-icon"));
             var col = IndustryUi.El("C", "col", "grow");
-            col.Add(IndustryUi.Text("N", recipe.displayName, "body-text"));
+            col.Add(IndustryUi.Text("N", recipe.Title, "body-text"));
             col.Add(IndustryUi.Text("I", RecipeLine(recipe), "muted"));
             card.Add(col);
             card.Add(IndustryUi.Btn(UiLocale.T("select.choose"), () => ApplyRecipe(captured), "btn-small", "btn-primary"));
@@ -294,7 +311,7 @@ public class SelectionActionsUI : MonoBehaviour
         for (int i = 0; i < recipe.inputs.Count; i++)
         {
             if (recipe.inputs[i].item != null)
-                parts.Add(recipe.inputs[i].amount + " " + recipe.inputs[i].item.displayName);
+                parts.Add(recipe.inputs[i].amount + " " + recipe.inputs[i].item.Title);
         }
         return string.Join(" + ", parts);
     }

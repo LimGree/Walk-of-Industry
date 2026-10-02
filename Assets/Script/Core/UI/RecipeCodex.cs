@@ -114,9 +114,9 @@ public static class RecipeCodex
         if (string.IsNullOrEmpty(query))
             return true;
         if (entry.item != null
-            && (Contains(entry.item.displayName, query)
+            && (Contains(entry.item.Title, query)
                 || Contains(entry.item.id, query)
-                || Contains(entry.item.description, query)))
+                || Contains(entry.item.Info, query)))
             return true;
 
         if (entry.extractBuildings != null)
@@ -124,7 +124,7 @@ public static class RecipeCodex
             for (int i = 0; i < entry.extractBuildings.Count; i++)
             {
                 BuildingData building = entry.extractBuildings[i];
-                if (building != null && (Contains(building.displayName, query) || Contains(building.id, query)))
+                if (building != null && (Contains(building.Title, query) || Contains(building.id, query)))
                     return true;
             }
         }
@@ -136,12 +136,12 @@ public static class RecipeCodex
                 RecipeData recipe = entry.recipes[i];
                 if (recipe == null)
                     continue;
-                if (Contains(recipe.displayName, query) || Contains(recipe.id, query))
+                if (Contains(recipe.Title, query) || Contains(recipe.id, query))
                     return true;
                 if (ContainsStacks(recipe.inputs, query) || ContainsStacks(recipe.outputs, query))
                     return true;
                 BuildingData building = BuildingOf(recipe);
-                if (building != null && (Contains(building.displayName, query) || Contains(building.id, query)))
+                if (building != null && (Contains(building.Title, query) || Contains(building.id, query)))
                     return true;
             }
         }
@@ -240,8 +240,8 @@ public static class RecipeCodex
         int cmp = a.sortKey.CompareTo(b.sortKey);
         if (cmp != 0)
             return cmp;
-        string left = a.item != null ? a.item.displayName : "";
-        string right = b.item != null ? b.item.displayName : "";
+        string left = a.item != null ? a.item.Title : "";
+        string right = b.item != null ? b.item.Title : "";
         return string.Compare(left, right, System.StringComparison.CurrentCultureIgnoreCase);
     }
 
@@ -485,7 +485,7 @@ public static class RecipeCodex
             ItemStack stack = stacks[i];
             if (stack == null || stack.item == null)
                 continue;
-            if (Contains(stack.item.displayName, query) || Contains(stack.item.id, query))
+            if (Contains(stack.item.Title, query) || Contains(stack.item.id, query))
                 return true;
         }
 

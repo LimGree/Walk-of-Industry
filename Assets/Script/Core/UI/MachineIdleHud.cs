@@ -46,15 +46,14 @@ public class MachineIdleHud : MonoBehaviour
         float now = Time.unscaledTime;
         var seen = new HashSet<int>();
 
-        CrafterBuilding[] crafters = Object.FindObjectsByType<CrafterBuilding>(FindObjectsSortMode.None);
-        for (int i = 0; i < crafters.Length; i++)
-            Note(crafters[i], crafters[i] != null ? crafters[i].IdleReason() : null, now, seen);
-
-        Extractor[] extractors = Object.FindObjectsByType<Extractor>(FindObjectsSortMode.None);
-        for (int i = 0; i < extractors.Length; i++)
+        // Реестр WorldSim вместо двух поисков по всей сцене.
+        IReadOnlyList<BuildingBase> all = WorldSim.Buildings;
+        for (int i = 0; i < all.Count; i++)
         {
-            Extractor ex = extractors[i];
-            Note(ex, ex != null && ex.IsOutputJammed ? "output" : null, now, seen);
+            if (all[i] is CrafterBuilding crafter && crafter != null)
+                Note(crafter, crafter.IdleReason(), now, seen);
+            else if (all[i] is Extractor ex && ex != null)
+                Note(ex, ex.IsOutputJammed ? "output" : null, now, seen);
         }
 
         var stale = new List<int>();
@@ -92,7 +91,7 @@ public class MachineIdleHud : MonoBehaviour
             building = building,
             reason = reason,
             cell = BuildingLinker.WorldToCell(building.transform.position),
-            Name = building.data != null ? building.data.displayName : "Building"
+            Name = building.data != null ? building.data.Title : "Building"
         });
     }
 
@@ -169,10 +168,19 @@ public class MachineIdleHud : MonoBehaviour
         if (cam == null)
             return;
         Vector3 camPos = cam.transform.position;
+        // «Иконки простоя»: 0 — всегда, 1 — только в режиме стройки, 2 — выкл.
+        int mode = GameSettings.IdleIcons;
+        bool buildMode = GameManager.Instance != null && GameManager.Instance.playerBuilder != null
+            && GameManager.Instance.playerBuilder.isBuildMode;
+        bool visible = mode == 0 || (mode == 1 && buildMode);
         foreach (var pair in marks)
         {
             Transform mark = pair.Value;
             if (mark == null)
+                continue;
+            if (mark.gameObject.activeSelf != visible)
+                mark.gameObject.SetActive(visible);
+            if (!visible)
                 continue;
             Vector3 toCam = camPos - mark.position;
             if (toCam.sqrMagnitude < 0.01f)

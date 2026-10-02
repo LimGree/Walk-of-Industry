@@ -17,6 +17,16 @@ public class WorldMapUI : MonoBehaviour
     InputSystem_Actions input;
     VisualElement fullRoot;
     VisualElement miniHost;
+    VisualElement miniRoot;
+    VisualElement miniDragLayer;
+    bool miniDragActive;
+    bool miniDragHeld;
+    Vector2 miniDragPos;
+    Vector2 miniDragGrab;
+    bool miniDragPrevCustom;
+    Vector2 miniDragPrevPos;
+    int miniDragPrevCorner;
+    Action miniDragDone;
     VisualElement miniFrame;
     VisualElement miniClip;
     VisualElement miniOverlay;
@@ -39,9 +49,8 @@ public class WorldMapUI : MonoBehaviour
     Label worldCompass;
     Label[] compass;
     Button measureBtn;
-    bool layerVeins = true;
-    bool layerBuildings = true;
     bool layerBelts = true;
+    bool hasLastView;
     Button teleportBtn;
     TextField waypointSearch;
     TextField editName;
@@ -160,8 +169,19 @@ public class WorldMapUI : MonoBehaviour
         RestoreMapTime();
     }
 
+    string layerKey;
+
     void OnMapSettingsChanged()
     {
+        // Слои карты сменились — перерисовать текстуру (слайдеры миникарты её не трогают).
+        string key = MapSettings.ShowBuildings + "|" + MapSettings.ShowVeins + "|" + PlayerPrefs.GetString("MapHiddenVeins", "");
+        if (key != layerKey)
+        {
+            bool first = layerKey == null;
+            layerKey = key;
+            if (!first)
+                Rebuild();
+        }
         ApplyMiniSize();
         ApplyMiniStyle();
         RefreshPins();
@@ -175,6 +195,9 @@ public class WorldMapUI : MonoBehaviour
 
     void LateUpdate()
     {
+        if (miniDragActive && Keyboard.current != null
+            && (Keyboard.current.enterKey.wasPressedThisFrame || Keyboard.current.numpadEnterKey.wasPressedThisFrame))
+            EndMiniDrag(true);
         if (mapTex == null)
             Rebuild();
 
@@ -219,33 +242,16 @@ public class WorldMapUI : MonoBehaviour
             IndustryUi.Show(tooltip, false);
     }
 
+    public const string WindowId = "map";
+
     void OnMapToggle(InputAction.CallbackContext ctx)
     {
-        if (KeybindStore.BlocksGameplayInput)
+        if (miniDragActive)
             return;
-        if (GameManager.Instance != null && GameManager.Instance.IsPaused)
+        // M — ещё и «переместить выделение»: пока нет окон и выделение держит клавишу, карту не открываем.
+        if (!UiStack.Any && !IsOpen && SelectionHoldsMapKey())
             return;
-        if (MachineUI.Instance != null && MachineUI.Instance.IsOpen)
-            return;
-        if (WorldOverlayGate.IsOpen)
-            return;
-        if (BuildMenuUI.Instance != null && BuildMenuUI.Instance.IsOpen)
-            return;
-        if (ResearchUI.Instance != null && ResearchUI.Instance.IsOpen)
-            return;
-        if (SelectionActionsUI.Instance != null && SelectionActionsUI.Instance.IsOpen)
-            return;
-
-        if (IsOpen)
-        {
-            SetOpen(false);
-            return;
-        }
-
-        if (SelectionHoldsMapKey())
-            return;
-
-        SetOpen(true);
+        UiStack.Hotkey(WindowId, () => SetOpen(true), () => SetOpen(false), 95);
     }
 
     static bool SelectionHoldsMapKey()
@@ -265,6 +271,10 @@ public class WorldMapUI : MonoBehaviour
     public void SetOpen(bool open)
     {
         IsOpen = open;
+        if (open)
+            UiStack.Opened(WindowId, () => SetOpen(false), 95);
+        else
+            UiStack.Closed(WindowId);
         IndustryUi.Show(fullRoot, open);
         IndustryUi.Show(miniHost, !open && MapSettings.MiniVisible);
         if (open)
@@ -274,7 +284,25 @@ public class WorldMapUI : MonoBehaviour
             dragging = false;
             measuring = false;
             Rebuild();
-            CenterOnPlayer(0.28f);
+            // «Масштаб полной карты при открытии».
+            int openZoom = MapSettings.FullOpenZoom;
+            if (openZoom == 2)
+            {
+                viewUv = new Rect(0f, 0f, 1f, 1f);
+                ClampView();
+                if (fullImage != null)
+                    fullImage.ViewUv = viewUv;
+                RefreshZoomLabel();
+            }
+            else if (openZoom == 0 && hasLastView)
+            {
+                if (fullImage != null)
+                    fullImage.ViewUv = viewUv;
+                RefreshZoomLabel();
+            }
+            else
+                CenterOnPlayer(0.28f);
+            hasLastView = true;
             RefreshPins();
             RebuildWaypointList();
             GameAudio.Ui("ui_map_open");
@@ -301,7 +329,7 @@ public class WorldMapUI : MonoBehaviour
             return;
         mapTimeFrozen = false;
         if (GameManager.Instance == null || !GameManager.Instance.IsPaused)
-            Time.timeScale = 1f;
+            Time.timeScale = GameSettings.GameSpeed;
     }
 
     public static void AddMinimapSettings(VisualElement parent)
@@ -359,11 +387,15 @@ public class WorldMapUI : MonoBehaviour
 
         Color[] pixels = map.BiomeTexture.GetPixels();
         var scatter = WorldResourceScatterer.Instance;
-        if (layerVeins && scatter != null)
+        if (MapSettings.ShowVeins && scatter != null)
         {
             var veins = scatter.Veins;
             for (int i = 0; i < veins.Count; i++)
+            {
+                if (MapSettings.IsVeinHidden(veins[i].label))
+                    continue;
                 PaintCell(pixels, w, h, veins[i].cell, veins[i].color);
+            }
         }
 
         PaintBuildings(pixels, w, h);
@@ -396,11 +428,11 @@ public class WorldMapUI : MonoBehaviour
             bool belt = go.GetComponent<Conveyor>() != null;
             if (belt && !layerBelts)
                 continue;
-            if (!belt && !layerBuildings)
+            if (!belt && !MapSettings.ShowBuildings)
                 continue;
             Color color = belt ? BeltColor : BuildingColor;
             if (!belt && BreakdownSystem.IsBrokenBuilding(go))
-                color = BrokenColor;
+                color = GameSettings.ColorblindMode == 0 ? BrokenColor : UiLook.Bad;
             if (!GridOccupancy.TryGetCells(go, cells))
                 continue;
             for (int c = 0; c < cells.Count; c++)
@@ -423,6 +455,7 @@ public class WorldMapUI : MonoBehaviour
     void BuildUi()
     {
         VisualElement root = IndustryUi.Mount(this, 95);
+        miniRoot = root;
         miniHost = IndustryUi.El("MiniHost", "mini-host");
         miniFrame = IndustryUi.El("Mini", "mini-map", "map-frame");
         miniClip = IndustryUi.El("MiniClip", "mini-clip");
@@ -454,15 +487,25 @@ public class WorldMapUI : MonoBehaviour
         miniClip.RegisterCallback<PointerMoveEvent>(evt => UpdateTooltip(miniImage, miniUv, evt.localPosition, evt.position, MiniFollow ? PlayerYaw() : 0f));
         miniClip.RegisterCallback<PointerLeaveEvent>(_ => IndustryUi.Show(tooltip, false));
         root.Add(miniHost);
+        UiLook.RegisterHud(miniHost);
+        root.RegisterCallback<GeometryChangedEvent>(_ => PlaceMiniFree());
+        miniHost.RegisterCallback<GeometryChangedEvent>(_ => PlaceMiniFree());
 
         fullRoot = IndustryUi.Screen("FullMap");
         fullRoot.Add(IndustryUi.El("Dim", "dim"));
-        var chrome = IndustryUi.El("Chrome", "panel", "map-chrome");
-        var head = IndustryUi.El("Head", "header");
-        head.Add(IndustryUi.Text("Title", UiLocale.T("overlay.map"), "title"));
-        coordLabel = IndustryUi.Text("Coords", "", "muted");
-        head.Add(coordLabel);
-        head.Add(IndustryUi.Btn("✕", () => SetOpen(false), "close"));
+        var chrome = IndustryUi.El("Panel", "panel", "map-chrome", "win");
+        var head = IndustryUi.El("Head", "header", "win-header");
+        var titles = IndustryUi.El("Titles", "win-titles");
+        titles.Add(IndustryUi.Text("Title", UiLocale.T("overlay.map"), "win-title"));
+        coordLabel = IndustryUi.Text("Coords", "", "win-sub");
+        titles.Add(coordLabel);
+        head.Add(titles);
+        head.Add(IndustryUi.El("Spacer", "grow"));
+        var close = new Button(() => SetOpen(false)) { name = "Close", text = "" };
+        close.AddToClassList("win-close");
+        close.Add(IndustryUi.Keycap("Esc"));
+        close.Add(IndustryUi.Text("L", UiLocale.T("win.close"), "hint-label"));
+        head.Add(close);
         chrome.Add(head);
 
         var legend = IndustryUi.El("Legend", "map-legend");
@@ -470,8 +513,8 @@ public class WorldMapUI : MonoBehaviour
         AddSwatch(legend, new Color(0.58f, 0.74f, 0.34f), UiLocale.T("map.field"));
         AddSwatch(legend, new Color(0.28f, 0.28f, 0.30f), UiLocale.T("map.mountain"));
         AddSwatch(legend, new Color(0.11f, 0.32f, 0.52f), UiLocale.T("map.water"));
-        AddLayerChip(legend, UiLocale.T("map.veins"), new Color(0.72f, 0.24f, 0.18f), () => layerVeins, v => layerVeins = v);
-        AddLayerChip(legend, UiLocale.T("map.buildings"), BuildingColor, () => layerBuildings, v => layerBuildings = v);
+        AddLayerChip(legend, UiLocale.T("map.veins"), new Color(0.72f, 0.24f, 0.18f), () => MapSettings.ShowVeins, v => MapSettings.ShowVeins = v);
+        AddLayerChip(legend, UiLocale.T("map.buildings"), BuildingColor, () => MapSettings.ShowBuildings, v => MapSettings.ShowBuildings = v);
         AddLayerChip(legend, UiLocale.T("map.belts"), BeltColor, () => layerBelts, v => layerBelts = v);
         chrome.Add(legend);
 
@@ -500,7 +543,7 @@ public class WorldMapUI : MonoBehaviour
         var body = IndustryUi.El("Body", "map-body");
         body.Add(fullWrap);
         waypointPanel = IndustryUi.El("Wp", "map-side");
-        waypointPanel.Add(IndustryUi.Text("WpT", UiLocale.T("map.waypoints"), "heading-3"));
+        waypointPanel.Add(IndustryUi.Section(UiLocale.T("map.waypoints")));
         waypointSearch = new TextField { name = "WpSearch" };
         waypointSearch.AddToClassList("field");
         waypointSearch.RegisterValueChangedCallback(evt =>
@@ -516,6 +559,12 @@ public class WorldMapUI : MonoBehaviour
         waypointPanel.Add(IndustryUi.Btn(UiLocale.T("map.marker_here"), () => BeginMarker(PlayerCell()), "btn-small", "btn-primary"));
         body.Add(waypointPanel);
         chrome.Add(body);
+        var footer = IndustryUi.El("WinFooter", "win-footer");
+        AddMapHint(footer, UiLocale.T("bag.rmb"), UiLocale.T("map.hint_marker"));
+        AddMapHint(footer, "Shift+" + UiLocale.T("bag.lmb"), UiLocale.T("map.hint_ruler"));
+        AddMapHint(footer, "WASD", UiLocale.T("map.hint_pan"));
+        AddMapHint(footer, UiLocale.T("map.wheel"), UiLocale.T("map.hint_zoom"));
+        AddMapHint(footer, KeybindStore.Hint("MoveSelection"), UiLocale.T("win.close"));
 
         var tools = IndustryUi.El("Tools", "map-tools");
         tools.Add(IndustryUi.Btn("−", () => ZoomAtCenter(1.22f), "btn-small"));
@@ -566,6 +615,7 @@ public class WorldMapUI : MonoBehaviour
         IndustryUi.Show(editPanel, false);
         chrome.Add(editPanel);
 
+        chrome.Add(footer);
         fullRoot.Add(chrome);
         fullWrap.RegisterCallback<WheelEvent>(OnFullWheel);
         fullImage.RegisterCallback<WheelEvent>(OnFullWheel);
@@ -612,6 +662,14 @@ public class WorldMapUI : MonoBehaviour
         item.Add(sw);
         item.Add(IndustryUi.Text("N", name, "muted"));
         row.Add(item);
+    }
+
+    static void AddMapHint(VisualElement footer, string key, string label)
+    {
+        var hint = IndustryUi.El("Hint", "win-hint");
+        hint.Add(IndustryUi.Keycap(key));
+        hint.Add(IndustryUi.Text("L", label, "hint-label"));
+        footer.Add(hint);
     }
 
     void AddLayerChip(VisualElement row, string name, Color color, System.Func<bool> get, System.Action<bool> set)
@@ -916,7 +974,7 @@ public class WorldMapUI : MonoBehaviour
         miniClip.style.overflow = Overflow.Hidden;
         float a = MapSettings.MiniOpacity;
         miniFrame.style.backgroundColor = new Color(0.06f, 0.08f, 0.1f, a);
-        bool show = MapSettings.MiniVisible && !IsOpen;
+        bool show = (MapSettings.MiniVisible && !IsOpen) || miniDragActive;
         IndustryUi.Show(miniHost, show);
         PlaceMiniHost();
     }
@@ -931,8 +989,12 @@ public class WorldMapUI : MonoBehaviour
         miniHost.style.right = StyleKeyword.Auto;
         miniHost.style.top = StyleKeyword.Auto;
         miniHost.style.bottom = StyleKeyword.Auto;
-        switch (MapSettings.MiniCorner)
+        bool free = miniDragActive || MapSettings.MiniCustom;
+        switch (free ? -1 : MapSettings.MiniCorner)
         {
+            case -1:
+                PlaceMiniFree();
+                break;
             case 0:
                 miniHost.style.left = pad;
                 miniHost.style.top = pad;
@@ -954,7 +1016,7 @@ public class WorldMapUI : MonoBehaviour
         if (miniFrame == null)
             return;
 
-        bool bottom = MapSettings.MiniCorner >= 2;
+        bool bottom = free ? CurrentMiniPos().y > 0.5f : MapSettings.MiniCorner >= 2;
         if (miniClock != null)
             miniClock.RemoveFromHierarchy();
         if (miniInfo != null)
@@ -976,6 +1038,169 @@ public class WorldMapUI : MonoBehaviour
             if (miniInfo != null)
                 miniHost.Add(miniInfo);
         }
+    }
+
+    const float MiniFreePad = 8f;
+
+    Vector2 CurrentMiniPos()
+    {
+        return miniDragActive ? miniDragPos : MapSettings.MiniPos;
+    }
+
+    /// <summary>Свободная позиция миникарты: доля от свободного места экрана.</summary>
+    void PlaceMiniFree()
+    {
+        if (miniHost == null || !(miniDragActive || MapSettings.MiniCustom))
+            return;
+        VisualElement parent = miniHost.parent;
+        if (parent == null)
+            return;
+        float pw = parent.layout.width;
+        float ph = parent.layout.height;
+        float w = miniHost.layout.width;
+        float h = miniHost.layout.height;
+        if (float.IsNaN(pw) || float.IsNaN(ph) || float.IsNaN(w) || float.IsNaN(h) || pw <= 0f || ph <= 0f)
+            return;
+        Vector2 pos = CurrentMiniPos();
+        float freeW = Mathf.Max(0f, pw - w - MiniFreePad * 2f);
+        float freeH = Mathf.Max(0f, ph - h - MiniFreePad * 2f);
+        float left = Mathf.Round(MiniFreePad + pos.x * freeW);
+        float top = Mathf.Round(MiniFreePad + pos.y * freeH);
+        miniHost.style.right = StyleKeyword.Auto;
+        miniHost.style.bottom = StyleKeyword.Auto;
+        miniHost.style.left = left;
+        miniHost.style.top = top;
+    }
+
+    Vector2 MiniPosFromLayout()
+    {
+        VisualElement parent = miniHost != null ? miniHost.parent : null;
+        if (parent == null)
+            return MapSettings.MiniPos;
+        float freeW = Mathf.Max(1f, parent.layout.width - miniHost.layout.width - MiniFreePad * 2f);
+        float freeH = Mathf.Max(1f, parent.layout.height - miniHost.layout.height - MiniFreePad * 2f);
+        if (float.IsNaN(freeW) || float.IsNaN(freeH))
+            return MapSettings.MiniPos;
+        return new Vector2(
+            Mathf.Clamp01((miniHost.layout.x - MiniFreePad) / freeW),
+            Mathf.Clamp01((miniHost.layout.y - MiniFreePad) / freeH));
+    }
+
+    public bool MiniDragActive => miniDragActive;
+
+    /// <summary>Режим «перетащи миникарту мышкой». onDone вызывается после «Готово» или «Отмена».</summary>
+    public void BeginMiniDrag(Action onDone)
+    {
+        if (miniHost == null || miniRoot == null)
+        {
+            onDone?.Invoke();
+            return;
+        }
+
+        miniDragDone = onDone;
+        miniDragPrevCustom = MapSettings.MiniCustom;
+        miniDragPrevPos = MapSettings.MiniPos;
+        miniDragPrevCorner = MapSettings.MiniCorner;
+        miniDragPos = MiniPosFromLayout();
+        miniDragActive = true;
+        miniDragHeld = false;
+        EnsureMiniDragLayer();
+        miniHost.AddToClassList("is-mini-dragging");
+        IndustryUi.Show(miniDragLayer, true);
+        miniDragLayer.BringToFront();
+        ApplyMiniStyle();
+    }
+
+    public void EndMiniDrag(bool save)
+    {
+        if (!miniDragActive)
+            return;
+        miniDragActive = false;
+        miniDragHeld = false;
+        if (miniDragLayer != null)
+        {
+            IndustryUi.Show(miniDragLayer, false);
+            if (miniDragLayer.HasPointerCapture(PointerId.mousePointerId))
+                miniDragLayer.ReleasePointer(PointerId.mousePointerId);
+        }
+        if (miniHost != null)
+            miniHost.RemoveFromClassList("is-mini-dragging");
+
+        if (save)
+        {
+            MapSettings.SetMiniPos(miniDragPos);
+            UiAudio.PlayConfirm();
+        }
+        else if (miniDragPrevCustom)
+            MapSettings.RestoreMiniPos(true, miniDragPrevPos);
+        else
+            MapSettings.MiniCorner = miniDragPrevCorner;
+
+        ApplyMiniStyle();
+        Action done = miniDragDone;
+        miniDragDone = null;
+        done?.Invoke();
+    }
+
+    void EnsureMiniDragLayer()
+    {
+        if (miniDragLayer != null)
+            return;
+        miniDragLayer = IndustryUi.El("MiniDragLayer", "mini-drag-layer");
+        miniDragLayer.pickingMode = PickingMode.Position;
+
+        var card = IndustryUi.El("Card", "panel", "mini-drag-card");
+        card.Add(IndustryUi.Text("T", UiLocale.T("settings.mini_drag_title"), "mini-drag-title"));
+        card.Add(IndustryUi.Text("H", UiLocale.T("settings.mini_drag_hint"), "mini-drag-hint"));
+        var row = IndustryUi.El("Row", "row", "mini-drag-row");
+        row.Add(IndustryUi.Btn(UiLocale.T("settings.mini_drag_done"), () => EndMiniDrag(true), "btn-primary", "btn-small"));
+        row.Add(IndustryUi.Btn(UiLocale.T("settings.mini_drag_cancel"), () => EndMiniDrag(false), "btn-ghost", "btn-small"));
+        card.Add(row);
+        miniDragLayer.Add(card);
+
+        miniDragLayer.RegisterCallback<PointerDownEvent>(evt =>
+        {
+            if (evt.button != 0 || evt.target != miniDragLayer || miniHost == null)
+                return;
+            Vector2 pos = evt.position;
+            Rect box = miniHost.worldBound;
+            // Промах мимо карты: карта «прыгает» центром под курсор.
+            miniDragGrab = box.Contains(pos) ? pos - box.position : box.size * 0.5f;
+            miniDragHeld = true;
+            miniDragLayer.CapturePointer(evt.pointerId);
+            MoveMiniDrag(pos);
+            evt.StopPropagation();
+        });
+        miniDragLayer.RegisterCallback<PointerMoveEvent>(evt =>
+        {
+            if (miniDragHeld)
+                MoveMiniDrag(evt.position);
+        });
+        miniDragLayer.RegisterCallback<PointerUpEvent>(evt =>
+        {
+            if (!miniDragHeld)
+                return;
+            miniDragHeld = false;
+            if (miniDragLayer.HasPointerCapture(evt.pointerId))
+                miniDragLayer.ReleasePointer(evt.pointerId);
+            PlaceMiniHost();
+        });
+        IndustryUi.Show(miniDragLayer, false);
+        miniRoot.Add(miniDragLayer);
+    }
+
+    void MoveMiniDrag(Vector2 panelPos)
+    {
+        VisualElement parent = miniHost.parent;
+        if (parent == null)
+            return;
+        Vector2 topLeft = parent.WorldToLocal(panelPos - miniDragGrab);
+        float freeW = Mathf.Max(1f, parent.layout.width - miniHost.layout.width - MiniFreePad * 2f);
+        float freeH = Mathf.Max(1f, parent.layout.height - miniHost.layout.height - MiniFreePad * 2f);
+        miniDragPos = new Vector2(
+            Mathf.Clamp01((topLeft.x - MiniFreePad) / freeW),
+            Mathf.Clamp01((topLeft.y - MiniFreePad) / freeH));
+        PlaceMiniFree();
     }
 
     static void SetRadius(VisualElement el, float radius)
@@ -1207,7 +1432,7 @@ public class WorldMapUI : MonoBehaviour
                 id = -1 - i,
                 x = cell.x,
                 z = cell.y,
-                label = UiLocale.T("map.broken", b.data != null ? b.data.displayName : "?"),
+                label = UiLocale.T("map.broken", b.data != null ? b.data.Title : "?"),
                 r = BrokenColor.r,
                 g = BrokenColor.g,
                 b = BrokenColor.b
@@ -1334,7 +1559,7 @@ public class WorldMapUI : MonoBehaviour
         for (int i = 0; i < all.Count; i++)
         {
             Drone d = all[i];
-            if (d == null || !d.IsBusy || w < 1f || h < 1f)
+            if (d == null || !d.IsBusy || w < 1f || h < 1f || !MapSettings.ShowDrones)
                 continue;
             Vector2 local = UvToLocal(overlay, uv, CellUv(BuildingLinker.WorldToCell(d.transform.position)), yaw);
             if (!InView(local, w, h, overlay == miniOverlay && MiniRound))
@@ -1587,11 +1812,11 @@ public class WorldMapUI : MonoBehaviour
 
         Conveyor belt = obj.GetComponent<Conveyor>();
         if (belt != null)
-            return "Конвейер";
+            return UiLocale.T("b.conveyor");
 
         BuildingBase building = obj.GetComponent<BuildingBase>();
-        if (building != null && building.data != null && !string.IsNullOrEmpty(building.data.displayName))
-            return building.data.displayName;
+        if (building != null && building.data != null && !string.IsNullOrEmpty(building.data.Title))
+            return building.data.Title;
         return obj.name;
     }
 

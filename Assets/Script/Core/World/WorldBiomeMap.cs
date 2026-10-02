@@ -70,6 +70,8 @@ public class WorldBiomeMap : MonoBehaviour
     bool ready;
 
     Transform overlayRoot;
+    MeshRenderer[] overlayRends;
+    int overlayRendsVersion = -1;
     Material overlayMat;
     Texture2D biomeTexture;
     Texture2D overlayTexture;
@@ -1182,7 +1184,12 @@ public class WorldBiomeMap : MonoBehaviour
     {
         if (overlayRoot == null)
             return;
-        MeshRenderer[] rends = overlayRoot.GetComponentsInChildren<MeshRenderer>(true);
+        if (overlayRends == null || overlayRendsVersion != overlayRoot.childCount)
+        {
+            overlayRends = overlayRoot.GetComponentsInChildren<MeshRenderer>(true);
+            overlayRendsVersion = overlayRoot.childCount;
+        }
+        MeshRenderer[] rends = overlayRends;
         for (int i = 0; i < rends.Length; i++)
         {
             Material mat = rends[i] != null ? rends[i].sharedMaterial : null;

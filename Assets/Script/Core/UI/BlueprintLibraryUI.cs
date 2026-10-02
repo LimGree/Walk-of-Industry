@@ -75,14 +75,23 @@ public class BlueprintLibraryUI : MonoBehaviour
             return;
         Keyboard kb = Keyboard.current;
         if (kb != null && kb.pKey.wasPressedThisFrame)
-            Toggle();
+            HotkeyToggle();
     }
 
     void OnLibraryPerformed(InputAction.CallbackContext ctx)
     {
-        if (KeybindStore.BlocksGameplayInput)
-            return;
-        Toggle();
+        HotkeyToggle();
+    }
+
+    public const string WindowId = "blueprints";
+
+    void HotkeyToggle()
+    {
+        UiStack.Hotkey(WindowId, () =>
+        {
+            if (!IsOpen)
+                Toggle();
+        }, () => SetOpen(false), 86);
     }
 
     public void Toggle()
@@ -111,20 +120,11 @@ public class BlueprintLibraryUI : MonoBehaviour
         IndustryUi.Show(overlay, open);
         if (open)
         {
-            if (WalletHud.Instance != null && WalletHud.Instance.IsShopOpen)
-                WalletHud.Instance.SetShopOpen(false);
-            if (SelectionActionsUI.Instance != null && SelectionActionsUI.Instance.IsOpen)
-                SelectionActionsUI.Instance.SetOpen(false);
-            if (MachineUI.Instance != null && MachineUI.Instance.IsOpen)
-                MachineUI.Instance.Close();
-            if (ResearchUI.Instance != null && ResearchUI.Instance.IsOpen)
-                ResearchUI.Instance.Close();
-            if (WorldMapUI.Instance != null && WorldMapUI.Instance.IsOpen)
-                WorldMapUI.Instance.SetOpen(false);
-            if (InventoryUI.Instance != null && InventoryUI.Instance.IsBagOpen)
-                InventoryUI.Instance.SetBagOpen(false);
+            UiStack.Opened(WindowId, () => SetOpen(false), 86);
             Rebuild();
         }
+        else
+            UiStack.Closed(WindowId);
 
         if (GameManager.Instance != null)
             GameManager.Instance.RestoreGameplayFocus();
@@ -135,20 +135,26 @@ public class BlueprintLibraryUI : MonoBehaviour
         VisualElement root = IndustryUi.Mount(this, 86);
         overlay = IndustryUi.OverlayPanel(UiLocale.T("overlay.blueprints"), null, () => SetOpen(false));
         VisualElement body = overlay.Q("Body") ?? IndustryUi.PanelOf(overlay);
+        IndustryUi.WindowHints(overlay,
+            (UiLocale.T("bag.lmb"), UiLocale.T("bp.hint_click")),
+            ("V", UiLocale.T("bp.hint_paste")),
+            (KeybindStore.Hint("Blueprints"), UiLocale.T("win.close")));
 
+        var toolbar = IndustryUi.El("Toolbar", "win-toolbar");
         var tabs = IndustryUi.El("Tabs", "tab-row");
         tabWorld = IndustryUi.Btn(UiLocale.T("bp.tab_world"), () => SetTab(false), "tab");
         tabGlobal = IndustryUi.Btn(UiLocale.T("bp.tab_global"), () => SetTab(true), "tab");
         tabs.Add(tabWorld);
         tabs.Add(tabGlobal);
-        body.Add(tabs);
+        toolbar.Add(tabs);
+        toolbar.Add(IndustryUi.El("Spacer", "grow"));
 
         var views = IndustryUi.El("Views", "tab-row");
         viewTiles = IndustryUi.Btn(UiLocale.T("bp.view_tiles"), () => SetListView(false), "tab");
         viewList = IndustryUi.Btn(UiLocale.T("bp.view_list"), () => SetListView(true), "tab");
         views.Add(viewTiles);
         views.Add(viewList);
-        body.Add(views);
+        toolbar.Add(views);
 
         sizeRow = IndustryUi.El("Sizes", "tab-row");
         sizeLarge = IndustryUi.Btn(UiLocale.T("bp.size_large"), () => SetTileSize(0), "tab");
@@ -157,9 +163,10 @@ public class BlueprintLibraryUI : MonoBehaviour
         sizeRow.Add(sizeLarge);
         sizeRow.Add(sizeMedium);
         sizeRow.Add(sizeSmall);
-        body.Add(sizeRow);
+        toolbar.Add(sizeRow);
+        body.Add(toolbar);
 
-        var actions = IndustryUi.El("Actions", "row");
+        var actions = IndustryUi.El("Actions", "row", "win-actions");
         actions.Add(IndustryUi.Btn(UiLocale.T("bp.save"), SaveSelected, "btn-small", "btn-primary"));
         actions.Add(IndustryUi.Btn(UiLocale.T("bp.insert"), InsertSelected, "btn-small"));
         actions.Add(IndustryUi.Btn(UiLocale.T("bp.rename"), RenameSelected, "btn-small"));
@@ -221,13 +228,15 @@ public class BlueprintLibraryUI : MonoBehaviour
 
         records.Clear();
         records.AddRange(BlueprintLibrary.List(globalTab));
+        IndustryUi.WindowSubtitle(overlay, UiLocale.T("bp.count", records.Count));
         if (records.Count == 0)
         {
-            status.text = UiLocale.T("bp.empty");
+            status.text = "";
+            grid.Add(IndustryUi.Empty(UiLocale.T("bp.empty_title"), UiLocale.T("bp.empty")));
             return;
         }
 
-        status.text = UiLocale.T("bp.count", records.Count);
+        status.text = "";
         for (int i = 0; i < records.Count; i++)
             AddCard(records[i]);
     }

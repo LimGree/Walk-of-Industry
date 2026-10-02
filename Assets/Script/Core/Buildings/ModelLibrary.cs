@@ -147,6 +147,22 @@ public static class ModelLibrary
         }
     }
 
+    /// <summary>
+    /// Без теней: ленты, трубы и порты низкие, их тень почти не видна, а теневой проход удваивает
+    /// отрисовку каждого кусочка. Повторный вызов дешёвый — уже выключенное пропускается.
+    /// </summary>
+    public static void NoShadows(Transform root)
+    {
+        if (root == null)
+            return;
+        Renderer[] rends = root.GetComponentsInChildren<Renderer>(true);
+        for (int i = 0; i < rends.Length; i++)
+        {
+            if (rends[i] != null && rends[i].shadowCastingMode != UnityEngine.Rendering.ShadowCastingMode.Off)
+                rends[i].shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        }
+    }
+
     public static Transform FindChild(Transform root, string name)
     {
         foreach (Transform t in root.GetComponentsInChildren<Transform>(true))

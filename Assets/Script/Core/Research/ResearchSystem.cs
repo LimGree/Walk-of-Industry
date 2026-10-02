@@ -225,6 +225,14 @@ public class ResearchSystem : MonoBehaviour
         return RequiredAmount(node, item) > 0;
     }
 
+    /// <summary>Сколько предметов нужно с учётом «Скорости исследований» (×2 — вдвое меньше).</summary>
+    public static int Need(int baseAmount)
+    {
+        if (baseAmount <= 0)
+            return 0;
+        return Mathf.Max(1, Mathf.CeilToInt(baseAmount / GameSettings.ResearchSpeed));
+    }
+
     static int RequiredAmount(ResearchNodeData node, ItemData item)
     {
         if (node == null || item == null || node.requiredItems == null)
@@ -233,7 +241,7 @@ public class ResearchSystem : MonoBehaviour
         {
             ItemStack req = node.requiredItems[i];
             if (req.item == item)
-                return Mathf.Max(0, req.amount);
+                return Need(req.amount);
         }
 
         return 0;
@@ -264,7 +272,7 @@ public class ResearchSystem : MonoBehaviour
             if (req.item == null)
                 continue;
             bag.TryGetValue(req.item, out int have);
-            if (have < req.amount)
+            if (have < Need(req.amount))
                 return false;
         }
 
@@ -282,6 +290,7 @@ public class ResearchSystem : MonoBehaviour
             return;
 
         unlockedResearch.Add(node);
+        AchievementSystem.NotifyResearchCount(unlockedResearch.Count, GameDatabase.AllResearches().Length);
 
         if (node.unlockedBuildings != null)
         {
@@ -308,17 +317,17 @@ public class ResearchSystem : MonoBehaviour
             int rubies = Economy.RubyReward(node);
             if (rubies > 0 && PlayerWallet.Instance != null)
                 PlayerWallet.Instance.AddRubies(rubies);
-            Debug.Log($"[Research] Completed: {node.displayName}  +{rubies} ruby");
+            Debug.Log($"[Research] Completed: {node.Title}  +{rubies} ruby");
             UiAudio.PlayNotify();
-            UiNotification.Push(
+            UiNotification.Push(NotifyKind.Research,
                 UiLocale.T("hud.research_done"),
-                node.displayName,
+                node.Title,
                 UiStatus.Completed);
             AchievementSystem.NotifyResearchLive();
         }
         else
         {
-            Debug.Log($"[Research] Completed: {node.displayName}");
+            Debug.Log($"[Research] Completed: {node.Title}");
         }
 
         NotifyUnlocks();
@@ -334,6 +343,14 @@ public class ResearchSystem : MonoBehaviour
         BuildingData splitterBuilding = GameDatabase.FindBuilding("splitter");
         if (splitterBuilding != null)
             UnlockBuilding(splitterBuilding);
+    }
+
+    public int CompletedResearchCount => unlockedResearch.Count;
+
+    /// <summary>Открылось что-то не из дерева (декорация) — хотбар и сумка перечитывают список.</summary>
+    public void RaiseUnlocksChanged()
+    {
+        NotifyUnlocks();
     }
 
     void NotifyUnlocks()
@@ -409,6 +426,9 @@ public class ResearchSystem : MonoBehaviour
 
     public bool IsBuildingUnlocked(BuildingData building)
     {
+        // Декорации не в дереве: открыты, если куплены в магазине ([[DecorSystem]]).
+        if (DecorCatalog.IsDecor(building))
+            return DecorSystem.IsOwned(building);
         return building != null && unlockedBuildings.Contains(building);
     }
 
@@ -459,9 +479,9 @@ public class ResearchSystem : MonoBehaviour
             ItemStack req = node.requiredItems[i];
             if (req.item == null)
                 continue;
-            totalRequired += Mathf.Max(0, req.amount);
+            totalRequired += Need(req.amount);
             bag.TryGetValue(req.item, out int have);
-            totalSubmitted += Mathf.Min(have, Mathf.Max(0, req.amount));
+            totalSubmitted += Mathf.Min(have, Need(req.amount));
         }
 
         return totalRequired > 0 ? (float)totalSubmitted / totalRequired : 0f;
@@ -571,7 +591,7 @@ public class ResearchSystem : MonoBehaviour
             }
 
             node = available[0];
-            Debug.Log($"[Research] No active research, completing next available: {node.displayName}");
+            Debug.Log($"[Research] No active research, completing next available: {node.Title}");
         }
 
         CompleteResearch(node);

@@ -7,18 +7,8 @@ ModelImporter:
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
-      name: wi_base
-    second: {fileID: 2100000, guid: f9f9d8f78dea4cf891dde0bad65a6c73, type: 2}
-  - first:
-      type: UnityEngine:Material
-      assembly: UnityEngine.CoreModule
-      name: wi_copper
-    second: {fileID: 2100000, guid: b6352af62c1243778402a4f842f38e37, type: 2}
-  - first:
-      type: UnityEngine:Material
-      assembly: UnityEngine.CoreModule
-      name: wi_yellow
-    second: {fileID: 2100000, guid: 8d75480ba9854b23a9bbec092a24ad91, type: 2}
+      name: wi_palette
+    second: {fileID: 2100000, guid: 659b90c54d2f4226a23642fe1cc4ffbe, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0

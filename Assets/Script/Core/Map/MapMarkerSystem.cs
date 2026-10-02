@@ -59,7 +59,8 @@ public class MapMarkerSystem : MonoBehaviour
 
     public MapMarkerSave Add(Vector2Int cell, string label)
     {
-        Color color = Palette[Markers.Count % Palette.Length];
+        int pick = MapSettings.WaypointColor;
+        Color color = pick >= 0 && pick < Palette.Length ? Palette[pick] : Palette[Markers.Count % Palette.Length];
         var marker = new MapMarkerSave
         {
             id = nextId++,

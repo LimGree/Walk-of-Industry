@@ -91,13 +91,13 @@ public static class ResearchTree
         var head = IndustryUi.El("Head", "row");
         head.Add(IndustryUi.Icon(node.icon, "icon-48"));
         var titles = IndustryUi.El("Titles", "col", "grow");
-        titles.Add(IndustryUi.Text("T", node.displayName, "heading-3"));
+        titles.Add(IndustryUi.Text("T", node.Title, "heading-3"));
         titles.Add(IndustryUi.Text("S", StatusLabel(status), "badge", StatusBadge(status)));
         head.Add(titles);
         detail.Add(head);
 
-        if (!string.IsNullOrEmpty(node.description))
-            detail.Add(IndustryUi.Text("Desc", node.description, "body-text"));
+        if (!string.IsNullOrEmpty(node.Info))
+            detail.Add(IndustryUi.Text("Desc", node.Info, "body-text"));
 
         if (HasPrereqs(node))
         {
@@ -111,7 +111,7 @@ public static class ResearchTree
                 bool done = ResearchSystem.Instance != null && ResearchSystem.Instance.IsResearchUnlocked(req);
                 var row = IndustryUi.El("P", "row");
                 row.Add(IndustryUi.Icon(req.icon, "icon-24"));
-                row.Add(IndustryUi.Text("N", req.displayName, "caption", "grow"));
+                row.Add(IndustryUi.Text("N", req.Title, "caption", "grow"));
                 row.Add(IndustryUi.Text("K", done ? "✓" : "·", done ? "gold" : "muted"));
                 list.Add(row);
             }
@@ -128,7 +128,7 @@ public static class ResearchTree
                 if (stack == null || stack.item == null)
                     continue;
                 int have = ResearchSystem.Instance.GetSubmitted(node, stack.item);
-                need.Add(IndustryUi.StackChip(stack.item, stack.amount, have));
+                need.Add(IndustryUi.StackChip(stack.item, ResearchSystem.Need(stack.amount), have));
             }
         }
         else
@@ -168,7 +168,7 @@ public static class ResearchTree
                     ItemData output = IndustryUi.FirstItem(recipe.outputs);
                     var chip = IndustryUi.El("Rec", "codex-building");
                     chip.Add(IndustryUi.Icon(output != null ? output.icon : null, "icon-32"));
-                    chip.Add(IndustryUi.Text("N", recipe.displayName, "caption"));
+                    chip.Add(IndustryUi.Text("N", recipe.Title, "caption"));
                     reward.Add(chip);
                 }
             }
@@ -227,10 +227,10 @@ public static class ResearchTree
         card.Add(IndustryUi.El("Pip", "research-tree-pip"));
         card.Add(IndustryUi.Icon(node != null ? node.icon : null, "research-tree-icon"));
         var col = IndustryUi.El("Meta", "col", "grow", "research-tree-meta");
-        col.Add(IndustryUi.Text("T", node != null ? node.displayName : "Research", "research-tree-title"));
+        col.Add(IndustryUi.Text("T", node != null ? node.Title : "Research", "research-tree-title"));
         col.Add(IndustryUi.Text("S", StatusLabel(status), "research-tree-status"));
         card.Add(col);
-        UiTooltip.Bind(card, node != null ? node.displayName : "Research", node != null ? node.description : "", StatusLabel(status));
+        UiTooltip.Bind(card, node != null ? node.Title : "Research", node != null ? node.Info : "", StatusLabel(status));
         return card;
     }
 
@@ -554,17 +554,22 @@ public static class ResearchTree
         painter.Fill();
     }
 
+    /// <summary>Цвета связей — те же, что у узлов: готово — «хорошо», активно/доступно — акцент, остальное — серое.</summary>
     static Color EdgeColor(string status, bool primary)
     {
         if (!primary)
-            return new Color(0.55f, 0.72f, 0.84f, 0.7f);
+            return new Color(0.42f, 0.48f, 0.53f, 0.55f);
         if (status == "DONE")
-            return new Color(0.45f, 0.78f, 0.55f, 0.95f);
+        {
+            Color good = UiLook.Good;
+            good.a = 0.95f;
+            return good;
+        }
         if (status == "ACTIVE")
-            return new Color(1f, 0.72f, 0.28f, 1f);
+            return new Color(0.92f, 0.64f, 0.28f, 1f);
         if (status == "READY")
-            return new Color(0.95f, 0.7f, 0.28f, 0.95f);
-        return new Color(0.7f, 0.76f, 0.82f, 0.8f);
+            return new Color(0.84f, 0.58f, 0.24f, 0.9f);
+        return new Color(0.46f, 0.52f, 0.57f, 0.75f);
     }
 
     static bool IdsEqual(string a, string b)

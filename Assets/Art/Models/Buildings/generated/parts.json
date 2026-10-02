@@ -1,0 +1,191 @@
+{
+ "parts": [
+  {
+   "prefab": "Assembler_01.prefab",
+   "parent": "Assembler_Level_1",
+   "anim": "Anim_Carriage",
+   "model": "assembler_1_carriage",
+   "pos": [
+    0,
+    0.88,
+    0
+   ]
+  },
+  {
+   "prefab": "Assembler_01.prefab",
+   "parent": "Assembler_level_2",
+   "anim": "Anim_Carriage",
+   "model": "assembler_2_carriage",
+   "pos": [
+    0,
+    1.0,
+    0
+   ]
+  },
+  {
+   "prefab": "Assembler_01.prefab",
+   "parent": "Assembler_level_2",
+   "anim": "Anim_Carriage2",
+   "model": "assembler_2_carriage2",
+   "pos": [
+    0,
+    1.0,
+    0.25
+   ]
+  },
+  {
+   "prefab": "Extractor_01.prefab",
+   "parent": "extractor_level_1",
+   "anim": "Anim_Drill",
+   "model": "extractor_1_drill",
+   "pos": [
+    0,
+    0.08,
+    0
+   ]
+  },
+  {
+   "prefab": "Extractor_01.prefab",
+   "parent": "extractor_level_2",
+   "anim": "Anim_Drill",
+   "model": "extractor_2_drill",
+   "pos": [
+    0,
+    0.08,
+    0
+   ]
+  },
+  {
+   "prefab": "PipeSplitter.prefab",
+   "parent": "WiVisual",
+   "anim": "Anim_Valve",
+   "model": "pipe_splitter_valve",
+   "pos": [
+    0,
+    0.5,
+    0
+   ]
+  },
+  {
+   "prefab": "Splitter.prefab",
+   "parent": "WiVisual",
+   "anim": "Anim_Hub",
+   "model": "splitter_hub",
+   "pos": [
+    0,
+    0.18,
+    0
+   ]
+  },
+  {
+   "prefab": "robotic_arm .prefab",
+   "parent": "WiVisual",
+   "anim": "Anim_Turret",
+   "model": "robotic_arm_turret",
+   "pos": [
+    0,
+    0.15,
+    0
+   ]
+  },
+  {
+   "prefab": "Constructor_01.prefab",
+   "parent": "WiVisual",
+   "anim": "Anim_Trolley",
+   "model": "constructor_trolley",
+   "pos": [
+    0,
+    1.55,
+    0.55
+   ]
+  },
+  {
+   "prefab": "chemical_plant.prefab",
+   "parent": "WiVisual",
+   "anim": "Anim_Beacon",
+   "model": "chemical_plant_beacon",
+   "pos": [
+    0.55,
+    2.03,
+    -0.45
+   ]
+  },
+  {
+   "prefab": "refinery.prefab",
+   "parent": "WiVisual",
+   "anim": "Anim_Flame",
+   "model": "refinery_flame",
+   "pos": [
+    1.1,
+    2.76,
+    -1.0
+   ]
+  },
+  {
+   "prefab": "ResearchLab.prefab",
+   "parent": "WiVisual",
+   "anim": "Anim_Dish",
+   "model": "research_lab_dish",
+   "pos": [
+    0.25,
+    0.66,
+    -0.25
+   ]
+  },
+  {
+   "prefab": "ResearchLab.prefab",
+   "parent": "WiVisual",
+   "anim": "Anim_Beacon",
+   "model": "research_lab_beacon",
+   "pos": [
+    0,
+    1.11,
+    0
+   ]
+  },
+  {
+   "prefab": "oil_extractor.prefab",
+   "parent": "WiVisual",
+   "anim": "Anim_Beam",
+   "model": "oil_extractor_beam",
+   "pos": [
+    0,
+    1.33,
+    -0.05
+   ]
+  },
+  {
+   "prefab": "oil_extractor.prefab",
+   "parent": "WiVisual",
+   "anim": "Anim_Crank",
+   "model": "oil_extractor_crank",
+   "pos": [
+    0,
+    0.63,
+    0.62
+   ]
+  },
+  {
+   "prefab": "PowerGenerator.prefab",
+   "parent": "WiVisual",
+   "anim": "Anim_Turbine",
+   "model": "power_generator_turbine",
+   "pos": [
+    0,
+    0.38,
+    0.3
+   ]
+  },
+  {
+   "prefab": "PowerGenerator.prefab",
+   "parent": "WiVisual",
+   "anim": "Anim_Coils",
+   "model": "power_generator_coils",
+   "pos": [
+    0,
+    0.855,
+    -0.2
+   ]
+  }
+ ]
+}

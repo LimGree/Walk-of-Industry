@@ -291,6 +291,9 @@ public static class BuildUndo
             return null;
         Vector2Int cell = BuildingLinker.WorldToCell(save.position);
         BuildingBase b = BuildingLinker.GetBuildingAt(cell);
+        if (b == null || b.data == null
+            || !string.Equals(b.data.id, save.buildingId, StringComparison.OrdinalIgnoreCase))
+            b = DecorSystem.FloorAt(cell);   // напольная декорация лежит под зданием
         if (b == null || b.data == null)
             return null;
         if (!string.Equals(b.data.id, save.buildingId, StringComparison.OrdinalIgnoreCase))

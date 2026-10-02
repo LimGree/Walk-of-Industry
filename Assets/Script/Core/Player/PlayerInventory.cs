@@ -100,24 +100,16 @@ public class PlayerInventory : MonoBehaviour
 
     void OnInventoryToggle(InputAction.CallbackContext ctx)
     {
-        if (KeybindStore.BlocksGameplayInput)
-            return;
-        if (GameManager.Instance != null && GameManager.Instance.IsPaused)
-            return;
-        if ((MachineUI.Instance != null && MachineUI.Instance.IsOpen) || WorldOverlayGate.IsOpen)
-            return;
-        if (WalletHud.Instance != null && WalletHud.Instance.IsShopOpen)
-            return;
-        if (SelectionActionsUI.Instance != null && SelectionActionsUI.Instance.IsOpen)
-            return;
-
-        PlayerBuilder builder = ResolveBuilder();
-        if (builder == null || !builder.isBuildMode)
-            return;
-
         InventoryUI ui = InventoryUI.Instance;
-        if (ui != null)
-            ui.ToggleBag();
+        if (ui == null)
+            return;
+        UiStack.Hotkey(InventoryUI.WindowId, () =>
+        {
+            // Сумка зданий — только в режиме стройки.
+            PlayerBuilder builder = ResolveBuilder();
+            if (builder != null && builder.isBuildMode)
+                ui.SetBagOpen(true);
+        }, () => ui.SetBagOpen(false), 55);
     }
 
     void OnHotbarScroll(InputAction.CallbackContext ctx)
@@ -126,6 +118,16 @@ public class PlayerInventory : MonoBehaviour
             return;
 
         Vector2 scroll = ctx.ReadValue<Vector2>();
+        Keyboard kb = Keyboard.current;
+        bool shift = kb != null && (kb.leftShiftKey.isPressed || kb.rightShiftKey.isPressed);
+        if (shift && GameSettings.ShiftWheelRotate && Mathf.Abs(scroll.y) > 0.1f)
+        {
+            PlayerBuilder builder = ResolveBuilder();
+            if (builder != null && builder.TryWheelRotate(scroll.y > 0f ? -1 : 1))
+                return;
+        }
+        if (GameSettings.InvertHotbarWheel)
+            scroll.y = -scroll.y;
         if (scroll.y > 0.1f)
             SelectSlot(selectedIndex <= 0 ? EmptyToolIndex : selectedIndex - 1);
         else if (scroll.y < -0.1f)
@@ -134,15 +136,7 @@ public class PlayerInventory : MonoBehaviour
 
     bool CanUseHotbar()
     {
-        if (KeybindStore.BlocksGameplayInput)
-            return false;
-        if ((MachineUI.Instance != null && MachineUI.Instance.IsOpen) || WorldOverlayGate.IsOpen)
-            return false;
-        if (WalletHud.Instance != null && WalletHud.Instance.IsShopOpen)
-            return false;
-        if (SelectionActionsUI.Instance != null && SelectionActionsUI.Instance.IsOpen)
-            return false;
-        if (GameManager.Instance != null && GameManager.Instance.IsPaused)
+        if (UiStack.GameplayBlocked)
             return false;
         PlayerBuilder builder = ResolveBuilder();
         return builder != null && builder.isBuildMode;
@@ -218,6 +212,14 @@ public class PlayerInventory : MonoBehaviour
         {
             if (catalog[i] != null)
                 list.Add(catalog[i]);
+        }
+
+        // Декорации — в конце: открыты те, что куплены в магазине (вкладка «Декорации» в сумке).
+        IReadOnlyList<DecorCatalog.Def> decor = DecorCatalog.All;
+        for (int i = 0; i < decor.Count; i++)
+        {
+            if (decor[i].data != null)
+                list.Add(decor[i].data);
         }
 
         return list;
@@ -332,7 +334,7 @@ public class PlayerInventory : MonoBehaviour
         if (building != null && ResearchSystem.Instance != null
             && !ResearchSystem.Instance.IsBuildingUnlocked(building))
         {
-            Debug.LogWarning("[Inventory] " + building.displayName + " ещё не открыто");
+            Debug.LogWarning("[Inventory] " + building.Title + " ещё не открыто");
             return;
         }
 

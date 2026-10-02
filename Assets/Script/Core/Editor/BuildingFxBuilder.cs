@@ -7,7 +7,7 @@ using UnityEngine;
 using Object = UnityEngine.Object;
 
 /// <summary>
-/// Собирает анимации и частицы зданий: клипы и контроллеры в Assets/Animations/Buildings,
+/// Собирает анимации и частицы зданий: клипы и контроллеры в Assets/Art/Animations/Buildings,
 /// материалы частиц в Assets/Resources/FX, а в префабах — подвижные детали (Anim_X/Move/модель),
 /// ParticleSystem в FX, Animator и BuildingFx. Детали и их оси — generated/parts.json (wi_models.py).
 /// Запускается сам после компиляции, если BUILD_VERSION устарел, или из меню.
@@ -17,11 +17,11 @@ using Object = UnityEngine.Object;
 public static class BuildingFxBuilder
 {
     const int Version = 1;
-    const string AnimDir = "Assets/Animations/Buildings";
+    const string AnimDir = "Assets/Art/Animations/Buildings";
     const string FxDir = "Assets/Resources/FX";
-    const string PrefabDir = "Assets/prefabs/Builders";
+    const string PrefabDir = "Assets/Prefabs/Buildings";
     const string ModelDir = "Assets/Resources/Models";
-    const string PartsJson = "Assets/models/Builders/generated/parts.json";
+    const string PartsJson = "Assets/Art/Models/Buildings/generated/parts.json";
     const string Marker = AnimDir + "/BUILD_VERSION.txt";
 
     static int retries;

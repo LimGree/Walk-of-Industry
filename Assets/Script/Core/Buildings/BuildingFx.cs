@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Анимации и частицы здания. Animator (контроллер из `Assets/Animations/Buildings`) получает
+/// Анимации и частицы здания. Animator (контроллер из `Assets/Art/Animations/Buildings`) получает
 /// bool <c>Working</c>, float <c>Speed</c> и trigger <c>Transfer</c> (рука). Частицы — дети `FX`:
 /// `FX_*` крутятся, пока здание работает; `FX_Burst*`/`FX_Chunks` выстреливают на готовый крафт/добычу.
 /// Всё гаснет за радиусом прогрузки и по настройке «Эффекты зданий». Собирает префабы BuildingFxBuilder (Editor).

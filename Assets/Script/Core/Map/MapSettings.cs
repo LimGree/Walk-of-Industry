@@ -39,10 +39,38 @@ public static class MapSettings
         }
     }
 
+    /// <summary>Угол 0..3; установка угла сбрасывает свободную позицию.</summary>
     public static int MiniCorner
     {
         get => Mathf.Clamp(GetInt("MiniMapCorner", 1), 0, 3);
-        set => SetInt("MiniMapCorner", Mathf.Clamp(value, 0, 3));
+        set
+        {
+            PlayerPrefs.SetInt("MiniMapCustom", 0);
+            SetInt("MiniMapCorner", Mathf.Clamp(value, 0, 3));
+        }
+    }
+
+    /// <summary>Миникарта стоит в свободной точке (перетащили мышкой), а не в углу.</summary>
+    public static bool MiniCustom => GetInt("MiniMapCustom", 0) != 0;
+
+    /// <summary>Свободная позиция: 0..1 по свободному месту экрана (0 — левый/верхний край).</summary>
+    public static Vector2 MiniPos => new Vector2(
+        Mathf.Clamp01(PlayerPrefs.GetFloat("MiniMapPosX", 1f)),
+        Mathf.Clamp01(PlayerPrefs.GetFloat("MiniMapPosY", 0f)));
+
+    public static void SetMiniPos(Vector2 pos)
+    {
+        PlayerPrefs.SetFloat("MiniMapPosX", Mathf.Clamp01(pos.x));
+        PlayerPrefs.SetFloat("MiniMapPosY", Mathf.Clamp01(pos.y));
+        SetInt("MiniMapCustom", 1);
+    }
+
+    /// <summary>Вернуть сохранённое состояние позиции (для «Отмена» в режиме перетаскивания).</summary>
+    public static void RestoreMiniPos(bool custom, Vector2 pos)
+    {
+        PlayerPrefs.SetFloat("MiniMapPosX", Mathf.Clamp01(pos.x));
+        PlayerPrefs.SetFloat("MiniMapPosY", Mathf.Clamp01(pos.y));
+        SetInt("MiniMapCustom", custom ? 1 : 0);
     }
 
     public static float MiniOpacity
@@ -132,6 +160,63 @@ public static class MapSettings
     {
         get => Mathf.Clamp(GetInt("MapRevealRadius", 32), 8, 72);
         set => SetInt("MapRevealRadius", Mathf.Clamp(value, 8, 72));
+    }
+
+    /// <summary>Здания на карте и миникарте (слой «Здания» в легенде).</summary>
+    public static bool ShowBuildings
+    {
+        get => GetInt("MapShowBuildings", 1) != 0;
+        set => SetInt("MapShowBuildings", value ? 1 : 0);
+    }
+
+    /// <summary>Жилы ресурсов на карте (слой «Жилы» в легенде).</summary>
+    public static bool ShowVeins
+    {
+        get => GetInt("MapShowVeins", 1) != 0;
+        set => SetInt("MapShowVeins", value ? 1 : 0);
+    }
+
+    public static bool ShowDrones
+    {
+        get => GetInt("MapShowDrones", 1) != 0;
+        set => SetInt("MapShowDrones", value ? 1 : 0);
+    }
+
+    /// <summary>Скрытые типы жил (подписи через «|»).</summary>
+    public static bool IsVeinHidden(string label)
+    {
+        if (string.IsNullOrEmpty(label))
+            return false;
+        string all = PlayerPrefs.GetString("MapHiddenVeins", "");
+        return ("|" + all + "|").Contains("|" + label + "|");
+    }
+
+    public static void SetVeinHidden(string label, bool hidden)
+    {
+        if (string.IsNullOrEmpty(label))
+            return;
+        var set = new System.Collections.Generic.List<string>(PlayerPrefs.GetString("MapHiddenVeins", "").Split('|'));
+        set.RemoveAll(string.IsNullOrEmpty);
+        set.Remove(label);
+        if (hidden)
+            set.Add(label);
+        PlayerPrefs.SetString("MapHiddenVeins", string.Join("|", set));
+        PlayerPrefs.Save();
+        Changed?.Invoke();
+    }
+
+    /// <summary>Масштаб полной карты при открытии: 0 — как в прошлый раз, 1 — около игрока, 2 — вся карта.</summary>
+    public static int FullOpenZoom
+    {
+        get => Mathf.Clamp(GetInt("MapOpenZoom", 1), 0, 2);
+        set => SetInt("MapOpenZoom", Mathf.Clamp(value, 0, 2));
+    }
+
+    /// <summary>Цвет новых меток: -1 — по очереди, иначе индекс MapMarkerSystem.Palette.</summary>
+    public static int WaypointColor
+    {
+        get => Mathf.Clamp(GetInt("MapWaypointColor", -1), -1, 5);
+        set => SetInt("MapWaypointColor", Mathf.Clamp(value, -1, 5));
     }
 
     static int GetInt(string key, int fallback)

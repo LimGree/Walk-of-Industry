@@ -53,6 +53,9 @@ public static class KeybindStore
         }
     }
 
+    static UIDocument[] docsCache;
+    static float docsCacheUntil;
+
     static bool DetectTyping()
     {
         if (UiModal.IsOpen)
@@ -60,7 +63,14 @@ public static class KeybindStore
         if (DevConsole.IsOpen)
             return true;
 
-        UIDocument[] docs = UnityEngine.Object.FindObjectsByType<UIDocument>(FindObjectsSortMode.None);
+        // Поиск по всей сцене дорог (при большом заводе — мс за кадр): список документов обновляем раз в 2 с.
+        if (docsCache == null || Time.unscaledTime >= docsCacheUntil)
+        {
+            docsCache = UnityEngine.Object.FindObjectsByType<UIDocument>(FindObjectsSortMode.None);
+            docsCacheUntil = Time.unscaledTime + 2f;
+        }
+
+        UIDocument[] docs = docsCache;
         for (int i = 0; i < docs.Length; i++)
         {
             UIDocument doc = docs[i];
@@ -157,6 +167,7 @@ public static class KeybindStore
         AddKeyboard(list, "Interact", UiLocale.T("bind.interact"));
         AddKeyboard(list, "Jump", UiLocale.T("bind.jump"));
         AddKeyboard(list, "Sprint", UiLocale.T("bind.sprint"));
+        AddKeyboard(list, "AutoRun", UiLocale.T("bind.autorun"));
         AddKeyboard(list, "Zoom", UiLocale.T("bind.zoom"));
         AddKeyboard(list, "Pause", UiLocale.T("bind.pause"));
         AddKeyboard(list, "Rotate", UiLocale.T("bind.rotate"));
@@ -167,6 +178,7 @@ public static class KeybindStore
         AddKeyboard(list, "Copy", UiLocale.T("bind.copy"));
         AddKeyboard(list, "Paste", UiLocale.T("bind.paste"));
         AddKeyboard(list, "Blueprints", UiLocale.T("bind.blueprints"));
+        AddKeyboard(list, "PickBuilding", UiLocale.T("bind.pick"));
         AddComposite(list, "Undo", "button", UiLocale.T("bind.undo"));
         AddComposite(list, "Redo", "button", UiLocale.T("bind.redo"));
         AddKeyboard(list, "MoveSelection", UiLocale.T("bind.map"));
@@ -312,6 +324,8 @@ public static class KeybindStore
             reference = new InputSystem_Actions();
             EnsureZoomAction(reference.asset);
             EnsureBlueprintsAction(reference.asset);
+            EnsurePickAction(reference.asset);
+            EnsureAutoRunAction(reference.asset);
             EnsureUndoAction(reference.asset);
             EnsureRedoAction(reference.asset);
             ApplySaved(reference.asset);
@@ -321,6 +335,8 @@ public static class KeybindStore
         {
             EnsureZoomAction(reference.asset);
             EnsureBlueprintsAction(reference.asset);
+            EnsurePickAction(reference.asset);
+            EnsureAutoRunAction(reference.asset);
             EnsureUndoAction(reference.asset);
             EnsureRedoAction(reference.asset);
         }
@@ -359,6 +375,32 @@ public static class KeybindStore
             return;
         InputAction action = map.AddAction("Blueprints", InputActionType.Button);
         action.AddBinding("<Keyboard>/p", groups: KeyboardGroup);
+        if (asset.enabled)
+            action.Enable();
+    }
+
+    static void EnsureAutoRunAction(InputActionAsset asset)
+    {
+        if (asset == null || asset.FindAction("Player/AutoRun", false) != null)
+            return;
+        InputActionMap map = asset.FindActionMap("Player", false);
+        if (map == null)
+            return;
+        InputAction action = map.AddAction("AutoRun", InputActionType.Button);
+        action.AddBinding("<Keyboard>/x", groups: KeyboardGroup);
+        if (asset.enabled)
+            action.Enable();
+    }
+
+    static void EnsurePickAction(InputActionAsset asset)
+    {
+        if (asset == null || asset.FindAction("Player/PickBuilding", false) != null)
+            return;
+        InputActionMap map = asset.FindActionMap("Player", false);
+        if (map == null)
+            return;
+        InputAction action = map.AddAction("PickBuilding", InputActionType.Button);
+        action.AddBinding("<Mouse>/middleButton", groups: KeyboardGroup);
         if (asset.enabled)
             action.Enable();
     }

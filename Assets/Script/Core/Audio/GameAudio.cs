@@ -20,8 +20,16 @@ public class GameAudio : MonoBehaviour
 
     public static readonly string[] Buses =
     {
-        "master", "ui", "world", "buildings", "music", "ambient", "player"
+        "master", "ui", "world", "buildings", "music", "ambient", "player", "alerts", "weather"
     };
+
+    /// <summary>Звуки-сигналы (поломки и т. п.) — отдельная шина «Тревоги».</summary>
+    static bool IsAlert(string key)
+    {
+        return key == "world/world_breakdown";
+    }
+
+    float musicRestartAt = -1f;
 
     readonly Dictionary<string, AudioClip> clips = new Dictionary<string, AudioClip>();
     readonly Dictionary<int, AudioSource> loops = new Dictionary<int, AudioSource>();
@@ -135,7 +143,7 @@ public class GameAudio : MonoBehaviour
 
     void ApplyMix()
     {
-        AudioListener.volume = GetBus("master");
+        AudioListener.volume = SettingsRuntime.AudioMuted ? 0f : GetBus("master");
         if (music != null)
             music.volume = MusicVolume * GetBus("music");
         float ambBus = AmbientVolume * GetBus("ambient");
@@ -156,34 +164,34 @@ public class GameAudio : MonoBehaviour
     {
         if (parent == null)
             return;
-        parent.Add(IndustryUi.Text("Audio", UiLocale.T("settings.audio"), "settings-group"));
+        parent.Add(SettingsControls.Group("settings.audio_main"));
         AddSlider(parent, "master", "settings.vol_master");
-        AddSlider(parent, "ui", "settings.vol_ui");
+        parent.Add(SettingsControls.Group("settings.audio_mix"));
+        AddSlider(parent, "music", "settings.vol_music");
+        AddSlider(parent, "ambient", "settings.vol_ambient");
         AddSlider(parent, "world", "settings.vol_world");
         AddSlider(parent, "buildings", "settings.vol_buildings");
         AddSlider(parent, "player", "settings.vol_player");
-        AddSlider(parent, "music", "settings.vol_music");
-        AddSlider(parent, "ambient", "settings.vol_ambient");
+        AddSlider(parent, "ui", "settings.vol_ui");
+        AddSlider(parent, "alerts", "settings.vol_alerts");
+        AddSlider(parent, "weather", "settings.vol_weather");
+
+        parent.Add(SettingsControls.Group("settings.audio_behaviour"));
+        parent.Add(SettingsControls.Toggle("settings.snd_background", () => GameSettings.AudioInBackground, v => GameSettings.AudioInBackground = v));
+        parent.Add(SettingsControls.Toggle("settings.snd_pause_mute", () => GameSettings.PauseMutesWorld, v => GameSettings.PauseMutesWorld = v));
+        parent.Add(SettingsControls.ChipRow("settings.music_gap",
+            (UiLocale.T("settings.gap_none"), () => GameSettings.MusicGap == 0, () => GameSettings.MusicGap = 0),
+            (UiLocale.T("settings.gap_short"), () => GameSettings.MusicGap == 1, () => GameSettings.MusicGap = 1),
+            (UiLocale.T("settings.gap_long"), () => GameSettings.MusicGap == 2, () => GameSettings.MusicGap = 2)));
+        parent.Add(SettingsControls.Describe(
+            SettingsControls.Toggle("settings.snd_mono", () => GameSettings.MonoAudio, v => GameSettings.MonoAudio = v),
+            "settings.snd_mono_desc"));
     }
 
     static void AddSlider(VisualElement parent, string bus, string locKey)
     {
-        var box = IndustryUi.El("Vol_" + bus, "volume-row", "col");
-        var label = IndustryUi.Text("L", "", "caption");
-        var slider = new Slider(0f, 1f) { value = GetBus(bus) };
-        void Refresh()
-        {
-            label.text = UiLocale.T(locKey) + "  " + Mathf.RoundToInt(GetBus(bus) * 100f) + "%";
-        }
-        slider.RegisterValueChangedCallback(evt =>
-        {
-            SetBus(bus, evt.newValue);
-            Refresh();
-        });
-        Refresh();
-        box.Add(label);
-        box.Add(slider);
-        parent.Add(box);
+        parent.Add(SettingsControls.SliderRow(locKey, 0f, 1f,
+            () => GetBus(bus), v => SetBus(bus, v), v => Mathf.RoundToInt(v * 100f) + "%"));
     }
 
     AudioSource MakeSource(string name, bool spatializeOff, float minDist)
@@ -244,8 +252,10 @@ public class GameAudio : MonoBehaviour
         audio.world2d.pitch = Random.Range(0.82f, 1.12f);
         AudioClip clip = audio.Clip("world/world_thunder");
         if (clip != null)
-            audio.world2d.PlayOneShot(clip, 0.92f * GetBus("world") * GetBus("ambient"));
+            audio.world2d.PlayOneShot(clip, 0.92f * GetBus("world") * GetBus("weather"));
         audio.world2d.pitch = 1f;
+        CameraFx.Shake(0.35f);
+        SoundCaptions.Show("caption.thunder", null);
     }
 
     public static void SetWeather(float rain)
@@ -286,6 +296,7 @@ public class GameAudio : MonoBehaviour
 
     void LateUpdate()
     {
+        TickMusicGap();
         TickAmbient();
         PruneLoops();
     }
@@ -343,7 +354,7 @@ public class GameAudio : MonoBehaviour
     {
         if (weather == null)
             return;
-        float target = AmbientVolume * 1.55f * GetBus("ambient") * Mathf.Clamp01(rain);
+        float target = AmbientVolume * 1.55f * GetBus("weather") * Mathf.Clamp01(rain);
         float fade = Time.unscaledDeltaTime * 0.45f;
         if (target < 0.012f)
         {
@@ -456,8 +467,31 @@ public class GameAudio : MonoBehaviour
             music.clip = clip;
         music.volume = MusicVolume * GetBus("music");
         music.ignoreListenerPause = true;
+        music.loop = GameSettings.MusicGap == 0;
+        musicRestartAt = -1f;
         if (!music.isPlaying)
             music.Play();
+    }
+
+    /// <summary>«Паузы между треками»: трек доиграл — тишина 20–45 с или 60–120 с, потом снова.</summary>
+    void TickMusicGap()
+    {
+        if (music == null || music.clip == null || string.IsNullOrEmpty(musicKey))
+            return;
+        int gap = GameSettings.MusicGap;
+        music.loop = gap == 0;
+        if (gap == 0 || music.isPlaying)
+            return;
+        if (musicRestartAt < 0f)
+        {
+            musicRestartAt = Time.unscaledTime + (gap == 1 ? Random.Range(20f, 45f) : Random.Range(60f, 120f));
+            return;
+        }
+        if (Time.unscaledTime >= musicRestartAt)
+        {
+            musicRestartAt = -1f;
+            music.Play();
+        }
     }
 
     void Play2d(string key, float volume, bool ignorePause)
@@ -475,7 +509,9 @@ public class GameAudio : MonoBehaviour
         AudioClip clip = Clip(key);
         if (clip == null)
             return;
-        AudioSource.PlayClipAtPoint(clip, position, volume * GetBus("world"));
+        float bus = GetBus("world") * (IsAlert(key) ? GetBus("alerts") : 1f);
+        AudioSource.PlayClipAtPoint(clip, position, volume * bus);
+        SoundCaptions.OnWorldSound(key, position);
     }
 
     void SetLoop(Component host, string key, bool on)
@@ -534,7 +570,22 @@ public class GameAudio : MonoBehaviour
         }
         for (int i = 0; i < deadLoops.Count; i++)
             loops.Remove(deadLoops[i]);
+
+        // Удержания снесённых зданий не копятся: раз в 10 с выкидываем давно истёкшие.
+        if (Time.unscaledTime < nextHoldPrune)
+            return;
+        nextHoldPrune = Time.unscaledTime + 10f;
+        deadLoops.Clear();
+        foreach (var pair in loopHoldUntil)
+        {
+            if (pair.Value < Time.time - 5f && !loops.ContainsKey(pair.Key))
+                deadLoops.Add(pair.Key);
+        }
+        for (int i = 0; i < deadLoops.Count; i++)
+            loopHoldUntil.Remove(deadLoops[i]);
     }
+
+    float nextHoldPrune;
 
     AudioClip Clip(string key)
     {

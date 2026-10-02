@@ -297,68 +297,64 @@ public class MachineUI : MonoBehaviour
             Build();
         if (GameManager.Instance != null && GameManager.Instance.IsPaused)
             return;
-        if (WalletHud.Instance != null && WalletHud.Instance.IsShopOpen)
-            WalletHud.Instance.SetShopOpen(false);
-        if (SelectionActionsUI.Instance != null && SelectionActionsUI.Instance.IsOpen)
-            SelectionActionsUI.Instance.SetOpen(false);
-
         currentBuilding = building;
         IsLabView = building is ResearchLab;
         IsOpen = true;
+        UiStack.Opened(WindowId, Close, 110);
         HidePages();
 
         if (building is OilExtractor oil)
         {
-            SetHeader("Нефтекачалка  ·  " + oil.RichnessName, building);
+            SetHeader(Name(building, "b.oil") + "  ·  " + oil.RichnessName, building);
             ShowOilExtractorUI(oil);
         }
         else if (building is WaterExtractor water)
         {
-            SetHeader(water.data != null ? water.data.displayName : "Водокачка", building);
+            SetHeader(Name(building, "b.water"), building);
             ShowWaterExtractorUI(water);
         }
         else if (building is Extractor extractor)
         {
-            SetHeader("Extractor  ·  ур. " + extractor.level, building);
+            SetHeader(Name(building, "b.extractor") + "  ·  " + UiLocale.T("machine.level", extractor.level), building);
             ShowExtractorUI(extractor);
         }
         else if (building is CrafterBuilding crafter)
         {
-            string title = building.data != null ? building.data.displayName : crafter.GetType().Name;
+            string title = Name(building, "b.building");
             Assembler assembler = crafter as Assembler;
             if (assembler != null)
-                title += "  ·  ур. " + assembler.level;
+                title += "  ·  " + UiLocale.T("machine.level", assembler.level);
             SetHeader(title, building);
             ShowCrafterUI(crafter);
         }
         else if (building is PowerGenerator gen)
         {
-            SetHeader(building.data != null ? building.data.displayName : "Generator", building);
+            SetHeader(Name(building, "b.generator"), building);
             ShowPowerUI(gen);
         }
         else if (building is ResearchLab)
         {
-            SetHeader("Research Lab", building);
+            SetHeader(Name(building, "b.lab"), building);
             ShowResearchLabUI();
         }
         else if (building is StorageContainer storage)
         {
-            SetHeader(building.data != null ? building.data.displayName : "Склад", building);
+            SetHeader(Name(building, "b.storage"), building);
             ShowStorageUI(storage);
         }
         else if (building is RoboticArm arm)
         {
-            SetHeader("Роборука", building);
+            SetHeader(Name(building, "b.arm"), building);
             ShowRoboticArmUI(arm);
         }
         else if (building is Conveyor belt)
         {
-            SetHeader(building.data != null ? building.data.displayName : "Конвейер", building);
+            SetHeader(Name(building, "b.conveyor"), building);
             ShowConveyorUI(belt);
         }
         else
         {
-            SetHeader(building.data != null ? building.data.displayName : "Building", building);
+            SetHeader(Name(building, "b.building"), building);
             IndustryUi.Show(bodyList, true);
         }
 
@@ -398,17 +394,15 @@ public class MachineUI : MonoBehaviour
             Build();
         if (GameManager.Instance != null && GameManager.Instance.IsPaused)
             return;
-        if (WalletHud.Instance != null && WalletHud.Instance.IsShopOpen)
-            WalletHud.Instance.SetShopOpen(false);
-        if (SelectionActionsUI.Instance != null && SelectionActionsUI.Instance.IsOpen)
-            SelectionActionsUI.Instance.SetOpen(false);
-
         currentBuilding = null;
         IsLabView = true;
         IsOpen = true;
+        UiStack.Opened(WindowId, Close, 110);
         HidePages();
         BuildingData labData = GameDatabase.FindBuilding("research_lab");
-        IndustryUi.SetHeader(overlay, labData != null ? labData.displayName : "Research Lab", labData != null ? labData.icon : null);
+        IndustryUi.SetHeader(overlay, labData != null ? labData.Title : UiLocale.T("b.lab"), labData != null ? labData.icon : null);
+        IndustryUi.WindowSubtitle(overlay, "");
+        RefreshHints(null);
         ShowResearchLabUI();
         BindUpgrade(null);
         IndustryUi.Show(overlay, true);
@@ -434,9 +428,12 @@ public class MachineUI : MonoBehaviour
         return labs.Length > 0 ? labs[0] : null;
     }
 
+    public const string WindowId = "machine";
+
     public void Close()
     {
         IsOpen = false;
+        UiStack.Closed(WindowId);
         IsLabView = false;
         currentBuilding = null;
         KeybindStore.SuppressGameplay();
@@ -452,10 +449,41 @@ public class MachineUI : MonoBehaviour
         }
     }
 
+    /// <summary>Название здания на языке интерфейса или запасной ключ, если данных нет.</summary>
+    static string Name(BuildingBase building, string fallbackKey)
+    {
+        return building != null && building.data != null ? building.data.Title : UiLocale.T(fallbackKey);
+    }
+
+    /// <summary>«Название  ·  детали»: название — в заголовок, детали (уровень, жила) — в подзаголовок.</summary>
     void SetHeader(string title, BuildingBase building)
     {
         Sprite icon = building != null && building.data != null ? building.data.icon : null;
-        IndustryUi.SetHeader(overlay, title, icon);
+        string main = title ?? "";
+        string sub = "";
+        int cut = main.IndexOf("  ·  ", System.StringComparison.Ordinal);
+        if (cut >= 0)
+        {
+            sub = main.Substring(cut + 5);
+            main = main.Substring(0, cut);
+        }
+        IndustryUi.SetHeader(overlay, main, icon);
+        IndustryUi.WindowSubtitle(overlay, sub);
+        RefreshHints(building);
+    }
+
+    void RefreshHints(BuildingBase building)
+    {
+        if (building is CrafterBuilding)
+            IndustryUi.WindowHints(overlay,
+                (UiLocale.T("bag.lmb"), UiLocale.T("machine.hint_recipe")),
+                ("Esc", UiLocale.T("win.close")));
+        else if (building == null || building is ResearchLab)
+            IndustryUi.WindowHints(overlay,
+                (KeybindStore.Hint("Research"), UiLocale.T("win.close")),
+                ("Esc", UiLocale.T("win.close")));
+        else
+            IndustryUi.WindowHints(overlay, ("Esc", UiLocale.T("win.close")));
     }
 
     void SetStatus(string text, UiStatus status)
@@ -508,11 +536,11 @@ public class MachineUI : MonoBehaviour
         var outputs = new List<ItemStack>();
         if (oil.resource != null)
             outputs.Add(new ItemStack(oil.resource, oil.CurrentItemsPerCycle));
-        string title = oil.resource != null ? "Добыча  " + oil.resource.displayName : "Нет нефти";
+        string title = oil.resource != null ? UiLocale.T("machine.mining", oil.resource.Title) : UiLocale.T("machine.no_oil");
         bodyList.Add(IndustryUi.RecipeCard(title, null, outputs, true, null));
         bodyList.Add(IndustryUi.ActionCard(
-            "Скважина",
-            oil.RichnessName + "  ·  " + oil.CurrentInterval.ToString("0.##") + " с / цикл  ·  бесконечный запас",
+            UiLocale.T("machine.well"),
+            oil.RichnessName + "  ·  " + UiLocale.T("machine.cycle_infinite", oil.CurrentInterval.ToString("0.##")),
             false,
             null));
     }
@@ -524,11 +552,11 @@ public class MachineUI : MonoBehaviour
         var outputs = new List<ItemStack>();
         if (pump.resource != null)
             outputs.Add(new ItemStack(pump.resource, pump.CurrentItemsPerCycle));
-        string title = pump.resource != null ? "Добыча  " + pump.resource.displayName : "Нет воды";
+        string title = pump.resource != null ? UiLocale.T("machine.mining", pump.resource.Title) : UiLocale.T("machine.no_water");
         bodyList.Add(IndustryUi.RecipeCard(title, null, outputs, true, null));
         bodyList.Add(IndustryUi.ActionCard(
-            "Источник",
-            pump.CurrentInterval.ToString("0.##") + " с / цикл  ·  бесконечный запас",
+            UiLocale.T("machine.source"),
+            UiLocale.T("machine.cycle_infinite", pump.CurrentInterval.ToString("0.##")),
             false,
             null));
     }
@@ -542,7 +570,7 @@ public class MachineUI : MonoBehaviour
             : UiLocale.T("machine.power_off");
         bodyList.Add(IndustryUi.ActionCard(
             UiLocale.T("machine.powered"),
-            fuel + "  ·  ×" + gen.speedMultiplier.ToString("0.0") + "  ·  " + gen.powerRadius.ToString("0") + " м",
+            fuel + "  ·  ×" + gen.speedMultiplier.ToString("0.0") + "  ·  " + gen.powerRadius.ToString("0") + " " + UiLocale.T("unit.m"),
             gen.Powered,
             null));
     }
@@ -555,8 +583,8 @@ public class MachineUI : MonoBehaviour
         if (extractor.resource != null)
             outputs.Add(new ItemStack(extractor.resource, extractor.CurrentItemsPerCycle));
         string title = extractor.resource != null
-            ? "Mining  " + extractor.resource.displayName
-            : "No resource node";
+            ? UiLocale.T("machine.mining", extractor.resource.Title)
+            : UiLocale.T("machine.no_node");
         bodyList.Add(IndustryUi.RecipeCard(title, null, outputs, true, null));
         bool front = extractor.requireFrontOutput;
         bodyList.Add(IndustryUi.ActionCard(
@@ -626,7 +654,7 @@ public class MachineUI : MonoBehaviour
         }
 
         SetStatus(
-            selected != null ? selected.displayName : "Select a recipe",
+            selected != null ? selected.Title : UiLocale.T("machine.pick_recipe"),
             selected != null ? UiStatus.Running : UiStatus.Ready);
     }
 
@@ -658,8 +686,8 @@ public class MachineUI : MonoBehaviour
         upgradeTipTitle = UiLocale.T("machine.upgrade_cost", money);
         if (building is Extractor extractor)
         {
-            string now = extractor.CurrentInterval.ToString("0.##") + " с / " + extractor.CurrentItemsPerCycle;
-            string next = (extractor.upgradedExtractInterval * Economy.ExtractTimeMul).ToString("0.##") + " с / "
+            string now = extractor.CurrentInterval.ToString("0.##") + " " + UiLocale.T("unit.s") + " / " + extractor.CurrentItemsPerCycle;
+            string next = (extractor.upgradedExtractInterval * Economy.ExtractTimeMul).ToString("0.##") + " " + UiLocale.T("unit.s") + " / "
                 + Mathf.Max(1, extractor.upgradedItemsPerCycle);
             upgradeTipBody = UiLocale.T("machine.upgrade_ext", now, next);
         }
@@ -700,7 +728,7 @@ public class MachineUI : MonoBehaviour
     {
         if (string.IsNullOrEmpty(query))
             return true;
-        if (MatchesQuery(recipe.displayName, query) || MatchesQuery(recipe.id, query))
+        if (MatchesQuery(recipe.Title, query) || MatchesQuery(recipe.id, query))
             return true;
         if (MatchesStacks(recipe.inputs, query) || MatchesStacks(recipe.outputs, query))
             return true;
@@ -714,7 +742,7 @@ public class MachineUI : MonoBehaviour
         for (int i = 0; i < stacks.Count; i++)
         {
             ItemData item = stacks[i] != null ? stacks[i].item : null;
-            if (item != null && (MatchesQuery(item.displayName, query) || MatchesQuery(item.id, query)))
+            if (item != null && (MatchesQuery(item.Title, query) || MatchesQuery(item.id, query)))
                 return true;
         }
         return false;
@@ -757,8 +785,8 @@ public class MachineUI : MonoBehaviour
 
         if (storageSummary != null)
         {
-            string typeName = storage.StoredType != null ? storage.StoredType.displayName : "пусто";
-            storageSummary.text = $"{typeName}  ·  стеки {storage.UsedSlotCount} / {count}";
+            string typeName = storage.StoredType != null ? storage.StoredType.Title : UiLocale.T("machine.empty");
+            storageSummary.text = UiLocale.T("machine.storage_sum", typeName, storage.UsedSlotCount, count);
         }
     }
 
@@ -804,13 +832,13 @@ public class MachineUI : MonoBehaviour
                     continue;
                 if (item.isFluid != fluids)
                     continue;
-                if (!MatchesQuery(item.displayName, query) && !MatchesQuery(item.id, query))
+                if (!MatchesQuery(item.Title, query) && !MatchesQuery(item.id, query))
                     continue;
                 ItemData captured = item;
                 bool selected = belt.Filter == item;
                 armGrid.Add(IndustryUi.FilterCard(
                     item.icon,
-                    item.displayName,
+                    item.Title,
                     selected ? UiLocale.T("machine.filter_set") : UiLocale.T("machine.filter_only"),
                     selected,
                     () =>
@@ -823,7 +851,7 @@ public class MachineUI : MonoBehaviour
 
         if (armSummary != null)
         {
-            string name = belt.Filter != null ? belt.Filter.displayName : UiLocale.T("machine.filter_any");
+            string name = belt.Filter != null ? belt.Filter.Title : UiLocale.T("machine.filter_any");
             armSummary.text = UiLocale.T("machine.belt_filter", name);
         }
     }
@@ -868,13 +896,13 @@ public class MachineUI : MonoBehaviour
                 ItemData item = items[i];
                 if (item == null || string.IsNullOrEmpty(item.id) || !seen.Add(item.id))
                     continue;
-                if (!MatchesQuery(item.displayName, query) && !MatchesQuery(item.id, query))
+                if (!MatchesQuery(item.Title, query) && !MatchesQuery(item.id, query))
                     continue;
                 ItemData captured = item;
                 bool selected = arm.filter == item;
                 armGrid.Add(IndustryUi.FilterCard(
                     item.icon,
-                    item.displayName,
+                    item.Title,
                     selected ? UiLocale.T("machine.filter_set") : UiLocale.T("machine.filter_only"),
                     selected,
                     () =>
@@ -892,9 +920,9 @@ public class MachineUI : MonoBehaviour
     {
         if (armSummary == null || arm == null)
             return;
-        string name = arm.filter != null ? arm.filter.displayName : "любые";
-        string held = arm.HeldItem != null ? arm.HeldItem.displayName : "пусто";
-        armSummary.text = $"Фильтр: {name}   ·   в руке: {held}";
+        string name = arm.filter != null ? arm.filter.Title : UiLocale.T("machine.any");
+        string held = arm.HeldItem != null ? arm.HeldItem.Title : UiLocale.T("machine.empty");
+        armSummary.text = UiLocale.T("machine.arm_sum", name, held);
     }
 
     void ShowResearchLabUI()
@@ -1160,7 +1188,7 @@ public class MachineUI : MonoBehaviour
             Vector2Int cell = BuildingLinker.WorldToCell(b.transform.position);
             string sub = UiLocale.T(b.BreakMode == 2 ? "idle.broken_weak" : "idle.broken") + "  ·  " + cell.x + "," + cell.y;
             VisualElement card = IndustryUi.ActionCard(
-                b.data != null ? b.data.displayName : "Building",
+                b.data != null ? b.data.Title : "Building",
                 canTp ? sub + "  ·  " + UiLocale.T("map.teleport") : sub,
                 canTp,
                 canTp ? () => JumpIdle(cell) : null);
@@ -1219,7 +1247,7 @@ public class MachineUI : MonoBehaviour
 
         AddMoneyStat(
             GameHudIcons.Coin,
-            "Монеты",
+            UiLocale.T("wallet.coins"),
             wallet != null ? wallet.Coins : 0,
             stats != null ? stats.CoinsPerMinute() : 0f,
             stats != null ? stats.CoinsSpentPerMinute() : 0f,
@@ -1227,7 +1255,7 @@ public class MachineUI : MonoBehaviour
             stats != null ? stats.CoinsSpentTotal : 0);
         AddMoneyStat(
             GameHudIcons.Ruby,
-            "Рубины",
+            UiLocale.T("wallet.rubies"),
             wallet != null ? wallet.Rubies : 0,
             stats != null ? stats.RubiesPerMinute() : 0f,
             0f,
@@ -1260,7 +1288,7 @@ public class MachineUI : MonoBehaviour
                 float minus = stats.ConsumedPerMinute(id);
                 statsList.Add(IndustryUi.RateBar(
                     item != null ? item.icon : null,
-                    (item != null ? item.displayName : id) + "   всего +" + made + " −" + used,
+                    (item != null ? item.Title : id) + "   " + UiLocale.T("stats.total", made, used),
                     plus,
                     minus,
                     maxRate));
@@ -1272,9 +1300,10 @@ public class MachineUI : MonoBehaviour
 
     void AddMoneyStat(Sprite icon, string name, int now, float plusMin, float minusMin, int gained, int spent)
     {
-        string detail = "сейчас " + now + "   всего +" + gained + (spent > 0 ? "  −" + spent : "")
-            + "   ·   +" + plusMin.ToString("0.#") + "/мин"
-            + (minusMin > 0f ? "   −" + minusMin.ToString("0.#") + "/мин" : "");
+        string perMin = UiLocale.T("unit.per_min");
+        string detail = UiLocale.T("stats.now", now) + "   " + UiLocale.T("stats.gained", gained) + (spent > 0 ? "  −" + spent : "")
+            + "   ·   +" + plusMin.ToString("0.#") + perMin
+            + (minusMin > 0f ? "   −" + minusMin.ToString("0.#") + perMin : "");
         statsList.Add(IndustryUi.StatRow(icon, name, detail));
     }
 

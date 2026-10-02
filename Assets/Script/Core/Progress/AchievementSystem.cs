@@ -27,8 +27,16 @@ public class AchievementSystem : MonoBehaviour
         new Def { id = "night_watch", titleKey = "ach.night_watch", bodyKey = "ach.night_watch_body" },
         new Def { id = "first_generator", titleKey = "ach.first_generator", bodyKey = "ach.first_generator_body" },
         new Def { id = "factory_25", titleKey = "ach.factory_25", bodyKey = "ach.factory_25_body" },
-        new Def { id = "mechanic", titleKey = "ach.mechanic", bodyKey = "ach.mechanic_body" }
+        new Def { id = "mechanic", titleKey = "ach.mechanic", bodyKey = "ach.mechanic_body" },
+        new Def { id = DecorFirstId, titleKey = "ach.decor_first", bodyKey = "ach.decor_first_body" },
+        new Def { id = ResearchAllId, titleKey = "ach.research_all", bodyKey = "ach.research_all_body" },
+        new Def { id = AllAchievementsId, titleKey = "ach.all", bodyKey = "ach.all_body" }
     };
+
+    public const string DecorFirstId = "decor_first";
+    public const string ResearchAllId = "research_all";
+    /// <summary>Все остальные достижения — награда «Золотой кубок» ([[DecorCatalog]]).</summary>
+    public const string AllAchievementsId = "all_achievements";
 
     readonly HashSet<string> unlocked = new HashSet<string>();
     bool timeCheated;
@@ -62,6 +70,12 @@ public class AchievementSystem : MonoBehaviour
     {
         if (Mute || Instance == null || building == null || building.data == null)
             return;
+        if (building is Decoration)
+        {
+            Instance.Unlock(DecorFirstId);
+            return;
+        }
+
         Instance.placedBuildings++;
         string id = building.data.id ?? "";
         if (building is Conveyor && !(building is Pipe))
@@ -106,6 +120,14 @@ public class AchievementSystem : MonoBehaviour
         Instance.Unlock("first_research");
     }
 
+    public static void NotifyResearchCount(int done, int total)
+    {
+        if (Mute || Instance == null || total <= 0)
+            return;
+        if (done >= total)
+            Instance.Unlock(ResearchAllId);
+    }
+
     public static void NotifyTimeCheat()
     {
         if (Instance == null)
@@ -130,10 +152,24 @@ public class AchievementSystem : MonoBehaviour
             return;
         Def def = Find(id);
         UiAudio.PlayNotify();
-        UiNotification.Push(
+        UiNotification.Push(NotifyKind.Achievement,
             UiLocale.T("ach.toast"),
             def.id != null ? UiLocale.T(def.titleKey) : id,
             UiStatus.Completed);
+        DecorSystem.OnAchievement(id);
+        if (id != AllAchievementsId && HasAllExcept(AllAchievementsId))
+            Unlock(AllAchievementsId);
+    }
+
+    bool HasAllExcept(string skip)
+    {
+        for (int i = 0; i < Catalog.Length; i++)
+        {
+            if (Catalog[i].id != skip && !unlocked.Contains(Catalog[i].id))
+                return false;
+        }
+
+        return true;
     }
 
     public static Def Find(string id)

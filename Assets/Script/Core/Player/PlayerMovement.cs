@@ -41,6 +41,17 @@ public class PlayerMovement : MonoBehaviour
     private bool wasGrounded = true;
     private float stepTimer;
 
+    // Настройки управления и камеры (GameSettings): переключаемые бег/зум, автобег, сглаживание, покачивание.
+    bool sprintLatched;
+    bool zoomLatched;
+    bool zoomActive;
+    bool autoRun;
+    Vector2 smoothLook;
+    Vector3 camBase;
+    bool camBaseSet;
+    float bobPhase;
+    float bobWeight;
+
     void Awake()
     {
         inputActions = KeybindStore.Shared;
@@ -95,8 +106,18 @@ public class PlayerMovement : MonoBehaviour
         inputActions.Player.Look.performed += ctx => lookInput = ctx.ReadValue<Vector2>();
         inputActions.Player.Look.canceled += ctx => lookInput = Vector2.zero;
 
-        inputActions.Player.Sprint.performed += ctx => isSprinting = true;
-        inputActions.Player.Sprint.canceled += ctx => isSprinting = false;
+        inputActions.Player.Sprint.performed += ctx =>
+        {
+            if (GameSettings.SprintToggle)
+                sprintLatched = !sprintLatched;
+            else
+                isSprinting = true;
+        };
+        inputActions.Player.Sprint.canceled += ctx =>
+        {
+            if (!GameSettings.SprintToggle)
+                isSprinting = false;
+        };
 
         inputActions.Player.Jump.performed += ctx => jumpPressed = true;
         inputActions.Player.Jump.canceled += ctx => jumpPressed = false;
@@ -111,7 +132,7 @@ public class PlayerMovement : MonoBehaviour
             return;
         }
 
-        if (!KeybindStore.BlocksGameplayInput && !DevConsole.IsOpen
+        if (!UiStack.GameplayBlocked
             && Keyboard.current != null && Keyboard.current.fKey.wasPressedThisFrame)
             ToggleFlashlight();
 
@@ -121,21 +142,56 @@ public class PlayerMovement : MonoBehaviour
             return;
         }
 
-        if (KeybindStore.BlocksGameplayInput || DevConsole.IsOpen)
+        if (UiStack.GameplayBlocked)
         {
             moveInput = Vector2.zero;
             lookInput = Vector2.zero;
             jumpPressed = false;
             isSprinting = false;
+            sprintLatched = false;
+            autoRun = false;
             if (canMove)
                 HandleMovement();
             HandleZoom();
+            ApplyCameraFx();
             return;
         }
+
+        InputAction autoRunAction = KeybindStore.GetAction("AutoRun");
+        if (autoRunAction != null && autoRunAction.WasPressedThisFrame())
+            autoRun = !autoRun;
 
         if (canLook) HandleMouseLook();
         if (canMove) HandleMovement();
         HandleZoom();
+        ApplyCameraFx();
+    }
+
+    /// <summary>Покачивание при ходьбе + тряска поверх базовой позы камеры.</summary>
+    void ApplyCameraFx()
+    {
+        if (cameraTransform == null || !camBaseSet || PhotoMode.IsActive)
+            return;
+        float dt = Time.deltaTime;
+        bool grounded = controller != null && controller.isGrounded;
+        Vector2 move = EffectiveMove();
+        bool walking = grounded && canMove && move.sqrMagnitude > 0.04f;
+        bool sprinting = GameSettings.SprintToggle ? sprintLatched : isSprinting;
+        bobWeight = Mathf.MoveTowards(bobWeight, walking ? 1f : 0f, dt * 4f);
+        if (walking)
+            bobPhase += dt * (sprinting ? 13f : 9.5f);
+        float amp = GameSettings.HeadBob * bobWeight;
+        Vector3 bob = new Vector3(Mathf.Cos(bobPhase * 0.5f) * 0.035f, Mathf.Abs(Mathf.Sin(bobPhase * 0.5f)) * 0.055f - 0.0275f, 0f) * amp;
+        CameraFx.Sample(out Vector3 shake, out float roll);
+        cameraTransform.localPosition = camBase + bob + shake;
+        cameraTransform.localRotation = Quaternion.Euler(pitch, 0f, roll + Mathf.Cos(bobPhase * 0.5f) * 0.5f * amp);
+    }
+
+    Vector2 EffectiveMove()
+    {
+        if (!autoRun)
+            return moveInput;
+        return new Vector2(moveInput.x, 1f);
     }
 
     void EnsureFlashlight()
@@ -187,7 +243,12 @@ public class PlayerMovement : MonoBehaviour
         if (viewCam == null)
             viewCam = GetComponentInChildren<Camera>();
         if (viewCam != null)
-            baseFov = viewCam.fieldOfView;
+            baseFov = GameSettings.FieldOfView;
+        if (cameraTransform != null && !camBaseSet)
+        {
+            camBase = cameraTransform.localPosition;
+            camBaseSet = true;
+        }
     }
 
     void RestoreFov()
@@ -198,15 +259,7 @@ public class PlayerMovement : MonoBehaviour
 
     bool ZoomBlocked()
     {
-        if (KeybindStore.BlocksGameplayInput)
-            return true;
-        if (WorldMapUI.Instance != null && WorldMapUI.Instance.IsOpen)
-            return true;
-        if ((MachineUI.Instance != null && MachineUI.Instance.IsOpen) || WorldOverlayGate.IsOpen)
-            return true;
-        if (InventoryUI.Instance != null && InventoryUI.Instance.IsBagOpen)
-            return true;
-        return false;
+        return UiStack.GameplayBlocked;
     }
 
     void HandleZoom()
@@ -217,7 +270,19 @@ public class PlayerMovement : MonoBehaviour
             return;
 
         InputAction zoom = KeybindStore.GetAction("Zoom");
-        bool hold = !ZoomBlocked() && zoom != null && zoom.IsPressed();
+        bool blocked = ZoomBlocked();
+        bool hold;
+        if (GameSettings.ZoomToggle)
+        {
+            if (blocked)
+                zoomLatched = false;
+            else if (zoom != null && zoom.WasPressedThisFrame())
+                zoomLatched = !zoomLatched;
+            hold = zoomLatched;
+        }
+        else
+            hold = !blocked && zoom != null && zoom.IsPressed();
+        zoomActive = hold;
         if (hold && Mouse.current != null)
         {
             float scroll = Mouse.current.scroll.ReadValue().y;
@@ -228,6 +293,7 @@ public class PlayerMovement : MonoBehaviour
             }
         }
 
+        baseFov = GameSettings.FieldOfView;
         float target = hold ? Mathf.Lerp(baseFov, 18f, zoomStrength) : baseFov;
         float t = 1f - Mathf.Exp(-14f * Time.unscaledDeltaTime);
         viewCam.fieldOfView = Mathf.Lerp(viewCam.fieldOfView, target, t);
@@ -235,8 +301,17 @@ public class PlayerMovement : MonoBehaviour
 
     void HandleMouseLook()
     {
-        float mouseX = lookInput.x * mouseSensitivity * Time.deltaTime;
-        float mouseY = lookInput.y * mouseSensitivity * Time.deltaTime;
+        Vector2 look = lookInput;
+        if (GameSettings.MouseSmoothing)
+        {
+            smoothLook = Vector2.Lerp(smoothLook, look, 1f - Mathf.Exp(-22f * Time.unscaledDeltaTime));
+            look = smoothLook;
+        }
+        else
+            smoothLook = look;
+        float sens = mouseSensitivity * GameSettings.MouseSensitivity * (zoomActive ? GameSettings.ZoomSensitivity : 1f);
+        float mouseX = look.x * sens * Time.deltaTime * (GameSettings.InvertX ? -1f : 1f);
+        float mouseY = look.y * sens * Time.deltaTime * (GameSettings.InvertY ? -1f : 1f);
 
         // Поворот тела игрока по горизонтали (yaw)
         transform.Rotate(Vector3.up * mouseX);
@@ -261,8 +336,14 @@ public class PlayerMovement : MonoBehaviour
         if (WorldBiomeMap.BlocksPlayer(transform.position, controller.radius))
             PushOutOfOcean();
 
-        Vector3 move = transform.right * moveInput.x + transform.forward * moveInput.y;
-        float speed = isSprinting ? sprintSpeed : walkSpeed;
+        if (autoRun && moveInput.y < -0.3f)
+            autoRun = false;
+        Vector2 input = EffectiveMove();
+        if (GameSettings.SprintToggle && input.sqrMagnitude < 0.01f)
+            sprintLatched = false;
+        bool sprinting = GameSettings.SprintToggle ? sprintLatched : isSprinting;
+        Vector3 move = transform.right * input.x + transform.forward * input.y;
+        float speed = sprinting ? sprintSpeed : walkSpeed;
         Vector3 wish = move * speed * Time.deltaTime;
         if (!TryWalk(wish))
         {
@@ -272,7 +353,7 @@ public class PlayerMovement : MonoBehaviour
 
         if (isGrounded && move.sqrMagnitude > 0.2f)
         {
-            float stride = isSprinting ? 0.52f : 0.72f;
+            float stride = sprinting ? 0.52f : 0.72f;
             stepTimer += Time.deltaTime;
             if (stepTimer >= stride)
             {

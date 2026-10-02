@@ -3,6 +3,10 @@ using UnityEngine;
 [CreateAssetMenu(fileName = "New Item", menuName = "Builderment/Item Data")]
 public class ItemData : ScriptableObject
 {
+    /// <summary>Название на языке интерфейса ([[DataLocale]]).</summary>
+    public string Title => DataLocale.ItemName(id, displayName);
+    public string Info => DataLocale.ItemDesc(id, description);
+
     [Header("Basic Info")]
     public string id;                    // ���������� ������������� (�������� "iron_ore")
     public string displayName;           // "�������� ����"

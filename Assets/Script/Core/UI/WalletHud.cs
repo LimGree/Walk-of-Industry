@@ -33,6 +33,7 @@ public class WalletHud : MonoBehaviour
         UiNotification.BindHost(toastHost);
         if (PlayerWallet.Instance != null)
             PlayerWallet.Instance.OnChanged += Refresh;
+        DecorSystem.Changed += OnDecorChanged;
         Refresh();
     }
 
@@ -52,6 +53,7 @@ public class WalletHud : MonoBehaviour
     {
         if (PlayerWallet.Instance != null)
             PlayerWallet.Instance.OnChanged -= Refresh;
+        DecorSystem.Changed -= OnDecorChanged;
         UiNotification.UnbindHost(toastHost);
         if (Instance == this)
             Instance = null;
@@ -74,16 +76,19 @@ public class WalletHud : MonoBehaviour
         if (KeybindStore.BlocksGameplayInput)
             return;
         if (Keyboard.current != null && Keyboard.current.hKey.wasPressedThisFrame)
-            ToggleShop();
+            HotkeyToggle();
     }
+
+    public const string WindowId = "shop";
 
     void OnShopPerformed(InputAction.CallbackContext ctx)
     {
-        if (KeybindStore.BlocksGameplayInput)
-            return;
-        if (GameManager.Instance != null && GameManager.Instance.IsPaused)
-            return;
-        ToggleShop();
+        HotkeyToggle();
+    }
+
+    void HotkeyToggle()
+    {
+        UiStack.Hotkey(WindowId, () => SetShopOpen(true), () => SetShopOpen(false), 80);
     }
 
     void Build()
@@ -113,27 +118,58 @@ public class WalletHud : MonoBehaviour
         toastHost.pickingMode = PickingMode.Ignore;
         stack.Add(toastHost);
         root.Add(stack);
+        UiLook.RegisterHud(chip);
 
         shop = IndustryUi.OverlayPanel(UiLocale.T("overlay.shop"), GameHudIcons.Ruby, () => SetShopOpen(false));
         IndustryUi.Show(shop, false);
-        VisualElement panel = IndustryUi.PanelOf(shop);
-        var balances = IndustryUi.El("Bal", "card");
-        balances.Add(IndustryUi.Icon(GameHudIcons.Coin, "icon-48"));
-        shopCoins = IndustryUi.Text("SC", "0 монет", "body-text", "grow");
-        balances.Add(shopCoins);
-        balances.Add(IndustryUi.Icon(GameHudIcons.Ruby, "icon-48"));
-        shopRubies = IndustryUi.Text("SR", "0 рубинов", "body-text");
-        balances.Add(shopRubies);
+        VisualElement shopPanel = IndustryUi.PanelOf(shop);
+        shopPanel.AddToClassList("win-medium");
+        IndustryUi.WindowHints(shop, (KeybindStore.Hint("Shop"), UiLocale.T("win.close")));
+        VisualElement body = shop.Q("Body") ?? shopPanel;
+
+        // Вкладки: декорации ([[DecorShopView]]) и обмен рубинов.
+        var tabs = IndustryUi.El("ShopTabs", "shop-tabs");
+        var tabRow = IndustryUi.El("Tabs", "tab-row");
+        tabDecor = IndustryUi.Btn(DecorText.T("decor.tab.decor"), () => SetTab(true), "tab");
+        tabExchange = IndustryUi.Btn(DecorText.T("decor.tab.exchange"), () => SetTab(false), "tab");
+        tabRow.Add(tabDecor);
+        tabRow.Add(tabExchange);
+        tabs.Add(tabRow);
+        tabs.Add(IndustryUi.El("Spacer", "grow"));
+        var mini = IndustryUi.El("Mini", "shop-mini");
+        mini.Add(IndustryUi.Icon(GameHudIcons.Ruby, "shop-mini-icon"));
+        miniRubies = IndustryUi.Text("R", "0", "shop-mini-value", "ruby");
+        mini.Add(miniRubies);
+        mini.Add(IndustryUi.Icon(GameHudIcons.Coin, "shop-mini-icon"));
+        miniCoins = IndustryUi.Text("C", "0", "shop-mini-value", "gold");
+        mini.Add(miniCoins);
+        tabs.Add(mini);
+        body.Add(tabs);
+
+        decorView = new DecorShopView();
+        body.Add(decorView.Build());
+
+        exchangeView = IndustryUi.El("Exchange", "col");
+        body.Add(exchangeView);
+        VisualElement panel = exchangeView;
+
+        panel.Add(IndustryUi.Section(UiLocale.T("shop.balance")));
+        var balances = IndustryUi.El("Bal", "shop-balances");
+        var coinTile = IndustryUi.El("Coins", "shop-stat");
+        coinTile.Add(IndustryUi.Icon(GameHudIcons.Coin, "shop-stat-icon"));
+        shopCoins = IndustryUi.Text("SC", "0", "shop-stat-value", "gold");
+        coinTile.Add(shopCoins);
+        coinTile.Add(IndustryUi.Text("L", UiLocale.T("shop.coins"), "shop-stat-label"));
+        balances.Add(coinTile);
+        var rubyTile = IndustryUi.El("Rubies", "shop-stat");
+        rubyTile.Add(IndustryUi.Icon(GameHudIcons.Ruby, "shop-stat-icon"));
+        shopRubies = IndustryUi.Text("SR", "0", "shop-stat-value", "ruby");
+        rubyTile.Add(shopRubies);
+        rubyTile.Add(IndustryUi.Text("L", UiLocale.T("shop.rubies"), "shop-stat-label"));
+        balances.Add(rubyTile);
         panel.Add(balances);
 
-        var rate = IndustryUi.El("Rate", "card");
-        rate.Add(IndustryUi.Icon(GameHudIcons.Ruby, "icon-32"));
-        rate.Add(IndustryUi.Text("One", "1", "gold"));
-        rate.Add(IndustryUi.Text("Arr", "  →  ", "title"));
-        rate.Add(IndustryUi.Icon(GameHudIcons.Coin, "icon-32"));
-        rate.Add(IndustryUi.Text("Val", Economy.CoinsPerRuby.ToString(), "gold"));
-        panel.Add(rate);
-
+        panel.Add(IndustryUi.Section(UiLocale.T("shop.exchange_title")));
         offer1 = AddOffer(panel, () => Exchange(1));
         offer5 = AddOffer(panel, () => Exchange(5));
         offerAll = AddOffer(panel, () =>
@@ -142,17 +178,57 @@ public class WalletHud : MonoBehaviour
                 Exchange(PlayerWallet.Instance.Rubies);
         });
         root.Add(shop);
+        SetTab(true);
+    }
+
+    Button tabDecor;
+    Button tabExchange;
+    Label miniRubies;
+    Label miniCoins;
+    DecorShopView decorView;
+    VisualElement exchangeView;
+    bool decorTab = true;
+    bool decorDirty;
+    int lastRubies = -1;
+    float nextDecorRefresh;
+
+    void SetTab(bool decor)
+    {
+        decorTab = decor;
+        IndustryUi.SetOn(tabDecor, decor, "is-selected");
+        IndustryUi.SetOn(tabExchange, !decor, "is-selected");
+        if (decorView != null)
+            IndustryUi.Show(decorView.Root, decor);
+        IndustryUi.Show(exchangeView, !decor);
+        IndustryUi.WindowSubtitle(shop, decor
+            ? DecorText.T("decor.sub")
+            : UiLocale.T("shop.sub", Economy.CoinsPerRuby));
+        if (decor && decorView != null)
+            decorView.Refresh();
+    }
+
+    /// <summary>Открыть магазин сразу на вкладке декораций (плитка «Магазин» в сумке).</summary>
+    public void OpenDecorShop()
+    {
+        if (!shopOpen)
+            SetShopOpen(true);
+        SetTab(true);
+    }
+
+    void OnDecorChanged()
+    {
+        decorDirty = true;
     }
 
     static Label AddOffer(VisualElement panel, System.Action onClick)
     {
-        var card = IndustryUi.El("Offer", "card");
-        card.Add(IndustryUi.Icon(GameHudIcons.Ruby, "icon-32"));
-        var label = IndustryUi.Text("L", "", "body-text", "grow");
-        card.Add(label);
-        card.Add(IndustryUi.Icon(GameHudIcons.Coin, "icon-32"));
-        card.Add(IndustryUi.Btn(UiLocale.T("shop.exchange"), onClick, "btn-small", "btn-primary"));
-        panel.Add(card);
+        var row = IndustryUi.El("Offer", "set-row", "shop-offer");
+        row.Add(IndustryUi.Icon(GameHudIcons.Ruby, "icon-32"));
+        var label = IndustryUi.Text("L", "", "set-label", "grow");
+        row.Add(label);
+        row.Add(IndustryUi.Icon(GameHudIcons.Coin, "icon-32"));
+        row.Add(IndustryUi.Btn(UiLocale.T("shop.exchange"), onClick, "btn-small", "btn-primary"));
+        panel.Add(row);
         return label;
     }
 
@@ -165,9 +241,13 @@ public class WalletHud : MonoBehaviour
     {
         shopOpen = open;
         IndustryUi.Show(shop, open);
-        if (open && SelectionActionsUI.Instance != null && SelectionActionsUI.Instance.IsOpen)
-            SelectionActionsUI.Instance.SetOpen(false);
+        if (open)
+            UiStack.Opened(WindowId, () => SetShopOpen(false), 80);
+        else
+            UiStack.Closed(WindowId);
         Refresh();
+        if (open)
+            decorDirty = true;
         if (GameManager.Instance != null)
             GameManager.Instance.RestoreGameplayFocus();
     }
@@ -185,6 +265,14 @@ public class WalletHud : MonoBehaviour
 
     void LateUpdate()
     {
+        // Сетка декораций перестраивается не чаще двух раз в секунду (монеты меняются постоянно).
+        if (decorDirty && shopOpen && decorTab && decorView != null && Time.unscaledTime >= nextDecorRefresh)
+        {
+            decorDirty = false;
+            nextDecorRefresh = Time.unscaledTime + 0.5f;
+            decorView.Refresh();
+        }
+
         if (Time.unscaledTime < nextHudTick)
             return;
         nextHudTick = Time.unscaledTime + 0.2f;
@@ -200,6 +288,15 @@ public class WalletHud : MonoBehaviour
         if (rubiesText != null) rubiesText.text = IndustryUi.Money(rubies);
         if (shopCoins != null) shopCoins.text = IndustryUi.Money(coins);
         if (shopRubies != null) shopRubies.text = IndustryUi.Money(rubies);
+        if (miniCoins != null) miniCoins.text = IndustryUi.Money(coins);
+        if (miniRubies != null) miniRubies.text = IndustryUi.Money(rubies);
+        // Сетку декораций трогают только рубины (кнопки «Купить»): монеты меняются постоянно,
+        // а перестройка под курсором съедает клик.
+        if (rubies != lastRubies)
+        {
+            lastRubies = rubies;
+            decorDirty = true;
+        }
         if (offer1 != null) offer1.text = UiLocale.T("shop.offer1", Economy.CoinsPerRuby);
         if (offer5 != null) offer5.text = UiLocale.T("shop.offer5", 5 * Economy.CoinsPerRuby);
         if (offerAll != null)
@@ -222,7 +319,7 @@ public class WalletHud : MonoBehaviour
             return;
         }
 
-        string name = data.displayName;
+        string name = data.Title;
         int count = builder.PreviewBuildCount;
         if (builder.IsLineStrokeActive && count > 1)
             buildCostText.text = UiLocale.T("hud.build_line", name, count, IndustryUi.Money(unit * count));

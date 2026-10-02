@@ -57,10 +57,14 @@ public class GameManager : MonoBehaviour
             gameObject.AddComponent<MachineIdleHud>();
         if (GetComponent<BreakdownSystem>() == null)
             gameObject.AddComponent<BreakdownSystem>();
+        if (GetComponent<DecorSystem>() == null)
+            gameObject.AddComponent<DecorSystem>();
         if (GetComponent<RepairUI>() == null)
             gameObject.AddComponent<RepairUI>();
         if (GetComponent<DroneStationUI>() == null)
             gameObject.AddComponent<DroneStationUI>();
+        if (GetComponent<BuildingPicker>() == null)
+            gameObject.AddComponent<BuildingPicker>();
         if (GetComponent<SelectionActionsUI>() == null)
             gameObject.AddComponent<SelectionActionsUI>();
         if (GetComponent<BlueprintLibraryUI>() == null)
@@ -95,6 +99,7 @@ public class GameManager : MonoBehaviour
     void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
         GameSettings.Apply();
+        GameSettings.ApplyTimeScale();
     }
 
     void OnPausePerformed(InputAction.CallbackContext context)
@@ -110,65 +115,15 @@ public class GameManager : MonoBehaviour
             return;
         }
 
-        if (InventoryUI.Instance != null && InventoryUI.Instance.IsBagOpen)
+        if (WorldMapUI.Instance != null && WorldMapUI.Instance.MiniDragActive)
         {
-            InventoryUI.Instance.SetBagOpen(false);
+            WorldMapUI.Instance.EndMiniDrag(false);
             return;
         }
 
-        if (WalletHud.Instance != null && WalletHud.Instance.IsShopOpen)
-        {
-            WalletHud.Instance.SetShopOpen(false);
+        // Стек окон: Esc закрывает верхнее окно; пусто — пауза.
+        if (UiStack.CloseTop())
             return;
-        }
-
-        if (SelectionActionsUI.Instance != null && SelectionActionsUI.Instance.IsOpen)
-        {
-            SelectionActionsUI.Instance.Toggle();
-            return;
-        }
-
-        if (RepairUI.Instance != null && RepairUI.Instance.IsOpen)
-        {
-            RepairUI.Instance.Close();
-            return;
-        }
-
-        if (DroneStationUI.Instance != null && DroneStationUI.Instance.IsOpen)
-        {
-            DroneStationUI.Instance.Close();
-            return;
-        }
-
-        if (MachineUI.Instance != null && MachineUI.Instance.IsOpen)
-        {
-            MachineUI.Instance.Close();
-            return;
-        }
-
-        if (ResearchUI.Instance != null && ResearchUI.Instance.IsOpen)
-        {
-            ResearchUI.Instance.Close();
-            return;
-        }
-
-        if (BuildMenuUI.Instance != null && BuildMenuUI.Instance.IsOpen)
-        {
-            BuildMenuUI.Instance.CloseMenu(true);
-            return;
-        }
-
-        if (WorldMapUI.Instance != null && WorldMapUI.Instance.IsOpen)
-        {
-            WorldMapUI.Instance.SetOpen(false);
-            return;
-        }
-
-        if (BlueprintLibraryUI.Instance != null && BlueprintLibraryUI.Instance.IsOpen)
-        {
-            BlueprintLibraryUI.Instance.SetOpen(false);
-            return;
-        }
 
         TogglePause();
     }
@@ -181,31 +136,17 @@ public class GameManager : MonoBehaviour
     public void SetPaused(bool paused)
     {
         isPaused = paused;
-        Time.timeScale = paused ? 0f : 1f;
-        AudioListener.pause = paused;
+        Time.timeScale = paused ? 0f : GameSettings.GameSpeed;
+        AudioListener.pause = paused && GameSettings.PauseMutesWorld;
         if (paused)
             UiAudio.PlayPause();
         else
             UiAudio.PlayUnpause();
         GameAudio.SetPaused(paused);
-        if (paused && WorldMapUI.Instance != null && WorldMapUI.Instance.IsOpen)
-            WorldMapUI.Instance.SetOpen(false);
-        if (paused && InventoryUI.Instance != null && InventoryUI.Instance.IsBagOpen)
-            InventoryUI.Instance.SetBagOpen(false);
-        if (paused && WalletHud.Instance != null && WalletHud.Instance.IsShopOpen)
-            WalletHud.Instance.SetShopOpen(false);
-        if (paused && ResearchUI.Instance != null && ResearchUI.Instance.IsOpen)
-            ResearchUI.Instance.Close();
-        if (paused && BuildMenuUI.Instance != null && BuildMenuUI.Instance.IsOpen)
-            BuildMenuUI.Instance.CloseMenu(false);
-        if (paused && BlueprintLibraryUI.Instance != null && BlueprintLibraryUI.Instance.IsOpen)
-            BlueprintLibraryUI.Instance.SetOpen(false);
+        if (paused)
+            UiStack.CloseAll();
         if (paused && PhotoMode.Instance != null)
             PhotoMode.Instance.Cancel();
-        if (paused && RepairUI.Instance != null && RepairUI.Instance.IsOpen)
-            RepairUI.Instance.Close();
-        if (paused && DroneStationUI.Instance != null && DroneStationUI.Instance.IsOpen)
-            DroneStationUI.Instance.Close();
         if (paused && BeltRide.Instance != null && BeltRide.Instance.IsRiding)
             BeltRide.Instance.Stop();
 
@@ -231,7 +172,7 @@ public class GameManager : MonoBehaviour
         bool tutorialOpen = TutorialSystem.Instance != null && TutorialSystem.Instance.IsModal;
         bool modalOpen = UiModal.IsOpen;
         bool consoleOpen = DevConsole.IsOpen;
-        bool menuOpen = uiOpen || mapOpen || bagOpen || shopOpen || selectionOpen || researchOpen || buildOpen || libraryOpen || tutorialOpen || modalOpen || consoleOpen;
+        bool menuOpen = UiStack.Any || uiOpen || mapOpen || bagOpen || shopOpen || selectionOpen || researchOpen || buildOpen || libraryOpen || tutorialOpen || modalOpen || consoleOpen;
         if (PhotoMode.IsActive)
         {
             UnityEngine.Cursor.lockState = CursorLockMode.Locked;
@@ -272,8 +213,9 @@ public class GameManager : MonoBehaviour
 
     public void PrepareLeaveGameplay()
     {
-        if (SaveSystem.Instance != null)
+        if (SaveSystem.Instance != null && GameSettings.SaveOnQuit)
             SaveSystem.Instance.SaveGame();
+        UiStack.Clear();
         isPaused = false;
         Time.timeScale = 1f;
         AudioListener.pause = false;

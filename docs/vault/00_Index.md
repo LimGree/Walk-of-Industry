@@ -37,6 +37,7 @@
 - [[PlayerInventory]] — хотбар зданий
 - [[PlayerInteractor]] — кнопка «взаимодействие» по взгляду, интерфейс [[IInteractable]]
 - [[BuildSelectionController]] — выделение, копирование, вставка, перенос группы зданий
+- [[BuildingPicker]] — СКМ «взять здание под прицелом» (Shift — с настройками)
 - [[BlueprintLibrary]] / [[BlueprintLibraryUI]] — именованные чертежи, P в стройке
 - [[BuildUndo]] — Ctrl+Z / Ctrl+Y, до 50 шагов в папке мира
 - [[BuildGridVisualizer]] — сетка под ногами в режиме стройки (`BuildGridPlane`, не белый квадрат)
@@ -118,6 +119,7 @@
 - [[TestYard]] — тестовый двор (Shift+Ctrl+Alt + Продолжить)
 - [[AchievementSystem]] — 12 достижений альфы, тост как у исследования, список в паузе
 - [[PhotoMode]] — F5, полёт камеры, Enter снимок в папку мира
+- [[Decorations]] — декорации: покупка за рубины в магазине, установка за монеты, красота завода, коллекции, трофеи
 - [[BeltRide]] — E по ленте, едешь до стыка со зданием, пробел — слезть
 
 ---
@@ -140,6 +142,7 @@
 - [[KeybindStore]] · [[KeybindSettingsUI]] · [[InputSystem_Actions]]
 - [[IndustryPause]] — меню паузы
 - [[UiLocale]] — русский / английский
+- [[DataLocale]] — названия зданий, предметов и исследований на языке интерфейса (`Title` / `Info`)
 
 ---
 
@@ -190,3 +193,7 @@
 2. **Связи** — кто с кем дружит (`[[ссылки]]`)
 3. **Поля** — что помнит объект
 4. **Методы** — что делает, по шагам, простым языком
+
+## Настройки (рантайм)
+
+[[UiStack]] · [[SettingsHub]] · [[SettingsControls]] · [[SettingsRuntime]] · [[PostFx]] · [[RenderScaler]] · [[UiLook]] · [[SoundCaptions]] · [[CameraFx]] · [[HoldPrompt]]
