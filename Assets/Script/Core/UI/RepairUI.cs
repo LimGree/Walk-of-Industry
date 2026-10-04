@@ -78,6 +78,14 @@ public class RepairUI : MonoBehaviour
     {
         if (building == null || !building.IsBroken || Instance == null)
             return false;
+        // Ремкомплект: ремонт без мини-игры, пока есть заряды на сегодня.
+        if (PerkSystem.Instance != null && PerkSystem.Instance.TryUseKit())
+        {
+            Instance.Finish(building, 0);
+            UiNotification.Push(UiLocale.T("gear.kit_used"), UiLocale.T("gear.kit_left", PerkSystem.Instance.KitLeft, PerkSystem.KitCharges), UiStatus.Completed);
+            return true;
+        }
+
         Instance.Open(building);
         return true;
     }
@@ -104,6 +112,37 @@ public class RepairUI : MonoBehaviour
         }
         if (GameManager.Instance != null)
             GameManager.Instance.RestoreGameplayFocus();
+    }
+
+    /// <summary>Консоль (/minigame type): открыть ремонт этого здания с выбранной мини-игрой.</summary>
+    public void DevOpen(BuildingBase building, int forcedGame)
+    {
+        if (building == null || !building.IsBroken)
+            return;
+        if (memoTarget == building)
+            memoTarget = null;
+        Open(building);
+        game = Mathf.Clamp(forcedGame, 0, BreakdownSystem.GameCount - 1);
+        StartGame();
+    }
+
+    /// <summary>Консоль (/minigame win): засчитать текущую мини-игру.</summary>
+    public bool DevWin()
+    {
+        if (!IsOpen || target == null)
+            return false;
+        Win();
+        return true;
+    }
+
+    /// <summary>Консоль (/minigame fail): провалить — как три ошибки подряд.</summary>
+    public bool DevFail()
+    {
+        if (!IsOpen || target == null)
+            return false;
+        mistakes = MistakeLimit - 1;
+        Mistake();
+        return true;
     }
 
     public void Close()

@@ -404,7 +404,10 @@ public class WorldResourceScatterer : MonoBehaviour
                 list.Add(MakeRequest(KindOfOre(cycle[t]), 10, (int)cycle[t]));
         }
 
-        int sandWant = sandCells >= 8 ? Mathf.Clamp(sandDeposits, 2, 3) : 0;
+        // Gen 2: залежей песка по числу клеток пляжа (раньше максимум 3 на весь мир).
+        int sandWant = sandCells < 8 ? 0
+            : WorldCatalog.Gen >= 2 ? Mathf.Clamp(sandCells / 90, Mathf.Max(4, sandDeposits), 12)
+            : Mathf.Clamp(sandDeposits, 2, 3);
         for (int i = 0; i < sandWant; i++)
             list.Add(MakeRequest(PatchKind.Sand, 8, -1));
 

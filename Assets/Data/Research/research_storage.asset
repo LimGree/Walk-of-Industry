@@ -22,7 +22,7 @@ MonoBehaviour:
   - item: {fileID: 11400000, guid: 61b810ccecfea014ebb50eda1ac4dcf9, type: 2}
     amount: 250
   requiredResearches:
-  - {fileID: 11400000, guid: 63c4f9723138470f8e69f803bc21132b, type: 2}
+  - {fileID: 11400000, guid: d9e0f1a2b3c405162738495a6b7c8d9e, type: 2}
   - {fileID: 11400000, guid: 0331235024c64137806a07b3dccfcf56, type: 2}
   unlockedBuildings:
   - {fileID: 11400000, guid: 7e4d8c2b91a64f0e9c3b5a7d1e8f2406, type: 2}

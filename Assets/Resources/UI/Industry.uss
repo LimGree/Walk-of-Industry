@@ -2462,36 +2462,134 @@ Button.research-tree-node > .unity-button__text {
     left: 24px;
     right: 24px;
     bottom: 24px;
-    height: 42%;
-    background-color: rgba(6, 8, 10, 0.92);
+    height: 46%;
+    background-color: rgba(6, 8, 10, 0.94);
     border-width: 1px;
     border-color: rgb(40, 48, 56);
     padding: 10px 12px;
     flex-direction: column;
 }
 
+.dev-console-head {
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 6px;
+    flex-shrink: 0;
+}
+
 .dev-console-title {
     font-size: 11px;
     color: rgb(120, 200, 120);
     letter-spacing: 2px;
+}
+
+.dev-console-log-wrap {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-height: 80px;
     margin-bottom: 6px;
+    position: relative;
 }
 
 .dev-console-log {
     flex-grow: 1;
     min-height: 80px;
-    margin-bottom: 8px;
+}
+
+.dev-console-row {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    padding: 0 4px;
+    border-radius: 2px;
+}
+
+.dev-console-row:hover {
+    background-color: rgba(255, 255, 255, 0.04);
+}
+
+.dev-console-row.is-copied {
+    background-color: rgba(120, 200, 120, 0.22);
 }
 
 .dev-console-line {
     font-size: 13px;
     color: rgb(210, 220, 210);
     white-space: normal;
+    flex-shrink: 1;
+}
+
+.dev-console-row.is-in .dev-console-line,
+.dev-console-overlay-line.is-in {
+    color: rgb(130, 190, 255);
+}
+
+.dev-console-row.is-ok .dev-console-line,
+.dev-console-overlay-line.is-ok {
+    color: rgb(150, 230, 150);
+}
+
+.dev-console-row.is-warn .dev-console-line,
+.dev-console-overlay-line.is-warn {
+    color: rgb(255, 205, 105);
+}
+
+.dev-console-row.is-err .dev-console-line,
+.dev-console-overlay-line.is-err {
+    color: rgb(255, 115, 100);
+}
+
+.dev-console-row.is-sys .dev-console-line,
+.dev-console-overlay-line.is-sys {
+    color: rgb(135, 148, 135);
+}
+
+.dev-console-count {
+    font-size: 11px;
+    color: rgb(20, 24, 20);
+    background-color: rgb(150, 175, 150);
+    border-radius: 6px;
+    padding: 0 5px;
+    margin-left: 6px;
+}
+
+.dev-console-btn {
+    font-size: 12px;
+    color: rgb(255, 210, 90);
+    border-width: 1px;
+    border-color: rgb(110, 92, 40);
+    border-radius: 3px;
+    padding: 0 5px;
+    margin: 1px 0 1px 4px;
+    background-color: rgba(255, 210, 90, 0.06);
+}
+
+.dev-console-btn:hover {
+    background-color: rgba(255, 210, 90, 0.22);
+    color: rgb(255, 235, 170);
+}
+
+.dev-console-head-btn {
+    font-size: 11px;
+    color: rgb(150, 175, 150);
+    border-color: rgb(50, 64, 52);
+    background-color: rgba(0, 0, 0, 0);
+}
+
+.dev-console-new {
+    position: absolute;
+    right: 14px;
+    bottom: 6px;
+    font-size: 12px;
+    color: rgb(20, 24, 20);
+    background-color: rgb(255, 210, 90);
+    border-radius: 3px;
+    padding: 2px 8px;
 }
 
 .dev-console-suggest {
     flex-shrink: 0;
-    max-height: 88px;
+    max-height: 196px;
     margin-bottom: 4px;
     padding: 2px 4px;
     background-color: rgba(0, 0, 0, 0.28);
@@ -2505,17 +2603,35 @@ Button.research-tree-node > .unity-button__text {
     padding: 1px 4px;
 }
 
+.dev-console-suggest-line:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
 .dev-console-suggest-line.is-on {
-    color: rgb(210, 230, 210);
+    color: rgb(225, 240, 225);
+    background-color: rgba(120, 200, 120, 0.16);
+}
+
+.dev-console-hint {
+    flex-shrink: 0;
+    font-size: 12px;
+    color: rgb(130, 150, 130);
+    white-space: normal;
+    padding: 2px 4px 4px 4px;
 }
 
 .dev-console-input-wrap {
     position: relative;
     height: 28px;
+    flex-shrink: 0;
     margin-bottom: 0;
     background-color: rgba(0, 0, 0, 0.35);
     border-width: 1px;
     border-color: rgb(50, 64, 52);
+}
+
+.dev-console-input-wrap.is-bad {
+    border-color: rgb(200, 80, 70);
 }
 
 .dev-console-ghost {
@@ -2542,6 +2658,25 @@ Button.research-tree-node > .unity-button__text {
     color: rgb(220, 235, 220);
     padding-left: 8px;
     padding-top: 4px;
+}
+
+.dev-console-overlay {
+    position: absolute;
+    left: 24px;
+    bottom: 150px;
+    max-width: 50%;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.dev-console-overlay-line {
+    font-size: 13px;
+    color: rgb(210, 220, 210);
+    background-color: rgba(6, 8, 10, 0.72);
+    padding: 2px 8px;
+    margin-top: 2px;
+    border-radius: 3px;
+    white-space: normal;
 }
 
 /* Unity slider */
@@ -2828,6 +2963,49 @@ TextField .unity-text-element {
     color: var(--text-muted);
     margin-top: 2px;
     margin-bottom: 0;
+}
+
+.tut-step {
+    font-size: 11px;
+    color: var(--accent);
+    -unity-font-style: bold;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+}
+
+.tut-progress-text {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 4px;
+    margin-bottom: 4px;
+}
+
+.tut-pointer {
+    position: absolute;
+    width: 60px;
+    height: 60px;
+    align-items: center;
+    justify-content: center;
+}
+
+.tut-pointer-arrow {
+    font-size: 34px;
+    color: rgb(255, 208, 72);
+    -unity-text-align: middle-center;
+    -unity-text-outline-width: 1px;
+    -unity-text-outline-color: rgba(0, 0, 0, 0.8);
+    margin: 0;
+    padding: 0;
+}
+
+.tut-pointer-dist {
+    font-size: 12px;
+    color: rgb(255, 236, 180);
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    -unity-text-outline-width: 1px;
+    -unity-text-outline-color: rgba(0, 0, 0, 0.8);
+    margin: 0;
 }
 
 .tut-glow {
@@ -4266,4 +4444,811 @@ Button.keycap .btn-label {
 
 .econ-legend {
     margin-bottom: 8px;
+}
+
+/* ===== Карта производства (ProductionMapUI) ===== */
+
+.pm-window .panel-wide {
+    width: 1500px;
+    max-width: 96%;
+    height: 88%;
+}
+
+.pm-search {
+    width: 220px;
+    margin-right: 10px;
+}
+
+.pm-split {
+    flex-grow: 1;
+    min-height: 0;
+}
+
+.pm-graph-scroll {
+    flex-grow: 1;
+    margin-right: 12px;
+    background-color: var(--surface-0);
+    border-width: 1px;
+    border-color: var(--border-subtle);
+}
+
+.pm-graph-content {
+    position: relative;
+    padding: 12px;
+}
+
+.pm-graph {
+    align-items: flex-start;
+}
+
+.pm-edges {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+}
+
+.pm-col {
+    width: 176px;
+    margin-right: 34px;
+}
+
+.pm-col-head {
+    margin-bottom: 8px;
+    color: var(--text-muted);
+}
+
+.pm-tile {
+    align-items: center;
+    padding: 5px 7px;
+    margin-bottom: 6px;
+    background-color: var(--surface-1);
+    border-width: 1px;
+    border-color: var(--border-subtle);
+    border-radius: 2px;
+}
+
+.pm-tile:hover {
+    border-color: var(--border-strong);
+}
+
+.pm-tile-icon {
+    width: 28px;
+    height: 28px;
+    margin-right: 7px;
+    flex-shrink: 0;
+}
+
+.pm-tile-name {
+    font-size: 13px;
+    color: var(--text-primary);
+    white-space: normal;
+}
+
+.pm-tile-where {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.pm-tile-lock {
+    display: none;
+    font-size: 12px;
+    margin-left: 4px;
+}
+
+.pm-tile.pm-locked {
+    opacity: 0.45;
+}
+
+.pm-tile.pm-locked .pm-tile-lock {
+    display: flex;
+}
+
+.pm-tile.pm-made {
+    border-left-width: 3px;
+    border-left-color: var(--success);
+}
+
+.pm-tile.pm-input {
+    border-color: rgb(90, 215, 255);
+    background-color: rgba(90, 215, 255, 0.10);
+}
+
+.pm-tile.pm-output {
+    border-color: rgb(255, 190, 80);
+    background-color: rgba(255, 190, 80, 0.08);
+}
+
+.pm-tile.pm-selected {
+    border-width: 2px;
+    border-color: var(--accent);
+    background-color: var(--accent-muted);
+    opacity: 1;
+}
+
+.pm-detail-scroll {
+    width: 470px;
+    flex-shrink: 0;
+}
+
+.pm-detail {
+    padding: 4px 6px 16px 4px;
+}
+
+.pm-head {
+    align-items: flex-start;
+    margin-bottom: 8px;
+}
+
+.pm-head .card-well-lg {
+    margin-right: 10px;
+}
+
+.pm-actions {
+    flex-wrap: wrap;
+    margin-bottom: 6px;
+}
+
+.pm-actions .btn {
+    margin-right: 8px;
+}
+
+.pm-section {
+    margin-top: 14px;
+    margin-bottom: 6px;
+}
+
+.pm-warn {
+    color: var(--warning);
+    white-space: normal;
+}
+
+.pm-row {
+    align-items: center;
+    margin-top: 4px;
+}
+
+.pm-row.pm-locked {
+    opacity: 0.55;
+}
+
+.pm-branch {
+    color: var(--text-muted);
+    margin-right: 4px;
+}
+
+.pm-row-icon {
+    width: 20px;
+    height: 20px;
+    margin-right: 6px;
+}
+
+.pm-row-name {
+    font-size: 13px;
+    color: var(--text-primary);
+    -unity-font-style: bold;
+    margin-right: 8px;
+}
+
+.pm-row-name:hover {
+    color: var(--accent);
+}
+
+.pm-row-rate {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.pm-row-where {
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 2px;
+}
+
+.pm-row-where .btn {
+    margin-left: 6px;
+    height: 22px;
+}
+
+.pm-machine {
+    font-size: 12px;
+    color: var(--accent);
+    margin-right: 8px;
+}
+
+.pm-chips {
+    flex-wrap: wrap;
+}
+
+.pm-chip {
+    align-items: center;
+    padding: 3px 7px;
+    margin: 0 6px 6px 0;
+    background-color: var(--surface-1);
+    border-width: 1px;
+    border-color: var(--border-subtle);
+    border-radius: 2px;
+}
+
+.pm-chip:hover {
+    border-color: var(--accent);
+}
+
+.pm-chip-name {
+    font-size: 12px;
+    color: var(--text-primary);
+}
+
+.pm-ports {
+    align-items: center;
+    padding: 34px 0 12px 0;
+}
+
+.pm-port-box {
+    position: relative;
+    width: 150px;
+    height: 150px;
+    margin: 40px 120px;
+    background-color: var(--surface-2);
+    border-width: 2px;
+    border-color: var(--border-strong);
+    align-items: center;
+    justify-content: center;
+}
+
+.pm-port-icon {
+    width: 64px;
+    height: 64px;
+}
+
+.pm-port {
+    position: absolute;
+    align-items: center;
+}
+
+.pm-port-arrow {
+    font-size: 22px;
+    -unity-font-style: bold;
+    margin: 0;
+}
+
+.pm-port-label {
+    font-size: 11px;
+    white-space: normal;
+    width: 110px;
+    -unity-text-align: middle-center;
+    margin: 0;
+}
+
+.pm-port.pm-back {
+    bottom: -60px;
+    left: 20px;
+    right: 20px;
+    flex-direction: column-reverse;
+}
+
+.pm-port.pm-front {
+    top: -60px;
+    left: 20px;
+    right: 20px;
+    flex-direction: column-reverse;
+}
+
+.pm-port.pm-back-l {
+    bottom: -60px;
+    left: -45px;
+    width: 110px;
+    flex-direction: column-reverse;
+}
+
+.pm-port.pm-back-r {
+    bottom: -60px;
+    right: -45px;
+    width: 110px;
+    flex-direction: column-reverse;
+}
+
+.pm-port.pm-left {
+    left: -120px;
+    top: 40px;
+    width: 116px;
+    flex-direction: column;
+}
+
+.pm-port.pm-right {
+    right: -120px;
+    top: 40px;
+    width: 116px;
+    flex-direction: column;
+}
+
+.pm-port-in .pm-port-arrow,
+.pm-port-in .pm-port-label {
+    color: rgb(110, 220, 120);
+}
+
+.pm-port-out .pm-port-arrow,
+.pm-port-out .pm-port-label {
+    color: rgb(255, 170, 70);
+}
+
+.pm-port-fluid .pm-port-arrow,
+.pm-port-fluid .pm-port-label {
+    color: rgb(90, 180, 255);
+}
+
+.pm-port-note {
+    margin-top: 40px;
+    white-space: normal;
+    -unity-text-align: middle-center;
+}
+
+/* ===== Цели и подсказки (GoalsUI) ===== */
+
+.goal-hud {
+    position: absolute;
+    right: 24px;
+    top: 24px;
+    width: 300px;
+    padding: 10px 12px 8px 12px;
+    background-color: var(--surface-overlay);
+    border-width: 1px;
+    border-color: var(--border-subtle);
+    border-radius: 2px;
+}
+
+.goal-cond {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 3px;
+    white-space: normal;
+}
+
+.goal-cond-done {
+    color: var(--success);
+}
+
+.goal-cond-link:hover {
+    color: var(--accent);
+}
+
+.goal-track {
+    margin-top: 8px;
+    padding-top: 6px;
+    border-top-width: 1px;
+    border-top-color: var(--border-subtle);
+}
+
+.hint-card {
+    position: absolute;
+    right: 24px;
+    bottom: 150px;
+    width: 340px;
+    padding: 12px 14px 10px 14px;
+    background-color: var(--surface-overlay);
+    border-width: 1px;
+    border-left-width: 3px;
+    border-color: var(--border-subtle);
+    border-left-color: var(--accent);
+    border-radius: 2px;
+}
+
+.hint-card .btn {
+    align-self: flex-end;
+    margin-bottom: 0;
+}
+
+.goal-card {
+    margin-bottom: 8px;
+    padding: 10px 12px;
+}
+
+.goal-card-done {
+    opacity: 0.6;
+}
+
+.goal-card-current {
+    border-color: var(--accent);
+    border-width: 2px;
+}
+
+/* ===== Снаряжение (PerkShopView) ===== */
+
+.perk-grid {
+    flex-direction: row;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+}
+
+.perk-card {
+    width: 31%;
+    min-width: 230px;
+    flex-grow: 1;
+    margin: 0 8px 8px 0;
+    padding: 10px 12px;
+}
+
+.perk-card.perk-owned {
+    border-left-width: 3px;
+    border-left-color: var(--success);
+}
+
+.perk-info {
+    white-space: normal;
+    margin-top: 4px;
+    margin-bottom: 6px;
+}
+
+.perk-actions {
+    align-items: center;
+    flex-wrap: wrap;
+    margin-top: auto;
+}
+
+.perk-actions .btn {
+    margin-left: 6px;
+    margin-bottom: 0;
+}
+
+/* ===== Хотбар снаряжения (GearHotbar) ===== */
+
+.gear-bar {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 22px;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: flex-end;
+}
+
+.gear-slot {
+    width: 74px;
+    height: 54px;
+    margin: 0 3px;
+    padding: 4px 5px;
+    background-color: var(--surface-overlay);
+    border-width: 1px;
+    border-color: var(--border-subtle);
+    border-radius: 2px;
+    justify-content: flex-end;
+}
+
+.gear-slot-empty {
+    opacity: 0.35;
+}
+
+.gear-slot-on {
+    border-width: 2px;
+    border-color: var(--accent);
+    background-color: var(--accent-muted);
+    opacity: 1;
+}
+
+.gear-slot-name {
+    font-size: 11px;
+    color: var(--text-primary);
+    white-space: normal;
+    -unity-text-align: lower-center;
+}
+
+.gear-bar-hint {
+    position: absolute;
+    bottom: 62px;
+    left: 0;
+    right: 0;
+    font-size: 12px;
+    color: var(--text-secondary);
+    -unity-text-align: middle-center;
+}
+
+.gear-bag-slots {
+    flex-wrap: wrap;
+    margin: 8px 0 4px 0;
+}
+
+.gear-bag-slots .btn {
+    margin: 0 6px 6px 0;
+}
+
+/* .card по умолчанию — строка; карточки целей и снаряжения — столбцом */
+.card.goal-card,
+.card.perk-card {
+    flex-direction: column;
+    align-items: stretch;
+}
+
+.card.perk-card .heading-3 {
+    white-space: normal;
+}
+
+.gear-slot-icon {
+    width: 30px;
+    height: 30px;
+    align-self: center;
+    margin-bottom: 1px;
+}
+
+/* ===== Обменник: быстрые суммы и своё число ===== */
+
+.shop-quick {
+    flex-wrap: wrap;
+    margin: 4px 0 6px 0;
+}
+
+.shop-quick .btn {
+    margin: 0 6px 6px 0;
+    min-width: 64px;
+}
+
+.shop-amount {
+    width: 120px;
+    margin: 0 10px 0 6px;
+}
+
+/* ===== Редактор таблички (SignEditorUI) ===== */
+
+.panel.win.sign-win {
+    max-width: 1240px;
+}
+
+.sign-body {
+    flex-direction: row;
+    flex-grow: 1;
+    min-height: 0;
+}
+
+.sign-left {
+    width: 584px;
+    flex-shrink: 0;
+    margin-right: 20px;
+    min-height: 0;
+}
+
+.sign-right {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 0;
+    min-height: 0;
+}
+
+.sign-preview {
+    width: 584px;
+    height: 365px;
+    flex-shrink: 0;
+    border-width: 1px;
+    border-color: var(--border-normal);
+    border-radius: 3px;
+    background-color: rgb(19, 23, 28);
+    overflow: hidden;
+}
+
+.sign-preview-img {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+}
+
+.sign-select {
+    position: absolute;
+    border-width: 2px;
+    border-color: var(--accent);
+    border-radius: 3px;
+    background-color: rgba(214, 148, 62, 0.06);
+}
+
+.sign-preview-hint {
+    font-size: 12px;
+    color: var(--text-muted);
+    white-space: normal;
+    margin: 6px 0 6px 0;
+}
+
+.sign-swatches {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    max-width: 100%;
+}
+
+.sign-swatch {
+    width: 20px;
+    height: 20px;
+    margin: 2px;
+    border-radius: 3px;
+    border-width: 1px;
+    border-color: rgba(255, 255, 255, 0.18);
+}
+
+.sign-swatch:hover {
+    border-color: var(--text-secondary);
+}
+
+.sign-swatch.is-selected {
+    border-width: 2px;
+    border-color: var(--accent);
+}
+
+TextField.sign-hex {
+    width: 92px;
+    margin: 2px 0 2px 6px;
+}
+
+.sign-list-head {
+    flex-direction: row;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.sign-add {
+    flex-direction: row;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+    margin: 4px 0 4px 0;
+}
+
+.sign-add .btn,
+.sign-actions .btn,
+.sign-presets .btn {
+    margin: 0 6px 6px 0;
+}
+
+ScrollView.sign-list {
+    flex-grow: 0;
+    flex-shrink: 0;
+    max-height: 200px;
+    margin-bottom: 4px;
+}
+
+.sign-el {
+    flex-direction: row;
+    align-items: center;
+    min-height: 34px;
+    padding: 3px 8px;
+    margin-bottom: 2px;
+    border-radius: 3px;
+    border-width: 1px;
+    border-color: rgba(0, 0, 0, 0);
+    background-color: rgba(255, 255, 255, 0.02);
+}
+
+.sign-el:hover {
+    background-color: var(--surface-1);
+}
+
+.sign-el.is-selected {
+    border-color: var(--accent);
+    background-color: var(--accent-muted);
+}
+
+.sign-el-badge {
+    width: 26px;
+    height: 26px;
+    margin-right: 10px;
+    border-radius: 3px;
+    background-color: var(--surface-2);
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.sign-el-badge-label {
+    font-size: 15px;
+    margin: 0;
+    padding: 0;
+    -unity-text-align: middle-center;
+    -unity-font-style: bold;
+}
+
+.sign-el-icon {
+    width: 22px;
+    height: 22px;
+}
+
+.sign-el-title {
+    flex-grow: 1;
+    flex-shrink: 1;
+    margin: 0;
+    font-size: 13px;
+    color: var(--text-primary);
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.sign-el-kind {
+    flex-shrink: 0;
+    margin: 0 0 0 8px;
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+TextField.sign-textfield {
+    margin: 2px 0 0 0;
+}
+
+TextField.sign-textfield .unity-text-field__input {
+    min-height: 66px;
+    -unity-text-align: upper-left;
+    white-space: normal;
+}
+
+.sign-glyphs,
+.sign-icons {
+    flex-direction: row;
+    flex-wrap: wrap;
+    margin: 4px 0 8px 0;
+}
+
+.sign-glyph {
+    width: 34px;
+    height: 34px;
+    margin: 0 4px 4px 0;
+    border-radius: 3px;
+    border-width: 1px;
+    border-color: var(--border-subtle);
+    background-color: var(--surface-0);
+    align-items: center;
+    justify-content: center;
+}
+
+.sign-glyph:hover {
+    border-color: var(--border-strong);
+    background-color: var(--surface-2);
+}
+
+.sign-glyph.is-selected {
+    border-color: var(--accent);
+    background-color: var(--accent-muted);
+}
+
+.sign-glyph-label {
+    margin: 0;
+    padding: 0;
+    font-size: 18px;
+    color: var(--text-primary);
+    -unity-text-align: middle-center;
+}
+
+.sign-icon-btn {
+    width: 42px;
+    height: 42px;
+}
+
+.sign-icon-img {
+    width: 32px;
+    height: 32px;
+}
+
+.sign-actions,
+.sign-presets {
+    flex-direction: row;
+    flex-wrap: wrap;
+    margin: 6px 0 4px 0;
+}
+
+.sign-win .set-row {
+    min-height: 38px;
+    padding: 4px 8px;
+}
+
+.sign-win .set-text {
+    min-width: 96px;
+    padding-right: 8px;
+}
+
+.sign-win .set-ctl {
+    max-width: 80%;
+}
+
+.sign-win .set-slider {
+    width: 170px;
+}
+
+.sign-win .set-value {
+    width: 54px;
+    margin-left: 8px;
 }

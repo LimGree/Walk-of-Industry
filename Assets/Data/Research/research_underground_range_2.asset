@@ -22,6 +22,8 @@ MonoBehaviour:
     amount: 350
   - item: {fileID: 11400000, guid: 69846796d4fa8ff47bc3d0a2f65ab91a, type: 2}
     amount: 120
+  - item: {fileID: 11400000, guid: efb9760fc57e9024e9e6618cc00128cf, type: 2}
+    amount: 100
   requiredResearches:
   - {fileID: 11400000, guid: d9e0f1a2b3c405162738495a6b7c8d9e, type: 2}
   unlockedBuildings: []

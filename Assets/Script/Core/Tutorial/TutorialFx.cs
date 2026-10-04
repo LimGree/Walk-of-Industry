@@ -1,24 +1,39 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+/// <summary>
+/// Подсветка обучения в мире. Одна задача — один вид подсветки:
+/// клетки (куда ставить), обводка зданий (на что смотреть), маршрут ленты (куда вести, голубой),
+/// столб света над целью шага (видно издалека). Маршрут считается не чаще <see cref="RouteEvery"/>.
+/// </summary>
 public class TutorialFx : MonoBehaviour
 {
-    const int PoolKeep = 28;
+    const float RouteEvery = 1.5f;
 
-    readonly List<Marker> pool = new List<Marker>(32);
+    enum Kind { Cell, Building, Route }
+
+    readonly List<Marker> pool = new List<Marker>(48);
     readonly List<Vector2Int> cells = new List<Vector2Int>(32);
+    readonly List<Vector2Int> route = new List<Vector2Int>(64);
     readonly List<BuildingBase> buildings = new List<BuildingBase>(16);
+    readonly List<Vector2Int> cachedRoute = new List<Vector2Int>(64);
+    float nextRoute;
+    TutorialStep routeStep = (TutorialStep)(-1);
+    float nextCollect;
+    TutorialStep collectedStep = (TutorialStep)(-1);
+
     Transform root;
     Material cellMat;
     Material buildingMat;
+    Material routeMat;
     Mesh cube;
+    Transform pillar;
 
     struct Marker
     {
         public GameObject go;
         public Transform tr;
-        public Renderer rend;
-        public bool building;
+        public Kind kind;
     }
 
     void OnDestroy()
@@ -28,6 +43,8 @@ public class TutorialFx : MonoBehaviour
             Destroy(cellMat);
         if (buildingMat != null)
             Destroy(buildingMat);
+        if (routeMat != null)
+            Destroy(routeMat);
     }
 
     public void Clear()
@@ -37,6 +54,9 @@ public class TutorialFx : MonoBehaviour
             if (pool[i].go != null)
                 pool[i].go.SetActive(false);
         }
+
+        if (pillar != null)
+            pillar.gameObject.SetActive(false);
     }
 
     public void Sync()
@@ -48,81 +68,123 @@ public class TutorialFx : MonoBehaviour
             return;
         }
 
-        cells.Clear();
-        buildings.Clear();
-        Color cellColor = new Color(1f, 0.82f, 0.25f, 0.55f);
-        Collect(tut, cells, buildings, ref cellColor);
-        ShowCells(cells, cellColor);
+        // Сбор клеток перебирает жилы и здания — 4 раза в секунду хватает, пульс рисуется каждый кадр.
+        if (Time.unscaledTime >= nextCollect || tut.Step != collectedStep)
+        {
+            nextCollect = Time.unscaledTime + 0.25f;
+            collectedStep = tut.Step;
+            cells.Clear();
+            route.Clear();
+            buildings.Clear();
+            Collect(tut);
+        }
+
+        Show(cells, Kind.Cell, 0.82f, 0.08f, 0.12f);
+        Show(route, Kind.Route, 0.5f, 0.06f, 0.16f);
         ShowBuildings(buildings);
+        ShowPillar(tut);
         Pulse();
     }
 
-    static void Collect(TutorialSystem tut, List<Vector2Int> cells, List<BuildingBase> buildings, ref Color cellColor)
+    void Collect(TutorialSystem tut)
     {
         Vector3 from = TutorialSystem.PlayerPos;
+        ResearchLab lab = TutorialSystem.FindLab();
         switch (tut.Step)
         {
-            case TutorialStep.LookMove:
-                TutorialSystem.CollectVeinCells(TutorialSystem.IronOreId, cells, 10, from);
-                TutorialSystem.CollectVeinCells(TutorialSystem.CopperOreId, cells, 6, from);
-                cellColor = new Color(1f, 0.85f, 0.4f, 0.28f);
+            case TutorialStep.GoToIron:
+            case TutorialStep.BuildMode:
+                TutorialSystem.CollectVeinCells(TutorialSystem.IronOreId, cells, 8, from);
                 break;
-            case TutorialStep.IronOne:
-            case TutorialStep.IronThree:
+            case TutorialStep.PlaceExtractor:
                 CollectFreeVeins(TutorialSystem.IronOreId, cells, 18, from);
+                break;
+            case TutorialStep.WatchOutput:
                 CollectExtractors(TutorialSystem.IronOreId, buildings);
+                CollectOutputCells(TutorialSystem.IronOreId, cells);
                 break;
-            case TutorialStep.Copy:
-                CollectExtractors(TutorialSystem.IronOreId, buildings);
-                break;
-            case TutorialStep.PasteCopper:
-                CollectFreeVeins(TutorialSystem.CopperOreId, cells, 18, from);
-                CollectExtractors(TutorialSystem.CopperOreId, buildings);
-                cellColor = new Color(0.95f, 0.55f, 0.2f, 0.55f);
-                break;
-            case TutorialStep.Lab:
+            case TutorialStep.PlaceLab:
                 CollectLabSpot(cells);
-                ResearchLab lab = TutorialSystem.FindLab();
+                break;
+            case TutorialStep.RotateBuilding:
                 if (lab != null)
                     buildings.Add(lab);
                 break;
-            case TutorialStep.StartResearch:
-            case TutorialStep.ResearchIronIngot:
-            case TutorialStep.ResearchCopperIngot:
-                lab = TutorialSystem.FindLab();
+            case TutorialStep.DragBelt:
+            case TutorialStep.FirstBelt:
+                if (lab != null)
+                    buildings.Add(lab);
+                Route(tut.Step, TutorialSystem.FirstExtractor(TutorialSystem.IronOreId), lab);
+                break;
+            case TutorialStep.FirstOreIn:
                 if (lab != null)
                     buildings.Add(lab);
                 break;
-            case TutorialStep.Belts:
-            case TutorialStep.WaitChapter1:
-                if (tut.Step == TutorialStep.Belts || tut.WaitStuck)
+            case TutorialStep.GoToCopper:
+                TutorialSystem.CollectVeinCells(TutorialSystem.CopperOreId, cells, 8, from);
+                break;
+            case TutorialStep.CopperLine:
+                if (TutorialSystem.CountExtractors(TutorialSystem.CopperOreId) == 0)
+                    CollectFreeVeins(TutorialSystem.CopperOreId, cells, 18, from);
+                else
+                    Route(tut.Step, TutorialSystem.FirstExtractor(TutorialSystem.CopperOreId), lab);
+                if (lab != null)
+                    buildings.Add(lab);
+                break;
+            case TutorialStep.SpeedUp:
+                if (tut.WaitStuck)
                 {
                     CollectExtractors(TutorialSystem.IronOreId, buildings);
                     CollectExtractors(TutorialSystem.CopperOreId, buildings);
-                    lab = TutorialSystem.FindLab();
                     if (lab != null)
                         buildings.Add(lab);
                 }
+                else
+                {
+                    CollectFreeVeins(TutorialSystem.IronOreId, cells, 6, from);
+                    CollectFreeVeins(TutorialSystem.CopperOreId, cells, 12, from);
+                }
                 break;
             case TutorialStep.PlaceSmelter:
-                CollectBeltCellsNear(TutorialSystem.IronOreId, cells, 10);
+                CollectLineBelts(TutorialSystem.IronOreId, cells, 8);
                 break;
-            case TutorialStep.PickRecipe:
-            case TutorialStep.FirstSmelt:
+            case TutorialStep.FirstIngot:
+            case TutorialStep.CopyLine:
+            case TutorialStep.OpenMachine:
                 CollectBuildings(TutorialSystem.SmelterId, buildings);
                 break;
-            case TutorialStep.CopySmelter:
-                CollectBuildings(TutorialSystem.SmelterId, buildings);
-                CollectFreeVeins(TutorialSystem.CopperOreId, cells, 10, from);
-                CollectBeltCellsNear(TutorialSystem.CopperOreId, cells, 8);
+            case TutorialStep.PasteLine:
+                CollectLineBelts(TutorialSystem.CopperOreId, cells, 8);
                 break;
+        }
+    }
+
+    /// <summary>Маршрут ленты от выхода экстрактора до входа лаборатории (кэш на шаг).</summary>
+    void Route(TutorialStep step, BuildingBase from, BuildingBase to)
+    {
+        if (from == null || to == null)
+            return;
+        if (routeStep != step || Time.unscaledTime >= nextRoute)
+        {
+            routeStep = step;
+            nextRoute = Time.unscaledTime + RouteEvery;
+            if (!BeltRouteHint.Between(from, to, cachedRoute))
+                cachedRoute.Clear();
+        }
+
+        for (int i = 0; i < cachedRoute.Count; i++)
+        {
+            // Уже стоящая лента не нуждается в подсказке.
+            if (BuildingLinker.GetBuildingAt(cachedRoute[i]) is Conveyor)
+                continue;
+            route.Add(cachedRoute[i]);
         }
     }
 
     static void CollectFreeVeins(string resourceId, List<Vector2Int> dest, int max, Vector3 from)
     {
-        var raw = new List<Vector2Int>(32);
-        TutorialSystem.CollectVeinCells(resourceId, raw, 40, from);
+        var raw = new List<Vector2Int>(48);
+        TutorialSystem.CollectVeinCells(resourceId, raw, 48, from);
         for (int i = 0; i < raw.Count && dest.Count < max; i++)
         {
             if (!GridOccupancy.IsCellFree(raw[i]))
@@ -143,6 +205,18 @@ public class TutorialFx : MonoBehaviour
         }
     }
 
+    static void CollectOutputCells(string resourceId, List<Vector2Int> dest)
+    {
+        Extractor e = TutorialSystem.FirstExtractor(resourceId);
+        if (e == null || e.outputSockets == null)
+            return;
+        for (int s = 0; s < e.outputSockets.Length; s++)
+        {
+            if (e.outputSockets[s] != null)
+                dest.Add(BuildingLinker.GetSocketFrontCell(e.outputSockets[s]));
+        }
+    }
+
     static void CollectBuildings(string id, List<BuildingBase> dest)
     {
         BuildingBase[] list = Object.FindObjectsByType<BuildingBase>(FindObjectsSortMode.None);
@@ -153,92 +227,73 @@ public class TutorialFx : MonoBehaviour
         }
     }
 
+    /// <summary>Свободные клетки в 3–7 клетках от выхода первого железного экстрактора.</summary>
     static void CollectLabSpot(List<Vector2Int> dest)
     {
-        Vector3 iron = ClusterCenter(TutorialSystem.IronOreId);
-        Vector3 copper = ClusterCenter(TutorialSystem.CopperOreId);
-        if (iron.sqrMagnitude < 0.01f && copper.sqrMagnitude < 0.01f)
+        Extractor e = TutorialSystem.FirstExtractor(TutorialSystem.IronOreId);
+        if (e == null || e.outputSockets == null || e.outputSockets.Length == 0 || e.outputSockets[0] == null)
             return;
-        Vector3 mid = iron.sqrMagnitude < 0.01f ? copper
-            : copper.sqrMagnitude < 0.01f ? iron
-            : (iron + copper) * 0.5f;
-        Vector2Int origin = BuildingLinker.WorldToCell(mid);
-        for (int z = -4; z <= 4 && dest.Count < 12; z++)
+        BuildingSocket socket = e.outputSockets[0];
+        Vector2Int front = BuildingLinker.GetSocketFrontCell(socket);
+        Vector2Int dir = BuildingLinker.SocketWorldCardinal(socket);
+        Vector2Int side = new Vector2Int(-dir.y, dir.x);
+        for (int d = 3; d <= 7 && dest.Count < 10; d++)
         {
-            for (int x = -4; x <= 4 && dest.Count < 12; x++)
+            for (int s = -1; s <= 1 && dest.Count < 10; s++)
             {
-                Vector2Int cell = origin + new Vector2Int(x, z);
+                Vector2Int cell = front + dir * d + side * s;
                 if (!GridOccupancy.IsCellFree(cell) || ResourceNode.HasNode(cell))
                     continue;
-                if (WorldBiomeMap.Instance != null && WorldBiomeMap.Instance.IsOcean(cell))
+                if (WorldBiomeMap.Instance != null && (WorldBiomeMap.Instance.IsOcean(cell) || WorldBiomeMap.Instance.IsWater(cell)))
                     continue;
                 dest.Add(cell);
             }
         }
     }
 
-    static void CollectBeltCellsNear(string resourceId, List<Vector2Int> dest, int max)
+    /// <summary>Ленты линии от экстрактора руды: туда врезается плавильня.</summary>
+    static void CollectLineBelts(string resourceId, List<Vector2Int> dest, int max)
     {
-        Extractor[] list = Object.FindObjectsByType<Extractor>(FindObjectsSortMode.None);
-        for (int i = 0; i < list.Length && dest.Count < max; i++)
+        Extractor e = TutorialSystem.FirstExtractor(resourceId);
+        if (e == null || e.outputSockets == null)
+            return;
+        for (int s = 0; s < e.outputSockets.Length; s++)
         {
-            Extractor e = list[i];
-            if (e == null || e.resource == null || !TutorialSystem.IdsEqual(e.resource.id, resourceId))
+            if (e.outputSockets[s] == null)
                 continue;
-            if (e.outputSockets == null)
-                continue;
-            for (int s = 0; s < e.outputSockets.Length && dest.Count < max; s++)
+            Vector2Int cell = BuildingLinker.GetSocketFrontCell(e.outputSockets[s]);
+            var seen = new HashSet<Vector2Int>();
+            for (int n = 0; n < 40 && dest.Count < max; n++)
             {
-                BuildingSocket socket = e.outputSockets[s];
-                if (socket == null)
-                    continue;
-                Vector2Int cell = BuildingLinker.GetSocketFrontCell(socket);
-                if (GridOccupancy.IsCellFree(cell))
+                if (!seen.Add(cell))
+                    break;
+                if (!(BuildingLinker.GetBuildingAt(cell) is Conveyor belt))
+                    break;
+                // Первую клетку у самого экстрактора пропускаем — плавильню ставят чуть дальше.
+                if (n >= 1)
                     dest.Add(cell);
-                BuildingBase front = BuildingLinker.GetBuildingAt(cell);
-                if (front is Conveyor)
-                {
-                    Vector2Int next = BuildingLinker.WorldToCell(front.transform.position);
-                    dest.Add(next);
-                }
+                Vector2Int next = cell + BuildingLinker.ToCardinal(belt.transform.forward);
+                cell = next;
             }
         }
     }
 
-    static Vector3 ClusterCenter(string resourceId)
-    {
-        Vector3 sum = Vector3.zero;
-        int n = 0;
-        Extractor[] list = Object.FindObjectsByType<Extractor>(FindObjectsSortMode.None);
-        for (int i = 0; i < list.Length; i++)
-        {
-            Extractor e = list[i];
-            if (e == null || e.resource == null || !TutorialSystem.IdsEqual(e.resource.id, resourceId))
-                continue;
-            sum += e.transform.position;
-            n++;
-        }
-        return n > 0 ? sum / n : Vector3.zero;
-    }
-
-    void ShowCells(List<Vector2Int> list, Color color)
+    void Show(List<Vector2Int> list, Kind kind, float scale, float height, float lift)
     {
         Ensure();
         int used = 0;
-        float size = GridFootprint.CellSize * 0.82f;
+        float size = GridFootprint.CellSize * scale;
         for (int i = 0; i < list.Count; i++)
         {
-            Marker m = Take(used++, false);
+            Marker m = Take(used++, kind);
             Vector3 pos = TutorialSystem.CellWorld(list[i]);
-            pos.y += 0.12f;
+            pos.y += lift;
             m.tr.SetPositionAndRotation(pos, Quaternion.identity);
-            m.tr.localScale = new Vector3(size, 0.08f, size);
-            if (m.rend != null)
-                m.rend.sharedMaterial = Tint(cellMat, color);
+            m.tr.localScale = new Vector3(size, height, size);
             m.go.SetActive(true);
         }
 
-        HideFrom(used, false);
+        HideFrom(used, kind);
     }
 
     void ShowBuildings(List<BuildingBase> list)
@@ -250,7 +305,7 @@ public class TutorialFx : MonoBehaviour
             BuildingBase b = list[i];
             if (b == null)
                 continue;
-            Marker m = Take(used++, true);
+            Marker m = Take(used++, Kind.Building);
             Bounds bounds = RendererBounds(b);
             m.tr.SetPositionAndRotation(bounds.center, Quaternion.identity);
             Vector3 size = bounds.size;
@@ -260,7 +315,35 @@ public class TutorialFx : MonoBehaviour
             m.go.SetActive(true);
         }
 
-        HideFrom(used, true);
+        HideFrom(used, Kind.Building);
+    }
+
+    /// <summary>Столб света над целью шага — виден из-за горы.</summary>
+    void ShowPillar(TutorialSystem tut)
+    {
+        Ensure();
+        bool show = tut.TryGetTarget(out Vector3 target);
+        if (show)
+        {
+            Vector3 player = TutorialSystem.PlayerPos;
+            float flat = Vector2.Distance(new Vector2(player.x, player.z), new Vector2(target.x, target.z));
+            show = flat > 6f;
+        }
+
+        if (pillar == null)
+        {
+            Marker m = Add(Kind.Building);
+            pool.Remove(m);
+            pillar = m.tr;
+            pillar.name = "TutPillar";
+        }
+
+        pillar.gameObject.SetActive(show);
+        if (!show)
+            return;
+        float w = 0.35f + 0.05f * Mathf.Sin(Time.unscaledTime * 3f);
+        pillar.SetPositionAndRotation(target + Vector3.up * 14f, Quaternion.identity);
+        pillar.localScale = new Vector3(w, 28f, w);
     }
 
     static Bounds RendererBounds(BuildingBase building)
@@ -270,7 +353,7 @@ public class TutorialFx : MonoBehaviour
         Bounds bounds = new Bounds(building.transform.position, Vector3.one * 0.8f);
         for (int i = 0; i < rs.Length; i++)
         {
-            if (rs[i] == null || !rs[i].enabled)
+            if (rs[i] == null || !rs[i].enabled || rs[i] is TextMesh || rs[i].GetComponent<TextMesh>() != null)
                 continue;
             if (!any)
             {
@@ -285,29 +368,30 @@ public class TutorialFx : MonoBehaviour
 
     void Pulse()
     {
-        float s = 1f + 0.08f * Mathf.Sin(Time.unscaledTime * 4.2f);
-        Color cell = new Color(1f, 0.82f, 0.25f, 0.35f + 0.2f * (s - 1f) * 8f);
-        Color building = new Color(1f, 0.9f, 0.35f, 0.12f + 0.12f * (s - 1f) * 8f);
-        if (cellMat != null)
-        {
-            cellMat.color = cell;
-            if (cellMat.HasProperty("_Color"))
-                cellMat.SetColor("_Color", cell);
-        }
-        if (buildingMat != null)
-        {
-            buildingMat.color = building;
-            if (buildingMat.HasProperty("_Color"))
-                buildingMat.SetColor("_Color", building);
-        }
+        float k = 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 4.2f);
+        SetColor(cellMat, new Color(1f, 0.82f, 0.25f, 0.35f + 0.25f * k));
+        SetColor(buildingMat, new Color(1f, 0.9f, 0.35f, 0.12f + 0.12f * k));
+        // Маршрут «бежит»: прозрачность чуть сдвинута по фазе.
+        SetColor(routeMat, new Color(0.35f, 0.85f, 1f, 0.45f + 0.3f * (1f - k)));
     }
 
-    void HideFrom(int used, bool building)
+    static void SetColor(Material mat, Color c)
+    {
+        if (mat == null)
+            return;
+        mat.color = c;
+        if (mat.HasProperty("_Color"))
+            mat.SetColor("_Color", c);
+        if (mat.HasProperty("_BaseColor"))
+            mat.SetColor("_BaseColor", c);
+    }
+
+    void HideFrom(int used, Kind kind)
     {
         int seen = 0;
         for (int i = 0; i < pool.Count; i++)
         {
-            if (pool[i].building != building)
+            if (pool[i].kind != kind)
                 continue;
             if (seen >= used && pool[i].go != null)
                 pool[i].go.SetActive(false);
@@ -315,33 +399,33 @@ public class TutorialFx : MonoBehaviour
         }
     }
 
-    Marker Take(int index, bool building)
+    Marker Take(int index, Kind kind)
     {
         int seen = 0;
         for (int i = 0; i < pool.Count; i++)
         {
-            if (pool[i].building != building)
+            if (pool[i].kind != kind)
                 continue;
             if (seen == index)
                 return pool[i];
             seen++;
         }
 
-        return Add(building);
+        return Add(kind);
     }
 
-    Marker Add(bool building)
+    Marker Add(Kind kind)
     {
         Ensure();
-        GameObject go = new GameObject(building ? "TutBuilding" : "TutCell");
+        GameObject go = new GameObject("Tut" + kind);
         go.transform.SetParent(root, false);
         MeshFilter filter = go.AddComponent<MeshFilter>();
         filter.sharedMesh = cube;
         MeshRenderer rend = go.AddComponent<MeshRenderer>();
-        rend.sharedMaterial = building ? buildingMat : cellMat;
+        rend.sharedMaterial = kind == Kind.Building ? buildingMat : kind == Kind.Route ? routeMat : cellMat;
         rend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         rend.receiveShadows = false;
-        var marker = new Marker { go = go, tr = go.transform, rend = rend, building = building };
+        var marker = new Marker { go = go, tr = go.transform, kind = kind };
         pool.Add(marker);
         return marker;
     }
@@ -359,6 +443,8 @@ public class TutorialFx : MonoBehaviour
             cube = CubeMesh();
         if (cellMat == null)
             cellMat = RuntimeMaterials.Create(new Color(1f, 0.82f, 0.25f, 0.5f));
+        if (routeMat == null)
+            routeMat = RuntimeMaterials.Create(new Color(0.35f, 0.85f, 1f, 0.6f));
         if (buildingMat == null)
         {
             buildingMat = RuntimeMaterials.Create(new Color(1f, 0.9f, 0.35f, 0.22f));
@@ -370,16 +456,6 @@ public class TutorialFx : MonoBehaviour
                 buildingMat.renderQueue = 3100;
             }
         }
-    }
-
-    static Material Tint(Material mat, Color color)
-    {
-        if (mat == null)
-            return null;
-        if (mat.HasProperty("_Color"))
-            mat.SetColor("_Color", color);
-        mat.color = color;
-        return mat;
     }
 
     static Mesh CubeMesh()

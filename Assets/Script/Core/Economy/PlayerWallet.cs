@@ -155,6 +155,19 @@ public class PlayerWallet : MonoBehaviour
         return true;
     }
 
+    /// <summary>Купить рубины за монеты по курсу <see cref="Economy.CoinsPerRubyBuy"/>.</summary>
+    public bool TryBuyRubies(int rubies)
+    {
+        int cost = rubies * Economy.CoinsPerRubyBuy;
+        if (rubies <= 0 || Coins < cost)
+            return false;
+        Coins -= cost;
+        ProductionStats.Instance?.RecordCoinsSpent(cost);
+        EconomyLedger.Record(MoneySource.Exchange, -cost, 0);
+        AddRubies(rubies, MoneySource.Exchange);
+        return true;
+    }
+
     public void CaptureSave(SaveData save)
     {
         if (save == null)

@@ -103,6 +103,40 @@ public class Drone : MonoBehaviour
         CargoCount = 0;
     }
 
+    /// <summary>Консоль (/drones recall): развернуть домой, груз вернётся на станцию.</summary>
+    public bool DevRecall()
+    {
+        if (State == Phase.Parked || State == Phase.ClimbBack || State == Phase.Return || State == Phase.Land)
+            return false;
+        ReleasePad();
+        State = Phase.ClimbBack;
+        return true;
+    }
+
+    /// <summary>Куда дрон летит сейчас (для /drones path).</summary>
+    public Vector3 DevGoal()
+    {
+        if (Home == null)
+            return transform.position;
+        float cruiseY = Home.transform.position.y + DroneNetwork.CruiseHeight;
+        switch (State)
+        {
+            case Phase.Climb:
+            case Phase.Cruise:
+            case Phase.Hover:
+                return Target != null ? Above(Target.transform.position, cruiseY) : transform.position;
+            case Phase.Descend:
+            case Phase.Unload:
+                return Target != null && targetPad >= 0 ? Target.PadWorld(targetPad) : transform.position;
+            case Phase.ClimbBack:
+            case Phase.Return:
+            case Phase.Land:
+                return Home.PadWorld(HomePad);
+            default:
+                return transform.position;
+        }
+    }
+
     void ShowCrate(bool on)
     {
         if (crate != null)
@@ -111,7 +145,7 @@ public class Drone : MonoBehaviour
 
     float SpeedMul()
     {
-        float mul = 1f;
+        float mul = DroneNetwork.DevSpeedMul;
         if (Home != null && Home.BreakMode == 2)
             mul *= 0.25f;
         return mul;

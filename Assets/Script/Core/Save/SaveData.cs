@@ -37,6 +37,21 @@ public class SaveData
     public int tutorialStep;
     public bool tutorialFinished;
     public bool tutorialSkipped;
+    /// <summary>Версия сценария обучения ([[TutorialSystem.Rev]]): 0 — старые 19 шагов.</summary>
+    public int tutorialRev;
+    /// <summary>Подсказки «в первый раз», уже показанные в этом мире.</summary>
+    public List<string> hintsSeen = new List<string>();
+    /// <summary>Пройденные вехи (цели) и пользовательская отслеживаемая цепочка.</summary>
+    public List<string> milestonesDone = new List<string>();
+    public string trackedItemId;
+    /// <summary>Плюшки персонажа «id=уровень» и включённая косметика «группа=id» ([[PerkSystem]]).</summary>
+    public List<string> perks = new List<string>();
+    public List<string> perksWorn = new List<string>();
+    /// <summary>Хотбар снаряжения (вне стройки): id плюшек по слотам ([[GearHotbar]]).</summary>
+    public List<string> gearHotbar = new List<string>();
+    /// <summary>Ремкомплект: в какой игровой день и сколько зарядов потрачено.</summary>
+    public int repairKitDay;
+    public int repairKitUsed;
     public List<string> achievements = new List<string>();
     public bool timeCheated;
     public List<SaveKeyValue> extras = new List<SaveKeyValue>();

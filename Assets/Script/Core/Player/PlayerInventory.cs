@@ -103,6 +103,14 @@ public class PlayerInventory : MonoBehaviour
         InventoryUI ui = InventoryUI.Instance;
         if (ui == null)
             return;
+        // Вне стройки I — сумка снаряжения ([[GearHotbar]]).
+        PlayerBuilder b0 = ResolveBuilder();
+        if ((b0 == null || !b0.isBuildMode) && !ui.IsBagOpen && GearHotbar.Instance != null)
+        {
+            GearHotbar.Instance.ToggleBag();
+            return;
+        }
+
         UiStack.Hotkey(InventoryUI.WindowId, () =>
         {
             // Сумка зданий — только в режиме стройки.

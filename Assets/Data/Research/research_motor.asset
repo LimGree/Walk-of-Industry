@@ -18,9 +18,9 @@ MonoBehaviour:
   icon: {fileID: 1472058391, guid: 011d7017e0477574cb335b07a25d1f54, type: 3}
   requiredItems:
   - item: {fileID: 11400000, guid: 2021222324252627282920a1b2c3d4e6, type: 2}
-    amount: 400
+    amount: 300
   - item: {fileID: 11400000, guid: 217f28faff3699148aee942274ec50ec, type: 2}
-    amount: 1800
+    amount: 500
   requiredResearches:
   - {fileID: 11400000, guid: 5c1c4be4935f4e1eba780db8862385c6, type: 2}
   - {fileID: 11400000, guid: 36f000e1c18e499981637e4cd62b8198, type: 2}

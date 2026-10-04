@@ -2,24 +2,28 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UIElements;
 
+/// <summary>
+/// UI вводной главы. Без модалок: карточка цели (1 строка цели + 1 строка пояснения + прогресс),
+/// стрелка-указатель на краю экрана до цели шага, финальная карточка с переходом к Карте производства.
+/// F1 — пропустить всё, F2 — шаг, F3 — повтор.
+/// </summary>
 public class TutorialUI : MonoBehaviour
 {
     public static TutorialUI Instance { get; private set; }
 
     VisualElement root;
-    VisualElement modal;
-    Label modalTitle;
-    Label modalBody;
-    Label modalHint;
-    Button modalStart;
-    Button modalSkip;
-    Button modalPlay;
 
     VisualElement hud;
+    Label hudStep;
     Label hudGoal;
     Label hudBody;
+    VisualElement hudProgress;
+    Label hudProgressText;
     Label hudSkipHint;
-    VisualElement hudActions;
+
+    VisualElement pointer;
+    Label pointerArrow;
+    Label pointerDist;
 
     VisualElement lastGlow;
     string lastKey;
@@ -50,24 +54,20 @@ public class TutorialUI : MonoBehaviour
     void LateUpdate()
     {
         TutorialSystem tut = TutorialSystem.Instance;
-        if (tut != null && tut.IsRunning)
-        {
-            tut.NoteWaitProgress();
-            PollSkipKey();
-        }
-
         if (tut == null || !tut.IsRunning)
         {
             if (lastKey != "off")
             {
                 lastKey = "off";
                 HideAll();
-                if (GameManager.Instance != null)
-                    GameManager.Instance.RestoreGameplayFocus();
             }
             return;
         }
 
+        tut.NoteWaitProgress();
+        PollSkipKey();
+
+        // Перерисовываем текст раз в секунду (прогресс руды, оценка времени) и на смене шага/языка.
         string key = tut.Step + "|" + Mathf.FloorToInt(tut.StepAge) + "|" + UiLocale.Code;
         if (key != lastKey)
         {
@@ -75,72 +75,46 @@ public class TutorialUI : MonoBehaviour
             Apply(tut);
         }
 
-        if (tut.IsModal)
-            HoldModalFocus();
-
-        ApplyGlow(tut);
+        HudAvoid.Place(hud, right: false, fromTop: true, offset: 92f);
+        UpdatePointer(tut);
+        Glow(FindGlow(tut));
     }
 
-    public bool IsModalOpen
-    {
-        get
-        {
-            TutorialSystem tut = TutorialSystem.Instance;
-            return tut != null && tut.IsModal && modal != null && modal.style.display == DisplayStyle.Flex;
-        }
-    }
+    public bool IsModalOpen => false;
 
     void Build()
     {
         root = IndustryUi.Mount(this, 160);
         root.pickingMode = PickingMode.Ignore;
 
-        modal = IndustryUi.El("TutModal", "tut-modal");
-        modal.pickingMode = PickingMode.Position;
-        var dim = IndustryUi.El("Dim", "tut-dim");
-        dim.pickingMode = PickingMode.Position;
-        var panel = IndustryUi.El("Panel", "panel", "tut-panel");
-        modalTitle = IndustryUi.Text("TT", "", "heading-2");
-        modalBody = IndustryUi.Text("TB", "", "body-text");
-        modalBody.style.whiteSpace = WhiteSpace.Normal;
-        var actions = IndustryUi.El("Actions", "row", "tut-actions");
-        modalSkip = IndustryUi.Btn(UiLocale.T("tut.skip"), OnSkip, "btn-ghost");
-        modalStart = IndustryUi.Btn(UiLocale.T("tut.start"), OnStart, "btn-primary");
-        modalPlay = IndustryUi.Btn(UiLocale.T("tut.play"), OnPlay, "btn-primary");
-        modalStart.name = "TutStart";
-        modalSkip.pickingMode = PickingMode.Position;
-        modalStart.pickingMode = PickingMode.Position;
-        modalPlay.pickingMode = PickingMode.Position;
-        actions.Add(modalSkip);
-        actions.Add(modalStart);
-        actions.Add(modalPlay);
-        panel.Add(modalTitle);
-        panel.Add(modalBody);
-        panel.Add(actions);
-        modalHint = IndustryUi.Text("Hint", "", "tut-skip-hint");
-        panel.Add(modalHint);
-        modal.Add(dim);
-        modal.Add(panel);
-        IndustryUi.Show(modal, false);
-        root.Add(modal);
-
         hud = IndustryUi.El("TutHud", "tut-hud");
         hud.pickingMode = PickingMode.Ignore;
+        hudStep = IndustryUi.Text("Step", "", "tut-step");
         hudGoal = IndustryUi.Text("G", "", "tut-goal");
         hudBody = IndustryUi.Text("B", "", "tut-body");
         hudBody.style.whiteSpace = WhiteSpace.Normal;
+        hudProgress = IndustryUi.ProgressBar("TutProgress");
+        hudProgressText = IndustryUi.Text("PT", "", "tut-progress-text");
         hudSkipHint = IndustryUi.Text("SkipHint", "", "tut-skip-hint");
-        hudActions = IndustryUi.El("HudAct", "row", "tut-hud-actions");
-        hudActions.pickingMode = PickingMode.Position;
-        hudActions.Add(IndustryUi.Btn(UiLocale.T("tut.repeat"), OnRepeat, "btn-small", "btn-ghost"));
-        hudActions.Add(IndustryUi.Btn(UiLocale.T("tut.skip_lab"), OnSkipLab, "btn-small", "btn-ghost"));
-        hudActions.Add(IndustryUi.Btn(UiLocale.T("tut.skip_belts"), OnSkipBelts, "btn-small", "btn-ghost"));
+
+        // Кнопок нет: в игре курсор заблокирован. Всё — клавишами (строка подсказки внизу карточки).
+        hud.Add(hudStep);
         hud.Add(hudGoal);
         hud.Add(hudBody);
-        hud.Add(hudActions);
+        hud.Add(hudProgress);
+        hud.Add(hudProgressText);
         hud.Add(hudSkipHint);
         IndustryUi.Show(hud, false);
         root.Add(hud);
+
+        pointer = IndustryUi.El("TutPointer", "tut-pointer");
+        pointer.pickingMode = PickingMode.Ignore;
+        pointerArrow = IndustryUi.Text("Arrow", "▲", "tut-pointer-arrow");
+        pointerDist = IndustryUi.Text("Dist", "", "tut-pointer-dist");
+        pointer.Add(pointerArrow);
+        pointer.Add(pointerDist);
+        IndustryUi.Show(pointer, false);
+        root.Add(pointer);
     }
 
     void Refresh()
@@ -155,119 +129,106 @@ public class TutorialUI : MonoBehaviour
 
     void HideAll()
     {
-        IndustryUi.Show(modal, false);
         IndustryUi.Show(hud, false);
-        if (root != null)
-            root.pickingMode = PickingMode.Ignore;
+        IndustryUi.Show(pointer, false);
         Glow(null);
     }
 
     void Apply(TutorialSystem tut)
     {
-        bool welcome = tut.Step == TutorialStep.Welcome;
-        bool bye = tut.Step == TutorialStep.Farewell;
-        bool quiet = tut.Step == TutorialStep.WaitChapter1;
+        if (hud == null)
+            return;
+        bool handoff = tut.Step == TutorialStep.Handoff;
+        IndustryUi.Show(hud, true);
+        hud.pickingMode = PickingMode.Ignore;
 
-        IndustryUi.Show(modal, welcome || bye);
-        IndustryUi.Show(hud, !welcome && !bye);
-        IndustryUi.Show(modalStart, welcome);
-        IndustryUi.Show(modalPlay, bye);
-        IndustryUi.Show(hudBody, !quiet);
-        if (root != null)
-            root.pickingMode = welcome || bye ? PickingMode.Position : PickingMode.Ignore;
-
-        if (welcome || bye)
-            HoldModalFocus();
-        else if (GameManager.Instance != null)
-            GameManager.Instance.RestoreGameplayFocus();
-
-        if (welcome)
-        {
-            modalTitle.text = UiLocale.T("tut.welcome.title");
-            modalBody.text = UiLocale.T("tut.welcome.body");
-            IndustryUi.SetButtonLabel(modalStart, UiLocale.T("tut.start"));
-            IndustryUi.SetButtonLabel(modalSkip, UiLocale.T("tut.skip"));
-            if (modalHint != null)
-                modalHint.text = UiLocale.T("tut.skip_key", "F1", "F2", "F3");
-        }
-        else if (bye)
-        {
-            modalTitle.text = UiLocale.T("tut.bye.title");
-            modalBody.text = UiLocale.T("tut.bye.body");
-            IndustryUi.SetButtonLabel(modalPlay, UiLocale.T("tut.play"));
-            IndustryUi.SetButtonLabel(modalSkip, UiLocale.T("tut.skip"));
-            if (modalHint != null)
-                modalHint.text = UiLocale.T("tut.skip_key", "F1", "F2", "F3");
-        }
-
+        int n = (int)tut.Step + 1;
+        int total = (int)TutorialStep.Handoff + 1;
+        hudStep.text = UiLocale.T("tut.step_of", n, total);
         hudGoal.text = GoalText(tut);
-        hudBody.text = BodyText(tut);
-        if (hudSkipHint != null)
-            hudSkipHint.text = UiLocale.T("tut.skip_key", "F1", "F2", "F3");
+        string body = BodyText(tut);
+        hudBody.text = body;
+        IndustryUi.Show(hudBody, !string.IsNullOrEmpty(body));
+
+        bool wait = tut.Step == TutorialStep.SpeedUp || tut.Step == TutorialStep.FirstBelt || tut.Step == TutorialStep.CopperLine;
+        if (wait)
+        {
+            int iron = tut.Submitted(TutorialSystem.IronOreId);
+            int copper = tut.Submitted(TutorialSystem.CopperOreId);
+            int ironNeed = tut.Required(TutorialSystem.IronOreId);
+            int copperNeed = tut.Required(TutorialSystem.CopperOreId);
+            float t = (Mathf.Min(iron, ironNeed) + Mathf.Min(copper, copperNeed)) / (float)Mathf.Max(1, ironNeed + copperNeed);
+            IndustryUi.SetProgress(hudProgress, t);
+            string text = UiLocale.T("tut.progress", Item(TutorialSystem.IronOreId), iron, ironNeed, Item(TutorialSystem.CopperOreId), copper, copperNeed);
+            float eta = tut.EstimateWaitSeconds();
+            if (eta > 0f && tut.Step == TutorialStep.SpeedUp)
+                text += "  ·  " + UiLocale.T("tut.eta", Mathf.CeilToInt(eta / 60f));
+            hudProgressText.text = text;
+        }
+
+        IndustryUi.Show(hudProgress, wait);
+        IndustryUi.Show(hudProgressText, wait);
+        hudSkipHint.text = handoff
+            ? UiLocale.T("tut.handoff_keys", KeybindStore.Hint("ProductionMap"), "F2")
+            : UiLocale.T("tut.skip_key", "F1", "F2", "F3");
+    }
+
+    static string Item(string id)
+    {
+        ItemData item = GameDatabase.FindItem(id);
+        return item != null ? item.Title : id;
+    }
+
+    static string Building(string id)
+    {
+        BuildingData b = GameDatabase.FindBuilding(id);
+        return b != null ? b.Title : id;
     }
 
     static string GoalText(TutorialSystem tut)
     {
-        string b = KeybindStore.Hint("BuildMode");
-        string i = KeybindStore.Hint("Inventory");
-        string tab = KeybindStore.Hint("SelectMode");
-        string copy = KeybindStore.Hint("Copy");
-        string paste = KeybindStore.Hint("Paste");
-        string interact = KeybindStore.Hint("Interact");
-        string research = KeybindStore.Hint("Research");
-        string place = KeybindStore.Hint("Place");
-
         switch (tut.Step)
         {
-            case TutorialStep.LookMove:
-                return UiLocale.T("tut.obj.look");
+            case TutorialStep.Intro:
+                return UiLocale.T("tut.obj.intro");
+            case TutorialStep.GoToIron:
+                return UiLocale.T("tut.obj.go_iron", Item(TutorialSystem.IronOreId));
             case TutorialStep.BuildMode:
-                return UiLocale.T("tut.obj.build", b);
-            case TutorialStep.Hotbar:
-                return UiLocale.T("tut.obj.hotbar", i);
-            case TutorialStep.IronOne:
-                return UiLocale.T("tut.obj.iron");
-            case TutorialStep.IronThree:
-                return UiLocale.T("tut.obj.iron3");
-            case TutorialStep.Copy:
-                return UiLocale.T("tut.obj.copy", tab, copy);
-            case TutorialStep.PasteCopper:
-                return UiLocale.T("tut.obj.paste", paste);
-            case TutorialStep.Lab:
-                return UiLocale.T("tut.obj.lab");
-            case TutorialStep.StartResearch:
-                return UiLocale.T("tut.obj.research", interact, research);
-            case TutorialStep.Belts:
-                return UiLocale.T("tut.obj.belts", place);
-            case TutorialStep.WaitChapter1:
-                return UiLocale.T(
-                    "tut.obj.wait",
-                    tut.Submitted(TutorialSystem.IronOreId),
-                    tut.Required(TutorialSystem.IronOreId),
-                    tut.Submitted(TutorialSystem.CopperOreId),
-                    tut.Required(TutorialSystem.CopperOreId));
+                return UiLocale.T("tut.obj.build", KeybindStore.Hint("BuildMode"));
+            case TutorialStep.PlaceExtractor:
+                return UiLocale.T("tut.obj.extractor", Building(TutorialSystem.ExtractorId), KeybindStore.Hint("Place"));
+            case TutorialStep.WatchOutput:
+                return UiLocale.T("tut.obj.output");
+            case TutorialStep.PlaceLab:
+                return UiLocale.T("tut.obj.lab", Building(TutorialSystem.LabId));
+            case TutorialStep.RotateBuilding:
+                return UiLocale.T("tut.obj.rotate", Building(TutorialSystem.ConveyorId), KeybindStore.Hint("Rotate"));
+            case TutorialStep.DragBelt:
+                return UiLocale.T("tut.obj.drag", KeybindStore.Hint("Place"));
+            case TutorialStep.FirstBelt:
+                return UiLocale.T("tut.obj.belt", KeybindStore.Hint("Place"));
+            case TutorialStep.FirstOreIn:
+                return UiLocale.T("tut.obj.ore_in");
+            case TutorialStep.GoToCopper:
+                return UiLocale.T("tut.obj.go_copper", Item(TutorialSystem.CopperOreId));
+            case TutorialStep.CopperLine:
+                return UiLocale.T("tut.obj.copper_line");
+            case TutorialStep.SpeedUp:
+                return UiLocale.T("tut.obj.speed");
+            case TutorialStep.Unlocked:
+                return UiLocale.T("tut.obj.unlocked", Building(TutorialSystem.SmelterId));
             case TutorialStep.PlaceSmelter:
-                return UiLocale.T("tut.obj.smelter");
-            case TutorialStep.ResearchIronIngot:
-                return UiLocale.T(
-                    "tut.obj.ingot_iron",
-                    interact,
-                    research,
-                    tut.Submitted(TutorialSystem.IronOreId),
-                    tut.Required(TutorialSystem.IronOreId));
-            case TutorialStep.PickRecipe:
-                return UiLocale.T("tut.obj.recipe", interact);
-            case TutorialStep.FirstSmelt:
-                return UiLocale.T("tut.obj.smelt");
-            case TutorialStep.ResearchCopperIngot:
-                return UiLocale.T(
-                    "tut.obj.ingot_copper",
-                    interact,
-                    research,
-                    tut.Submitted(TutorialSystem.CopperOreId),
-                    tut.Required(TutorialSystem.CopperOreId));
-            case TutorialStep.CopySmelter:
-                return UiLocale.T("tut.obj.copy_smelter", tab, copy, paste);
+                return UiLocale.T("tut.obj.smelter", Building(TutorialSystem.SmelterId));
+            case TutorialStep.FirstIngot:
+                return UiLocale.T("tut.obj.ingot", Item(TutorialSystem.IronIngotId));
+            case TutorialStep.CopyLine:
+                return UiLocale.T("tut.obj.copy", KeybindStore.Hint("SelectMode"), KeybindStore.Hint("Copy"));
+            case TutorialStep.PasteLine:
+                return UiLocale.T("tut.obj.paste", KeybindStore.Hint("Paste"));
+            case TutorialStep.OpenMachine:
+                return UiLocale.T("tut.obj.machine", KeybindStore.Hint("Interact"));
+            case TutorialStep.Handoff:
+                return UiLocale.T("tut.obj.handoff");
             default:
                 return "";
         }
@@ -275,66 +236,111 @@ public class TutorialUI : MonoBehaviour
 
     static string BodyText(TutorialSystem tut)
     {
-        string rot = KeybindStore.Hint("Rotate");
-        string map = KeybindStore.Hint("MoveSelection");
-        string interact = KeybindStore.Hint("Interact");
-        string research = KeybindStore.Hint("Research");
-        string empty = KeybindStore.Hint("SelectMode");
-
         switch (tut.Step)
         {
-            case TutorialStep.LookMove:
-                return UiLocale.T("tut.body.look");
-            case TutorialStep.BuildMode:
-                return UiLocale.T("tut.body.build");
-            case TutorialStep.Hotbar:
-                return UiLocale.T("tut.body.hotbar");
-            case TutorialStep.IronOne:
-                return tut.StepAge > 40f
-                    ? UiLocale.T("tut.body.iron_map", map)
-                    : UiLocale.T("tut.body.iron", rot);
-            case TutorialStep.IronThree:
-                return UiLocale.T("tut.body.iron3", rot);
-            case TutorialStep.Copy:
-                return UiLocale.T("tut.body.copy", empty);
-            case TutorialStep.PasteCopper:
-                return tut.StepAge > 40f
-                    ? UiLocale.T("tut.body.paste_map", map)
-                    : UiLocale.T("tut.body.paste", rot);
-            case TutorialStep.Lab:
+            case TutorialStep.Intro:
+                return UiLocale.T("tut.body.intro");
+            case TutorialStep.GoToIron:
+                return tut.StepAge > 30f
+                    ? UiLocale.T("tut.body.go_map", KeybindStore.Hint("MoveSelection"))
+                    : UiLocale.T("tut.body.go_iron");
+            case TutorialStep.PlaceExtractor:
+                return UiLocale.T("tut.body.extractor", KeybindStore.Hint("Rotate"));
+            case TutorialStep.WatchOutput:
+                return UiLocale.T("tut.body.output");
+            case TutorialStep.PlaceLab:
                 return UiLocale.T("tut.body.lab");
-            case TutorialStep.StartResearch:
-                return tut.StepAge > 15f
-                    ? UiLocale.T("tut.body.research_stuck", interact, research)
-                    : UiLocale.T("tut.body.research");
-            case TutorialStep.Belts:
-                return UiLocale.T("tut.body.belts", rot);
-            case TutorialStep.WaitChapter1:
-                return UiLocale.T("tut.body.wait", interact);
+            case TutorialStep.RotateBuilding:
+                return UiLocale.T("tut.body.rotate", KeybindStore.Hint("Rotate"));
+            case TutorialStep.DragBelt:
+                return UiLocale.T("tut.body.drag");
+            case TutorialStep.FirstBelt:
+                return UiLocale.T("tut.body.belt");
+            case TutorialStep.FirstOreIn:
+                return UiLocale.T("tut.body.ore_in");
+            case TutorialStep.GoToCopper:
+                return tut.StepAge > 30f
+                    ? UiLocale.T("tut.body.go_map", KeybindStore.Hint("MoveSelection"))
+                    : "";
+            case TutorialStep.CopperLine:
+                return UiLocale.T("tut.body.copper_line");
+            case TutorialStep.SpeedUp:
+                return tut.WaitStuck ? UiLocale.T("tut.body.stuck") : UiLocale.T("tut.body.speed");
             case TutorialStep.PlaceSmelter:
                 return UiLocale.T("tut.body.smelter");
-            case TutorialStep.ResearchIronIngot:
-                return UiLocale.T("tut.body.ingot_iron", interact, research);
-            case TutorialStep.PickRecipe:
-                return UiLocale.T("tut.body.recipe");
-            case TutorialStep.FirstSmelt:
-                return UiLocale.T("tut.body.smelt");
-            case TutorialStep.ResearchCopperIngot:
-                return UiLocale.T("tut.body.ingot_copper", interact, research);
-            case TutorialStep.CopySmelter:
-                return UiLocale.T("tut.body.copy_smelter");
+            case TutorialStep.FirstIngot:
+                return UiLocale.T("tut.body.ingot");
+            case TutorialStep.CopyLine:
+                return UiLocale.T("tut.body.copy");
+            case TutorialStep.PasteLine:
+                return UiLocale.T("tut.body.paste", KeybindStore.Hint("Rotate"));
+            case TutorialStep.OpenMachine:
+                return UiLocale.T("tut.body.machine");
+            case TutorialStep.Handoff:
+                return UiLocale.T("tut.body.handoff", KeybindStore.Hint("ProductionMap"), KeybindStore.Hint("Goals"));
             default:
                 return "";
         }
     }
 
-    void ApplyGlow(TutorialSystem tut)
+    // ---------- Стрелка-указатель ----------
+
+    void UpdatePointer(TutorialSystem tut)
     {
-        VisualElement target = FindGlow(tut);
-        Glow(target);
-        if (tut.Step == TutorialStep.Welcome)
-            Glow(modalStart);
+        if (pointer == null || root == null || root.panel == null)
+            return;
+        Camera cam = Camera.main;
+        if (cam == null || !tut.TryGetTarget(out Vector3 target))
+        {
+            IndustryUi.Show(pointer, false);
+            return;
+        }
+
+        Vector3 player = TutorialSystem.PlayerPos;
+        float dist = Vector2.Distance(new Vector2(player.x, player.z), new Vector2(target.x, target.z));
+        Vector3 sp = cam.WorldToScreenPoint(target + Vector3.up * 1.5f);
+        bool behind = sp.z < 0f;
+        if (behind)
+            sp = new Vector3(Screen.width - sp.x, Screen.height - sp.y, -sp.z);
+
+        float margin = Mathf.Min(Screen.width, Screen.height) * 0.08f;
+        bool onScreen = !behind && sp.x > margin && sp.x < Screen.width - margin && sp.y > margin && sp.y < Screen.height - margin;
+
+        // Цель рядом и в кадре — достаточно подсветки в мире.
+        if (onScreen && dist < 10f)
+        {
+            IndustryUi.Show(pointer, false);
+            return;
+        }
+
+        Vector2 center = new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
+        Vector2 pos = new Vector2(sp.x, sp.y);
+        float angle;
+        if (onScreen)
+        {
+            angle = 180f; // стрелка вниз, над целью
+        }
+        else
+        {
+            Vector2 dir = (pos - center).normalized;
+            if (dir.sqrMagnitude < 0.0001f)
+                dir = Vector2.up;
+            float sx = (Screen.width * 0.5f - margin) / Mathf.Max(0.0001f, Mathf.Abs(dir.x));
+            float sy = (Screen.height * 0.5f - margin) / Mathf.Max(0.0001f, Mathf.Abs(dir.y));
+            pos = center + dir * Mathf.Min(sx, sy);
+            // «▲» смотрит вверх; rotate в UI Toolkit — по часовой.
+            angle = Mathf.Atan2(dir.x, dir.y) * Mathf.Rad2Deg;
+        }
+
+        Vector2 panelPos = RuntimePanelUtils.ScreenToPanel(root.panel, new Vector2(pos.x, Screen.height - pos.y));
+        pointer.style.left = panelPos.x - 30f;
+        pointer.style.top = panelPos.y - 30f;
+        pointerArrow.style.rotate = new Rotate(new Angle(angle, AngleUnit.Degree));
+        pointerDist.text = UiLocale.T("tut.meters", Mathf.RoundToInt(dist));
+        IndustryUi.Show(pointer, true);
     }
+
+    // ---------- Подсветка UI ----------
 
     VisualElement FindGlow(TutorialSystem tut)
     {
@@ -342,99 +348,39 @@ public class TutorialUI : MonoBehaviour
         {
             case TutorialStep.BuildMode:
                 return FindHint(KeybindStore.Hint("BuildMode"));
-            case TutorialStep.Hotbar:
-                if (InventoryUI.Instance != null && InventoryUI.Instance.IsBagOpen)
-                {
-                    VisualElement card = InventoryUI.Instance.FindBagCard(NextHotbarNeed());
-                    if (card != null)
-                        return card;
-                    return InventoryUI.Instance.FirstEmptySlot();
-                }
-                return FindHint(KeybindStore.Hint("Inventory"));
-            case TutorialStep.IronOne:
-            case TutorialStep.PasteCopper:
-                if (tut.StepAge > 40f)
-                    return FindHint(KeybindStore.Hint("MoveSelection"));
-                return null;
-            case TutorialStep.Copy:
-                if (TutorialSystem.Builder != null && TutorialSystem.Builder.Selection != null
-                    && TutorialSystem.Builder.Selection.HasSelectedBuildings)
-                    return FindHint(KeybindStore.Hint("Copy"));
-                return FindHint(KeybindStore.Hint("SelectMode"));
-            case TutorialStep.StartResearch:
-                return GlowResearch(tut, TutorialSystem.BasicId);
-            case TutorialStep.ResearchIronIngot:
-                return GlowResearch(tut, TutorialSystem.IronIngotResearchId);
-            case TutorialStep.ResearchCopperIngot:
-                return GlowResearch(tut, TutorialSystem.CopperIngotResearchId);
+            case TutorialStep.PlaceExtractor:
+                return HotbarSlot(TutorialSystem.ExtractorId);
+            case TutorialStep.PlaceLab:
+                return HotbarSlot(TutorialSystem.LabId);
+            case TutorialStep.RotateBuilding:
+                if (TutorialSystem.Builder != null && TutorialSystem.Builder.HasHeldBuilding)
+                    return FindHint(KeybindStore.Hint("Rotate"));
+                return HotbarSlot(TutorialSystem.ConveyorId);
+            case TutorialStep.DragBelt:
+            case TutorialStep.FirstBelt:
+                return HotbarSlot(TutorialSystem.ConveyorId);
+            case TutorialStep.GoToIron:
+            case TutorialStep.GoToCopper:
+                return tut.StepAge > 30f ? FindHint(KeybindStore.Hint("MoveSelection")) : null;
             case TutorialStep.PlaceSmelter:
-                if (InventoryUI.Instance != null)
-                {
-                    VisualElement slot = InventoryUI.Instance.FindHotbarBuilding(TutorialSystem.SmelterId);
-                    if (slot != null)
-                        return slot;
-                    if (InventoryUI.Instance.IsBagOpen)
-                        return InventoryUI.Instance.FindBagCard(TutorialSystem.SmelterId);
-                }
-                return FindHint(KeybindStore.Hint("Inventory"));
-            case TutorialStep.PickRecipe:
-                return FindNamed("Rec_" + TutorialSystem.IronIngotRecipeId)
-                    ?? FindHint(KeybindStore.Hint("Interact"));
-            case TutorialStep.CopySmelter:
-                if (MachineUI.Instance != null && MachineUI.Instance.IsOpen)
-                    return FindNamed("Rec_" + TutorialSystem.CopperIngotRecipeId);
-                if (TutorialSystem.Builder != null && TutorialSystem.Builder.Selection != null
-                    && TutorialSystem.Builder.Selection.HasClipboard)
-                    return FindHint(KeybindStore.Hint("Paste"));
+                return HotbarSlot(TutorialSystem.SmelterId) ?? FindHint(KeybindStore.Hint("Inventory"));
+            case TutorialStep.CopyLine:
                 if (TutorialSystem.Builder != null && TutorialSystem.Builder.Selection != null
                     && TutorialSystem.Builder.Selection.HasSelectedBuildings)
                     return FindHint(KeybindStore.Hint("Copy"));
                 return FindHint(KeybindStore.Hint("SelectMode"));
+            case TutorialStep.PasteLine:
+                return FindHint(KeybindStore.Hint("Paste"));
+            case TutorialStep.OpenMachine:
+                return FindHint(KeybindStore.Hint("Interact"));
             default:
                 return null;
         }
     }
 
-    VisualElement GlowResearch(TutorialSystem tut, string researchId)
+    static VisualElement HotbarSlot(string buildingId)
     {
-        VisualElement node = FindNamed("Res_" + researchId);
-        if (node != null)
-            return node;
-        VisualElement start = FindNamed("ResearchStart");
-        if (start != null)
-            return start;
-        if (tut.StepAge > 15f)
-        {
-            PlayerInteractor interactor = TutorialSystem.Builder != null
-                ? TutorialSystem.Builder.GetComponent<PlayerInteractor>()
-                : null;
-            if (interactor != null && interactor.HasInteractableTarget)
-                return FindHint(KeybindStore.Hint("Interact"));
-            return FindHint(KeybindStore.Hint("Research"));
-        }
-        return null;
-    }
-
-    static string NextHotbarNeed()
-    {
-        if (!HasHotbar(TutorialSystem.ExtractorId))
-            return TutorialSystem.ExtractorId;
-        if (!HasHotbar(TutorialSystem.ConveyorId))
-            return TutorialSystem.ConveyorId;
-        return TutorialSystem.LabId;
-    }
-
-    static bool HasHotbar(string id)
-    {
-        PlayerInventory inv = TutorialSystem.Inventory;
-        if (inv == null || inv.hotbar == null)
-            return false;
-        for (int i = 0; i < inv.hotbar.Length; i++)
-        {
-            if (inv.hotbar[i] != null && TutorialSystem.IdsEqual(inv.hotbar[i].id, id))
-                return true;
-        }
-        return false;
+        return InventoryUI.Instance != null ? InventoryUI.Instance.FindHotbarBuilding(buildingId) : null;
     }
 
     VisualElement FindHint(string key)
@@ -458,6 +404,13 @@ public class TutorialUI : MonoBehaviour
     {
         if (string.IsNullOrEmpty(name))
             return null;
+        if (root != null)
+        {
+            VisualElement own = root.Q(name);
+            if (own != null)
+                return own;
+        }
+
         UIDocument[] docs = Object.FindObjectsByType<UIDocument>(FindObjectsSortMode.None);
         for (int i = 0; i < docs.Length; i++)
         {
@@ -468,54 +421,6 @@ public class TutorialUI : MonoBehaviour
                 return found;
         }
         return null;
-    }
-
-    void PollSkipKey()
-    {
-        TutorialSystem tut = TutorialSystem.Instance;
-        if (tut == null || !tut.IsRunning)
-            return;
-        if (KeybindStore.IsListening)
-            return;
-        Keyboard keyboard = Keyboard.current;
-        if (keyboard == null)
-            return;
-        if (keyboard.f1Key.wasPressedThisFrame)
-        {
-            tut.Skip();
-            return;
-        }
-
-        if (keyboard.f2Key.wasPressedThisFrame)
-            tut.SkipStep();
-        if (keyboard.f3Key.wasPressedThisFrame)
-            tut.RepeatStep();
-    }
-
-    void OnRepeat()
-    {
-        TutorialSystem.Instance?.RepeatStep();
-    }
-
-    void OnSkipLab()
-    {
-        TutorialSystem.Instance?.SkipToLab();
-    }
-
-    void OnSkipBelts()
-    {
-        TutorialSystem.Instance?.SkipToBelts();
-    }
-
-    void HoldModalFocus()
-    {
-        UnityEngine.Cursor.lockState = CursorLockMode.None;
-        UnityEngine.Cursor.visible = true;
-        PlayerMovement movement = Object.FindFirstObjectByType<PlayerMovement>();
-        if (movement == null)
-            return;
-        movement.canMove = false;
-        movement.canLook = false;
     }
 
     void Glow(VisualElement el)
@@ -534,18 +439,44 @@ public class TutorialUI : MonoBehaviour
             el.EnableInClassList("tut-glow", true);
     }
 
-    void OnStart()
+    // ---------- Ввод ----------
+
+    void PollSkipKey()
     {
-        TutorialSystem.Instance?.AcceptWelcome();
+        TutorialSystem tut = TutorialSystem.Instance;
+        if (tut == null || !tut.IsRunning || KeybindStore.IsListening || UiModal.IsOpen)
+            return;
+        Keyboard keyboard = Keyboard.current;
+        if (keyboard == null)
+            return;
+        if (keyboard.f1Key.wasPressedThisFrame)
+        {
+            ConfirmSkip();
+            return;
+        }
+
+        if (keyboard.f2Key.wasPressedThisFrame)
+            tut.SkipStep();
+        if (keyboard.f3Key.wasPressedThisFrame)
+            tut.RepeatStep();
     }
 
-    void OnPlay()
+    /// <summary>Пропуск всего обучения — два окна подряд: на тестах пропускали случайно и не узнавали основ.</summary>
+    static void ConfirmSkip()
     {
-        TutorialSystem.Instance?.FinishFarewell();
+        UiModal.Confirm(
+            UiLocale.T("tut.skip_confirm1_title"),
+            UiLocale.T("tut.skip_confirm1_body"),
+            UiLocale.T("tut.skip_confirm1_ok"),
+            () => UiModal.Confirm(
+                UiLocale.T("tut.skip_confirm2_title"),
+                UiLocale.T("tut.skip_confirm2_body"),
+                UiLocale.T("tut.skip_confirm2_ok"),
+                () =>
+                {
+                    if (TutorialSystem.Instance != null)
+                        TutorialSystem.Instance.Skip();
+                }));
     }
 
-    void OnSkip()
-    {
-        TutorialSystem.Instance?.Skip();
-    }
 }

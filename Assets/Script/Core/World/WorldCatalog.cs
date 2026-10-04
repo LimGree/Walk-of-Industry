@@ -12,6 +12,9 @@ public class WorldInfo
     public string created;
     public string lastPlayed;
     public bool sandbox;
+    /// <summary>Версия генерации мира (<see cref="WorldCatalog.CurrentGen"/>). 0 — старые миры: генерируются по-старому,
+    /// иначе из того же сида сдвинулись бы озёра и жилы под уже стоящими зданиями.</summary>
+    public int gen;
 }
 
 [Serializable]
@@ -24,6 +27,12 @@ public static class WorldCatalog
 {
     public static WorldInfo Active { get; private set; }
     public static bool HasActive => Active != null && !string.IsNullOrEmpty(Active.id);
+
+    /// <summary>2 — больше озёр, шире пляжи, песок по числу пляжей.</summary>
+    public const int CurrentGen = 2;
+
+    /// <summary>Генерация текущего мира (без активного мира — новая, для редактора).</summary>
+    public static int Gen => HasActive ? Active.gen : CurrentGen;
 
     static string Root
     {
@@ -89,9 +98,13 @@ public static class WorldCatalog
     public static string ActiveSavePath => SavePath(Active);
     public static string WorldsFolder => Root;
 
+    /// <summary>Папка временного тестового мира: пересоздаётся при каждом входе, в списке миров её нет.</summary>
+    public const string TestWorldId = "_testyard";
+
     public static List<WorldInfo> ListWorlds()
     {
         WorldIndex index = ReadIndex();
+        index.worlds.RemoveAll(w => w == null || w.sandbox);
         index.worlds.Sort((a, b) => string.CompareOrdinal(b.lastPlayed, a.lastPlayed));
         return index.worlds;
     }
@@ -111,7 +124,8 @@ public static class WorldCatalog
             seed = seed,
             created = DateTime.Now.ToString("yyyy-MM-dd HH:mm"),
             lastPlayed = DateTime.Now.ToString("yyyy-MM-dd HH:mm"),
-            sandbox = sandbox
+            sandbox = sandbox,
+            gen = CurrentGen
         };
 
         WorldIndex index = ReadIndex();
@@ -119,6 +133,70 @@ public static class WorldCatalog
         WriteIndex(index);
 
         Directory.CreateDirectory(Path.Combine(Root, world.id));
+        WriteFreshSave(world);
+        return world;
+    }
+
+    /// <summary>
+    /// Тестовый мир ([[TestYard]]): каждый раз новый (свой сид, пустая папка), в список миров не попадает
+    /// и не сохраняется (<see cref="SaveSystem.SaveGame"/>). Старые тестовые миры из списка убираются.
+    /// </summary>
+    public static WorldInfo CreateTestWorld()
+    {
+        RemoveSavedTestWorlds();
+        string dir = Path.Combine(Root, TestWorldId);
+        try
+        {
+            if (Directory.Exists(dir))
+                Directory.Delete(dir, true);
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning("[Worlds] Не удалось очистить тестовый мир: " + e.Message);
+        }
+
+        Directory.CreateDirectory(dir);
+        var world = new WorldInfo
+        {
+            id = TestWorldId,
+            name = "ТЕСТ",
+            seed = UnityEngine.Random.Range(1, 999999),
+            created = DateTime.Now.ToString("yyyy-MM-dd HH:mm"),
+            lastPlayed = DateTime.Now.ToString("yyyy-MM-dd HH:mm"),
+            sandbox = true,
+            gen = CurrentGen
+        };
+        WriteFreshSave(world);
+        return world;
+    }
+
+    /// <summary>Тестовые миры, сохранённые до того, как тестовый мир стал временным.</summary>
+    static void RemoveSavedTestWorlds()
+    {
+        WorldIndex index = ReadIndex();
+        var old = index.worlds.FindAll(w => w != null && w.sandbox);
+        if (old.Count == 0)
+            return;
+        index.worlds.RemoveAll(w => w != null && w.sandbox);
+        WriteIndex(index);
+        for (int i = 0; i < old.Count; i++)
+        {
+            string dir = Path.Combine(Root, old[i].id ?? "");
+            try
+            {
+                if (!string.IsNullOrEmpty(old[i].id) && Directory.Exists(dir))
+                    Directory.Delete(dir, true);
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("[Worlds] Не удалось удалить старый тестовый мир: " + e.Message);
+            }
+        }
+    }
+
+    static void WriteFreshSave(WorldInfo world)
+    {
+        bool sandbox = world.sandbox;
         var save = new SaveData
         {
             version = SaveData.CurrentVersion,
@@ -130,7 +208,6 @@ public static class WorldCatalog
             tutorialFinished = sandbox
         };
         File.WriteAllText(SavePath(world), JsonUtility.ToJson(save, true));
-        return world;
     }
 
     public static void DeleteWorld(string id)
@@ -153,7 +230,7 @@ public static class WorldCatalog
     public static void SetActive(WorldInfo world)
     {
         Active = world;
-        if (world == null)
+        if (world == null || world.sandbox)
             return;
         world.lastPlayed = DateTime.Now.ToString("yyyy-MM-dd HH:mm");
         WorldIndex index = ReadIndex();

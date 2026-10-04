@@ -34,18 +34,26 @@ Texture Type = **Sprite (2D and UI)**. Для квадратной иконки 
 
 Пустые награды допустимы только если узел чисто «промежуточный». Обычно хотя бы одно здание или рецепт.
 
-Текущее дерево (для `requiredResearches`):
+Текущее дерево (для `requiredResearches`), главная ветка:
 
 ```
-research_basic_automation
-        └── research_mechanical_engineering
-                    └── research_electronics
-                                ├── research_advanced_automation
-                                │           └── research_petrochemistry
-                                └── research_computing
-                                    (ещё требует research_petrochemistry)
-                                            └── research_ai_systems
+research_smelter (100 жел. + 100 мед. руды → плавильня + оба слитка)
+  └── research_assembler (150 жел. слитков)
+        ├── research_iron_rod ── research_gear ──┬── research_constructor (+ research_wire)
+        │                                        ├── research_power_generator ── reliability_1/2
+        │                                        └── research_underground_conveyor «Логистика» (подземка + сплиттер)
+        ├── research_iron_plate ── research_steel_ingot ── steel_beam / steel_rod
+        ├── research_wire / research_cooper_plate / research_plank / research_stone_brick
+        └── research_silicon ── research_glass
+research_constructor + silicon + wire ── research_circuit_board ── assembler_2 «Сборщик Mk2», extractor_2, oil_extractor
+steel_rod + wire ── research_motor ── drones…, robotic_arm (+ storage)
+oil_extractor → water_extractor → pipe → fluid_tank → refinery → plastic / rubber / sulfuric_acid → chemical_plant → battery
+computer_chip + cable → advanced_circuit / nano_wire → quantum_core → ai_module
 ```
+
+Полный граф с глубинами — в игре: **Карта производства (K)**; проверка данных — меню **Walk of Industry → Validate Content**.
+
+Убраны (лежат в `_unused_assets/Assets/Data/Research/`): старое дерево `Basic Automation`, `mechanical_engineering`, `electronics`, `advanced_automation`, `petrochemistry`, `computing`, `ai_systems`, а также `research_iron_ingot`, `research_cooper_ingot` (влиты в `research_smelter`) и `research_splitter` (сплиттер — в «Логистике»). Старые сейвы: `ResearchSystem.ApplyRemovedResearch` отдаёт то, что эти узлы давали.
 
 Новый узел вешай на того предка, после которого он должен открыться. Несколько предков = все должны быть завершены.
 
@@ -66,7 +74,7 @@ research_basic_automation
 3. На ленту / в приём лаборатории сдаёшь `requiredItems`.
 4. Когда всё сдано — узел завершается, здания падают в хотбар / меню, рецепты появляются в станках.
 
-Лимит лабораторий увеличивается, если `id` узла прописан в `ResearchSystem.extraLabSlotResearchIds`. Сейчас это `research_advanced_automation` и `research_petrochemistry`. Новому узлу это не нужно, если ты не хочешь ещё одну лабораторию.
+Лимит лабораторий увеличивается, если `id` узла прописан в `ResearchSystem.extraLabSlotResearchIds`. Сейчас это `research_extractor_2` и `research_assembler_2`. Новому узлу это не нужно, если ты не хочешь ещё одну лабораторию.
 
 ## Чеклист
 

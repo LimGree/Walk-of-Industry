@@ -28,6 +28,16 @@ public static class GridOccupancy
         }
     }
 
+    /// <summary>Консоль (/validate grid): все записи «клетка → объект», включая уничтоженные объекты.</summary>
+    public static void CollectCellMap(List<KeyValuePair<Vector2Int, GameObject>> results)
+    {
+        if (results == null)
+            return;
+        results.Clear();
+        foreach (var pair in occupiedCells)
+            results.Add(pair);
+    }
+
     public static bool IsCellFree(Vector2Int cell)
     {
         return IsCellFree(cell, null, null);

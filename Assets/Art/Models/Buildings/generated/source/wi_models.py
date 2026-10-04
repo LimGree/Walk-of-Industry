@@ -34,6 +34,89 @@ def stripes(m, obj, c, length, axis='x', n=4, h=0.05):
         size = (step, h, 0.012) if axis == 'x' else (0.012, h, step)
         m.box(obj, pos, size, 'wi_yellow' if i % 2 == 0 else 'wi_dark')
 
+def hatch(m, obj, side, along, half, y0, arrow='wi_lamp', w=0.46, h=0.40):
+    """Приёмный люк в стене корпуса — видно, что сюда заходит лента.
+    side: 'back' (-Z), 'front' (+Z), 'left' (-X), 'right' (+X); along — сдвиг вдоль стены; half — до стены от центра.
+    Зелёный шеврон сверху смотрит внутрь (цвет входа, как на плашке port_in и на схеме карты производства)."""
+    if side in ('back', 'front'):
+        s = -1 if side == 'back' else 1
+        z = s * (half + 0.01)
+        m.box(obj, (along, y0 + h / 2, z), (w, h, 0.03), 'wi_dark')
+        m.box(obj, (along, y0 + h + 0.025, z), (w + 0.1, 0.05, 0.07), 'wi_copper')
+        for d in (-1, 1):
+            m.box(obj, (along + d * (w / 2 + 0.025), y0 + h / 2, z), (0.05, h + 0.02, 0.07), 'wi_copper')
+        m.chevron(obj, (along, y0 + h + 0.07, z - s * 0.03), 0 if side == 'back' else 180, arrow, size=0.2, w=0.045)
+    else:
+        s = -1 if side == 'left' else 1
+        x = s * (half + 0.01)
+        m.box(obj, (x, y0 + h / 2, along), (0.03, h, w), 'wi_dark')
+        m.box(obj, (x, y0 + h + 0.025, along), (0.07, 0.05, w + 0.1), 'wi_copper')
+        for d in (-1, 1):
+            m.box(obj, (x, y0 + h / 2, along + d * (w / 2 + 0.025)), (0.07, h + 0.02, 0.05), 'wi_copper')
+        m.chevron(obj, (x - s * 0.03, y0 + h + 0.07, along), 90 if side == 'left' else 270, arrow, size=0.2, w=0.045)
+
+
+# ---------------- СВЯЗЬ С ПОРТАМИ ----------------
+# Порт (port_in/out/fluid) ставит код на край footprint по сокету (BuildingRestyle.AddPorts) и уходит внутрь
+# на PORT_DEPTH. Модель здания доводит до него мини-ленту или трубу — порт не висит в воздухе.
+PORT_DEPTH = 0.1
+PORT_PIPE_Y = 0.28                      # ось патрубка port_fluid
+SIDE_DEG = {'front': 0, 'right': 90, 'back': 180, 'left': 270}   # «наружу»
+
+
+def on_side(side, along, d):
+    """(x, z) на расстоянии d от центра в сторону side, сдвиг along вдоль стены."""
+    return {'back': (along, -d), 'front': (along, d), 'left': (-d, along), 'right': (d, along)}[side]
+
+
+def feed_belt(m, obj, side, along, wall, half, flow='in', w=0.26):
+    """Мини-лента от стены корпуса (wall — от центра) до порта (half — край footprint), верх полотна 0.18.
+    flow: 'in' — к зданию (зелёный шеврон, как у port_in), 'out' — наружу (оранжевый), None — без шеврона."""
+    d0, d1 = wall - 0.02, half - PORT_DEPTH + 0.01
+    L, dm = d1 - d0, (d0 + d1) / 2
+    x, z = on_side(side, along, dm)
+    wide_x = side in ('back', 'front')
+
+    def bx(cy, sw, sh, off, mat):
+        ox, oz = (off, 0) if wide_x else (0, off)
+        m.box(obj, (x + ox, cy, z + oz), (sw, sh, L) if wide_x else (L, sh, sw), mat)
+    bx(0.105, w - 0.04, 0.05, 0, 'wi_teal2')            # станина
+    bx(0.155, w, 0.05, 0, 'wi_dark')                     # полотно
+    for s in (-1, 1):
+        bx(0.2, 0.03, 0.09, s * (w / 2 + 0.015), 'wi_copper')   # борта
+    if flow and L >= 0.12:
+        deg = (SIDE_DEG[side] + (180 if flow == 'in' else 0)) % 360
+        m.chevron(obj, (x, 0.186, z), deg, 'wi_lamp' if flow == 'in' else 'wi_fire', size=min(0.2, L * 0.8), w=0.04, th=0.01)
+
+
+def pipe_path(m, obj, pts, r=0.06, mat='wi_steel', fit='wi_copper'):
+    """Труба по ломаной из осевых отрезков; на каждом изгибе — колено-муфта, без щелей на углах."""
+    for i in range(len(pts) - 1):
+        a, b = pts[i], pts[i + 1]
+        L = math.dist(a, b)
+        d = [(b[k] - a[k]) / L for k in range(3)]
+        a2 = [a[k] - d[k] * r for k in range(3)] if i > 0 else a
+        b2 = [b[k] + d[k] * r for k in range(3)] if i < len(pts) - 2 else b
+        m.tube(obj, tuple(a2), tuple(b2), r, mat, 8)
+    for p in pts[1:-1]:
+        joint(m, obj, p, r, fit)
+
+
+def joint(m, obj, p, r=0.06, mat='wi_copper'):
+    """Муфта на изгибе/тройнике трубы."""
+    m.box(obj, p, (2.7 * r, 2.7 * r, 2.7 * r), mat)
+
+
+def port_pipe_end(side, along, half):
+    """Точка, где труба здания входит в патрубок port_fluid (чуть внутри него)."""
+    x, z = on_side(side, along, half - PORT_DEPTH + 0.02)
+    return (x, PORT_PIPE_Y, z)
+
+
+def pipe_saddle(m, obj, x, z, floor, top=PORT_PIPE_Y - 0.06):
+    """Опора под трубу."""
+    m.box(obj, (x, (floor + top) / 2, z), (0.1, top - floor, 0.1), 'wi_dark')
+
 # ---------------- ПОРТЫ (ставятся кодом на сторону сокета; наружу = +Z, стена в z=0) ----------------
 
 @reg('port_in', 1)
@@ -44,7 +127,7 @@ def port_in():
     m.box('Port', (-0.19, 0.26, -0.03), (0.05, 0.32, 0.08), 'wi_copper')
     m.box('Port', (0.19, 0.26, -0.03), (0.05, 0.32, 0.08), 'wi_copper')
     m.box('Port', (0, 0.10, -0.03), (0.42, 0.04, 0.08), 'wi_copper')
-    m.chevron('Port', (0, 0.465, -0.03), 180, 'wi_yellow', size=0.16, w=0.04)
+    m.chevron('Port', (0, 0.465, -0.03), 180, 'wi_lamp', size=0.16, w=0.04)
     return m
 
 
@@ -56,15 +139,17 @@ def port_out():
     m.box('Port', (-0.19, 0.26, -0.03), (0.05, 0.32, 0.08), 'wi_steel')
     m.box('Port', (0.19, 0.26, -0.03), (0.05, 0.32, 0.08), 'wi_steel')
     m.box('Port', (0, 0.12, -0.02), (0.34, 0.03, 0.12), 'wi_steel')
-    m.chevron('Port', (0, 0.465, -0.03), 0, 'wi_lamp', size=0.16, w=0.04)
+    m.chevron('Port', (0, 0.465, -0.03), 0, 'wi_fire', size=0.16, w=0.04)
     return m
 
 
 @reg('port_fluid', 1)
 def port_fluid():
     m = Model()
-    m.tube('Port', (0, 0.28, -0.12), (0, 0.28, 0.0), 0.10, 'wi_steel', 8)
-    m.tube('Port', (0, 0.28, -0.03), (0, 0.28, 0.0), 0.14, 'wi_copper', 8)
+    # торцы не совпадают: сталь кончается внутри фланца, синее кольцо далеко от него (без мерцания)
+    m.tube('Port', (0, PORT_PIPE_Y, -0.12), (0, PORT_PIPE_Y, -0.01), 0.10, 'wi_steel', 8)
+    m.tube('Port', (0, PORT_PIPE_Y, -0.035), (0, PORT_PIPE_Y, 0.0), 0.14, 'wi_copper', 8)
+    m.tube('Port', (0, PORT_PIPE_Y, -0.10), (0, PORT_PIPE_Y, -0.075), 0.12, 'wi_blue', 8)
     return m
 
 # ---------------- ПЕЧЬ 1×1 ----------------
@@ -151,6 +236,12 @@ def extractor_body(level):
     m.box('Body', (0, y + 0.58, 0), (0.24, 0.06, 0.24), 'wi_copper')
     m.box('Body', (0.2, y + 0.42, 0), (0.06, 0.18, 0.18), 'wi_dark')
     lamp(m, (0, top + 0.07, 0), 0.06)
+    # выход вперёд: окно в корпусе → жёлоб → мини-лента до порта
+    m.box('Body', (0, y + 0.4, 0.172), (0.18, 0.12, 0.012), 'wi_dark')
+    m.beam('Body', (0, y + 0.36, 0.15), (0, 0.19, 0.3), 0.18, 0.025, 'wi_steel')
+    for s in (-1, 1):
+        m.beam('Body', (s * 0.1, y + 0.39, 0.15), (s * 0.1, 0.22, 0.3), 0.02, 0.07, 'wi_copper')
+    feed_belt(m, 'Body', 'front', 0, 0.24, 0.5, 'out')
     if level >= 2:
         m.cyl('Body', (0, y + 0.12, 0), 0.3, 0.05, 'wi_copper', 8)
         m.box('Body', (-0.2, y + 0.42, 0), (0.06, 0.18, 0.18), 'wi_dark')
@@ -250,6 +341,19 @@ def deck(m, z0, z1):
         m.box('Base', (sx * 2.42, 0.62, zc), (0.06, 0.24, zs), 'wi_yellow')
 
 
+def io_marks(m, obj, x, z, flow):
+    """Козырёк окна приёма/выдачи со шевроном: зелёный внутрь — вход, оранжевый наружу — выход (как port_in/port_out).
+    z — стена (±2.45). Шеврон целиком снаружи стены: ближний к стене конец в 1 см от неё."""
+    s = 1 if z > 0 else -1
+    size, w = 0.18, 0.045
+    m.box(obj, (x, 0.74, s * 2.565), (0.8, 0.08, 0.23), 'wi_copper')
+    # от центра шеврона: остриё +0.35·size, хвост −0.55·size по направлению движения
+    inner = (0.35 if flow == 'in' else 0.55) * size + w / 2
+    deg = (0 if s > 0 else 180) if flow == 'out' else (180 if s > 0 else 0)
+    m.chevron(obj, (x, 0.79, s * (abs(z) + 0.01 + inner)), deg, 'wi_fire' if flow == 'out' else 'wi_lamp',
+              size=size, w=w, th=0.015)
+
+
 @reg('drone_load_station', 0)
 def load_station():
     m = Model()
@@ -259,7 +363,7 @@ def load_station():
     for i in range(5):
         x = -2.0 + i
         m.box('Packer', (x, 0.45, -2.47), (0.7, 0.5, 0.08), 'wi_dark')
-        m.box('Packer', (x, 0.74, -2.52), (0.8, 0.08, 0.14), 'wi_copper')
+        io_marks(m, 'Packer', x, -2.45, 'in')
     m.box('Packer', (1.6, 2.7, -1.6), (0.35, 0.9, 0.35), 'wi_dark')
     m.box('Packer', (1.6, 3.18, -1.6), (0.45, 0.08, 0.45), 'wi_copper')
     m.box('Packer', (-1.2, 1.3, -0.54), (1.0, 0.5, 0.04), 'wi_glass')
@@ -288,7 +392,7 @@ def unload_station():
     for i in range(5):
         x = -2.0 + i
         m.box('Store', (x, 0.45, 2.47), (0.7, 0.5, 0.08), 'wi_dark')
-        m.box('Store', (x, 0.74, 2.52), (0.8, 0.08, 0.14), 'wi_copper')
+        io_marks(m, 'Store', x, 2.45, 'out')
     m.box('Store', (0.0, 1.3, 0.54), (1.4, 0.9, 0.04), 'wi_dark')
     m.box('Lamp', (0.0, 1.95, 0.53), (0.18, 0.18, 0.06), 'wi_lamp')
     for i in range(3):
@@ -685,6 +789,12 @@ def constructor():
     m.cyl('Body', (-0.62, y + H + 0.7, -0.55), 0.13, 0.05, 'wi_copper', 8)
     lamp(m, (0.6, y + H + 0.08, 0.7))
     lamp(m, (-0.6, y + H + 0.08, 0.7))
+    # два входа сзади, выход спереди (BuildingPrefabLayout: input[0] −Z слева, input[1] −Z справа, output +Z)
+    # рамку со стрелкой даёт сам порт (port_in), в стене — только тёмный проём под ним (без второго люка)
+    for x in (-0.5, 0.5):
+        m.box('Body', (x, y + 0.17, -0.86), (0.3, 0.22, 0.02), 'wi_dark')
+        feed_belt(m, 'Body', 'back', x, 0.86, 1.0, 'in')
+    feed_belt(m, 'Body', 'front', 0, 0.87, 1.0, 'out')
     return m
 
 # ---------------- ХИМЗАВОД 3×3 ----------------
@@ -706,12 +816,10 @@ def chemical_plant():
     m.cyl('Reactor', (0.55, y + 0.5, -0.45), 0.44, 0.06, 'wi_yellow', 10)
     m.cyl('Reactor', (0.55, y + 1.2, -0.45), 0.44, 0.06, 'wi_copper', 10)
     m.box('Reactor', (0.55, y + 0.9, -0.03), (0.2, 0.2, 0.04), 'wi_glass')
-    # трубы между баками и реактором
-    for z in (-0.65, 0.55):
-        m.tube('Pipes', (-0.33, y + 0.9, z), (0.15, y + 0.9, z), 0.06, 'wi_steel', 6)
-    m.tube('Pipes', (0.15, y + 0.9, 0.55), (0.15, y + 0.9, -0.45), 0.06, 'wi_steel', 6)
-    m.tube('Pipes', (0.15, y + 0.9, -0.65), (0.15, y + 0.9, -0.45), 0.06, 'wi_steel', 6)
-    m.tube('Pipes', (0.15, y + 0.9, -0.45), (0.13, y + 0.9, -0.45), 0.08, 'wi_copper', 6)
+    # трубы от баков к реактору: П-образная разводка с коленами, врезка в реактор — муфтой
+    py = y + 0.9
+    pipe_path(m, 'Pipes', [(-0.38, py, 0.55), (0.15, py, 0.55), (0.15, py, -0.65), (-0.38, py, -0.65)])
+    joint(m, 'Pipes', (0.15, py, -0.45))
     # пульт
     m.box('Control', (0.75, y + 0.3, 0.75), (0.8, 0.6, 0.7), 'wi_teal2')
     m.box('Control', (0.75, y + 0.62, 0.75), (0.86, 0.05, 0.76), 'wi_copper')
@@ -720,6 +828,25 @@ def chemical_plant():
     m.tube('Control', (1.0, y + 0.65, 0.6), (1.0, y + 1.2, 0.6), 0.015, 'wi_steel', 6)
     lamp(m, (1.0, y + 1.22, 0.6), 0.05)
     m.box('Beacon', (0.55, y + 1.95, -0.45), (0.07, 0.07, 0.07), 'wi_lamp')
+    # вход ленты сзади (InputSocket, −Z): бункер у порта → лента → наклонный подъёмник в реактор
+    m.box('Body', (0, y + 0.3, -1.25), (0.62, 0.6, 0.35), 'wi_teal2')
+    m.box('Body', (0, y + 0.62, -1.25), (0.68, 0.05, 0.41), 'wi_copper')
+    m.box('Body', (0, y + 0.2, -1.43), (0.3, 0.24, 0.02), 'wi_dark')   # проём под портом (рамку даёт port_in)
+    feed_belt(m, 'Body', 'back', 0, 0.76, 1.165, 'in')      # от бункера (z −1.075) до подъёмника (z −0.74)
+    m.beam('Body', (0.0, 0.17, -0.74), (0.3, y + 0.62, -0.74), 0.2, 0.03, 'wi_steel')
+    for s in (-1, 1):
+        m.beam('Body', (0.0, 0.2, -0.74 + s * 0.1), (0.3, y + 0.65, -0.74 + s * 0.1), 0.02, 0.07, 'wi_copper')
+    m.box('Body', (0.0, 0.12, -0.74), (0.12, 0.08, 0.12), 'wi_dark')
+    # вход трубы слева (InputSocketFluid, −X): от порта к обоим бакам, тройник между ними
+    pipe_path(m, 'Pipes', [port_pipe_end('left', 0, 1.5), (-0.75, PORT_PIPE_Y, 0)], r=0.07)
+    pipe_path(m, 'Pipes', [(-0.75, PORT_PIPE_Y, -0.3), (-0.75, PORT_PIPE_Y, 0.2)], r=0.07)
+    joint(m, 'Pipes', (-0.75, PORT_PIPE_Y, 0), 0.07)
+    for x in (-1.2, -0.95):
+        pipe_saddle(m, 'Pipes', x, 0, y + 0.08)
+    # выход вперёд (OutPutSocket, +Z): лоток из реактора → лента к порту
+    m.box('Body', (0.24, y + 0.55, -0.12), (0.16, 0.14, 0.16), 'wi_dark')
+    m.beam('Body', (0.2, y + 0.5, -0.1), (0.0, 0.19, 0.12), 0.18, 0.025, 'wi_steel')
+    feed_belt(m, 'Body', 'front', 0, 0.06, 1.5, 'out', w=0.24)
     return m
 
 # ---------------- НПЗ 3×3 ----------------
@@ -751,12 +878,21 @@ def refinery():
     m.tube('Flare', (1.1, y + 0.08, -1.0), (1.1, y + 2.6, -1.0), 0.05, 'wi_dark', 6)
     m.cyl('Flare', (1.1, y + 2.6, -1.0), 0.08, 0.08, 'wi_steel', 6)
     m.cyl('Flame', (1.1, y + 2.68, -1.0), 0.06, 0.14, 'wi_fire', 6, r2=0.0)
-    # трубопровод
-    m.tube('Pipes', (-0.75, y + 1.2, -0.7), (0.65, y + 1.2, -0.7), 0.06, 'wi_steel', 6)
-    m.tube('Pipes', (0.65, y + 1.2, -0.7), (0.65, y + 1.2, -0.05), 0.06, 'wi_steel', 6)
-    m.tube('Pipes', (-0.05, y + 0.6, -0.8), (-0.05, y + 0.6, 0.75), 0.05, 'wi_steel', 6)
-    m.tube('Pipes', (-0.05, y + 0.6, 0.75), (-0.3, y + 0.6, 0.75), 0.05, 'wi_steel', 6)
+    # трубопровод: колонна → печь (поверху, с опуском в крышу печи), колонна → резервуар; на углах колена
+    pipe_path(m, 'Pipes', [(-0.75, y + 1.2, -0.7), (0.65, y + 1.2, -0.7), (0.65, y + 1.2, 0.15), (0.65, y + 0.95, 0.15)])
+    pipe_path(m, 'Pipes', [(-0.05, y + 0.6, -0.8), (-0.05, y + 0.6, 0.75), (-0.32, y + 0.6, 0.75)], r=0.05)
     lamp(m, (-0.75, y + 2.72, -0.7), 0.07)
+    # Сокеты НПЗ (Refinery): труба всегда сзади (−Z), лента всегда спереди (+Z); вход/выход меняет рецепт,
+    # поэтому шевронов на этих связях нет.
+    # труба: порт → нижняя колонна
+    pipe_path(m, 'Pipes', [port_pipe_end('back', 0, 1.5), (0, PORT_PIPE_Y, -0.95)], r=0.07)
+    joint(m, 'Pipes', (0, PORT_PIPE_Y, -1.08), 0.07)
+    pipe_saddle(m, 'Pipes', 0, -1.25, y + 0.08)
+    # лента: печь (загрузочное окно в западной стене) → лоток → лента вдоль печи → порт
+    m.box('Heater', (0.092, y + 0.34, 0.3), (0.02, 0.2, 0.3), 'wi_dark')
+    m.box('Heater', (0.085, y + 0.46, 0.3), (0.04, 0.04, 0.38), 'wi_copper')
+    m.beam('Heater', (0.1, y + 0.3, 0.3), (-0.05, 0.19, 0.3), 0.2, 0.025, 'wi_steel')
+    feed_belt(m, 'Body', 'front', -0.05, 0.2, 1.5, None, w=0.22)
     return m
 
 # ---------------- ЛАБОРАТОРИЯ 1×1 (входы со всех сторон) ----------------
@@ -792,7 +928,7 @@ def oil_extractor():
     # устье скважины сзади
     m.cyl('Body', (0, y + 0.08, -0.62), 0.14, 0.3, 'wi_steel', 8)
     m.cyl('Body', (0, y + 0.38, -0.62), 0.18, 0.05, 'wi_copper', 8)
-    m.tube('Body', (0, y + 0.3, -0.62), (0.55, y + 0.3, -0.62), 0.05, 'wi_steel', 6)
+    m.tube('Body', (0, y + 0.3, -0.62), (0.4, y + 0.3, -0.62), 0.05, 'wi_steel', 6)
     # стойка A
     top = (0, y + 1.25, -0.05)
     for sx in (-1, 1):
@@ -809,10 +945,17 @@ def oil_extractor():
         m.tube('Crank', (sx * 0.26, y + 0.55, 0.62), (sx * 0.3, y + 0.55, 0.62), 0.3, 'wi_copper', 10)
         m.beam('Crank', (sx * 0.28, y + 0.55, 0.62), (sx * 0.28, y + 0.83, 0.62), 0.05, 0.05, 'wi_steel')
     stripes(m, 'Body', (0, y + 0.2, 0.752), 0.44, 'x', 4, 0.06)
-    # бочка нефти
-    m.cyl('Body', (0.6, y + 0.08, -0.62), 0.2, 0.45, 'wi_dark', 8)
-    m.cyl('Body', (0.6, y + 0.28, -0.62), 0.21, 0.04, 'wi_copper', 8)
+    # бочка нефти — на линии порта (сокет OutputSocket: x 0.5, перед +Z)
+    m.cyl('Body', (0.5, y + 0.08, -0.62), 0.2, 0.45, 'wi_dark', 8)
+    m.cyl('Body', (0.5, y + 0.28, -0.62), 0.21, 0.04, 'wi_copper', 8)
     lamp(m, (0, y + 1.42, -0.05), 0.06)
+    # труба от бочки вдоль правого края к порту, на опорах
+    pipe_path(m, 'Body', [(0.5, PORT_PIPE_Y, -0.5), port_pipe_end('front', 0.5, 1.0)], r=0.07)
+    joint(m, 'Body', (0.5, PORT_PIPE_Y, -0.38), 0.07)
+    m.tube('Body', (0.5, PORT_PIPE_Y + 0.07, 0.05), (0.5, PORT_PIPE_Y + 0.16, 0.05), 0.02, 'wi_steel', 6)
+    m.tube('Body', (0.5, PORT_PIPE_Y + 0.16, 0.05), (0.5, PORT_PIPE_Y + 0.18, 0.05), 0.07, 'wi_red', 8)
+    for z in (-0.15, 0.3, 0.7):
+        pipe_saddle(m, 'Body', 0.5, z, y + 0.08)
     return m
 
 # ---------------- ВОДОКАЧКА 2×2 (на воде) ----------------
@@ -833,13 +976,17 @@ def water_extractor():
     m.box('House', (-0.25, 0.45, 0.505), (0.36, 0.56, 0.02), 'wi_dark')
     m.box('House', (0.305, 0.65, -0.1), (0.02, 0.22, 0.5), 'wi_glass')
     # заборная труба в воду
-    m.tube('Intake', (0.65, 0.9, -0.6), (0.65, -0.35, -0.6), 0.1, 'wi_steel', 8)
-    m.tube('Intake', (0.65, 0.9, -0.6), (0.3, 0.9, -0.6), 0.1, 'wi_steel', 8)
+    pipe_path(m, 'Intake', [(0.65, -0.35, -0.6), (0.65, 0.9, -0.6), (0.28, 0.9, -0.6)], r=0.1)
     m.cyl('Intake', (0.65, 0.05, -0.6), 0.14, 0.05, 'wi_copper', 8)
     # бак чистой воды
     m.cyl('Tank', (0.6, 0.15, 0.45), 0.3, 0.6, 'wi_water', 10)
     m.cyl('Tank', (0.6, 0.75, 0.45), 0.32, 0.12, 'wi_copper', 10, r2=0.1)
-    m.tube('Tank', (0.3, 0.4, 0.45), (0.05, 0.4, 0.45), 0.05, 'wi_steel', 6)
+    # насосная → бак (видимый отвод из стены), бак → порт (сокет OutputSocket: x 0.5, перед +Z)
+    pipe_path(m, 'Tank', [(0.28, 0.62, 0.2), (0.5, 0.62, 0.2)], r=0.05)
+    joint(m, 'Tank', (0.32, 0.62, 0.2), 0.05)
+    pipe_path(m, 'Tank', [(0.5, PORT_PIPE_Y, 0.62), port_pipe_end('front', 0.5, 1.0)], r=0.07)
+    joint(m, 'Tank', (0.5, PORT_PIPE_Y, 0.77), 0.07)
+    pipe_saddle(m, 'Tank', 0.5, 0.84, 0.155)
     lamp(m, (-0.25, 1.32, -0.1), 0.06)
     return m
 
@@ -854,10 +1001,11 @@ def fluid_storage_tank():
     for yy in (0.2, 0.5, 0.8):
         m.cyl('Tank', (0, y + yy, 0), 0.415, 0.04, 'wi_copper', 12)
     m.box('Tank', (0.405, y + 0.5, 0.0), (0.02, 0.6, 0.08), 'wi_water')
+    # лестница на левом боку (−X): порты жидкости стоят сзади и спереди
     for i in range(6):
-        m.box('Ladder', (-0.12, y + 0.1 + i * 0.15, -0.415), (0.14, 0.02, 0.02), 'wi_yellow')
-    for x in (-0.19, -0.05):
-        m.box('Ladder', (x, y + 0.5, -0.415), (0.02, 0.95, 0.02), 'wi_yellow')
+        m.box('Ladder', (-0.415, y + 0.1 + i * 0.15, 0), (0.02, 0.02, 0.14), 'wi_yellow')
+    for z in (-0.07, 0.07):
+        m.box('Ladder', (-0.415, y + 0.5, z), (0.02, 0.95, 0.02), 'wi_yellow')
     m.cyl('Tank', (0, y + 1.1, 0), 0.06, 0.06, 'wi_copper', 8)
     lamp(m, (0, y + 1.17, 0), 0.05)
     return m
@@ -945,7 +1093,7 @@ def icon_plan(built):
         P['underground_conveyor'] = ([(built['underground_in'], (0, 0, 0), 0)], 145)
         P['robotic_arm'] = ([(built['robotic_arm'], (0, 0, 0), 0)], 125)
     if 'constructor' in built:
-        P['constructor'] = (with_ports(built['constructor'], [(0, -1, 180), (1, 0, 90)], [(0, 1, 0)]), 145)
+        P['constructor'] = (with_ports(built['constructor'], [(-0.5, -1, 180), (0.5, -1, 180)], [(0, 1, 0)]), -35)  # сзади: видны оба входа
         P['chemical_plant'] = (with_ports(built['chemical_plant'], [(0, -1.5, 180)], [(0, 1.5, 0)], [(-1.5, 0, 270)]), 145)
         P['refinery'] = (with_ports(built['refinery'], [], [(0, 1.5, 0)], [(0, -1.5, 180)]), 145)
         P['research_lab'] = (with_ports(built['research_lab'], [(0, -0.5, 180), (0, 0.5, 0), (0.5, 0, 90), (-0.5, 0, 270)], []), 145)
@@ -953,7 +1101,7 @@ def icon_plan(built):
         P['oil_extractor'] = (with_ports(built['oil_extractor'], [], [], [(0.5, 1, 0)]), 145)
         P['water_extractor'] = (with_ports(built['water_extractor'], [], [], [(0.5, 1, 0)]), 145)
         P['fluid_storage_tank'] = (with_ports(built['fluid_storage_tank'], [], [], [(0, -0.5, 180), (0, 0.5, 0)]), 145)
-        P['power_generator'] = (with_ports(built['power_generator'], [(0, -0.5, 180)], []), 145)
+        P['power_generator'] = (with_ports(built['power_generator'], [(0, -0.5, 180)], [], [(-0.5, 0, 270)]), 145)
     if 'pipe_splitter' in built:
         P['pipe_splitter'] = ([(built['pipe_splitter'], (0, 0, 0), 0)], 145)
     if 'drone' in built:
@@ -977,7 +1125,9 @@ if __name__ == '__main__':
     shutil.copy(os.path.join(out_models, 'wi.mtl'), os.path.join(out_copy, 'wi.mtl'))
     import copy, json
     built = {}
-    parts = []
+    # parts.json — всегда полный (и при сборке отдельных партий), иначе выпадут детали несобранных моделей
+    parts = [{'prefab': prefab, 'parent': parent, 'anim': anim, 'model': name + '_' + obj.lower(), 'pos': list(pivot)}
+             for name in MODELS for obj, pivot, prefab, parent, anim in SPLITS.get(name, [])]
     for name, fn in MODELS.items():
         if batches is not None and BATCH[name] not in batches and not name.startswith('port_'):
             continue
@@ -985,9 +1135,7 @@ if __name__ == '__main__':
         built[name] = copy.deepcopy(m)      # иконка — целиком
         outputs = [(name, m)]
         for obj, pivot, prefab, parent, anim in SPLITS.get(name, []):
-            part_name = name + '_' + obj.lower()
-            outputs.append((part_name, m.split(obj, pivot)))
-            parts.append({'prefab': prefab, 'parent': parent, 'anim': anim, 'model': part_name, 'pos': list(pivot)})
+            outputs.append((name + '_' + obj.lower(), m.split(obj, pivot)))
         for out_name, model in outputs:
             model.write_obj(os.path.join(out_models, out_name + '.obj'), keep=('Crate',))   # Crate ищет Drone.cs
             shutil.copy(os.path.join(out_models, out_name + '.obj'), os.path.join(out_copy, out_name + '.obj'))

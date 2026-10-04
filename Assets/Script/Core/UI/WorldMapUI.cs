@@ -329,7 +329,7 @@ public class WorldMapUI : MonoBehaviour
             return;
         mapTimeFrozen = false;
         if (GameManager.Instance == null || !GameManager.Instance.IsPaused)
-            Time.timeScale = GameSettings.GameSpeed;
+            Time.timeScale = GameSettings.PlaySpeed;
     }
 
     public static void AddMinimapSettings(VisualElement parent)
@@ -977,6 +977,23 @@ public class WorldMapUI : MonoBehaviour
         bool show = (MapSettings.MiniVisible && !IsOpen) || miniDragActive;
         IndustryUi.Show(miniHost, show);
         PlaceMiniHost();
+    }
+
+    /// <summary>
+    /// Прямоугольник миникарты в долях экрана (0..1, y сверху вниз) — чтобы HUD целей и обучения
+    /// её не перекрывали. false — миникарты на экране нет.
+    /// </summary>
+    public bool TryGetMiniScreenRect(out Rect rect)
+    {
+        rect = default;
+        if (miniHost == null || miniHost.panel == null || miniHost.resolvedStyle.display == DisplayStyle.None)
+            return false;
+        Rect wb = miniHost.worldBound;
+        Rect root = miniHost.panel.visualTree.worldBound;
+        if (wb.width < 1f || root.width < 1f || root.height < 1f)
+            return false;
+        rect = new Rect(wb.x / root.width, wb.y / root.height, wb.width / root.width, wb.height / root.height);
+        return true;
     }
 
     void PlaceMiniHost()

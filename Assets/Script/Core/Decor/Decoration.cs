@@ -5,6 +5,7 @@ using UnityEngine;
 /// Поставленная декорация ([[Decorations]]): здание без сокетов. Анимирует части модели
 /// (лопасти, стрела крана, флаг, стрелки часов…), держит огни (включает [[DecorSystem]] ночью),
 /// пишет текст на вывеске/табло, перекрашивается по E (материал <c>wi_paint</c>).
+/// Табличка (<see cref="DecorCatalog.SignId"/>) хранит своё содержимое (<see cref="SignData"/>), по E открывает [[SignEditorUI]].
 /// Напольные (плитка, асфальт) не занимают сетку зданий — сверху можно строить.
 /// </summary>
 public class Decoration : BuildingBase, IInteractable
@@ -24,11 +25,16 @@ public class Decoration : BuildingBase, IInteractable
     Renderer[] blinkB;
     Renderer cullProbe;
     TextMesh text;
+    TextMesh textBack;
     float textWidth;
     float nextText;
     float phase;
     float barrier;
     bool lightsWanted;
+    SignData sign;
+    SignView signView;
+    float nextSignTick;
+    static readonly List<Light> NoLights = new List<Light>();
 
     public DecorCatalog.Def Def
     {
@@ -41,8 +47,10 @@ public class Decoration : BuildingBase, IInteractable
     }
 
     public bool IsFloor => Def != null && Def.IsFloor;
+    public bool IsSign => data != null && data.id == DecorCatalog.SignId;
     public int Tint => tint;
-    public IReadOnlyList<Light> Lights => lights;
+    /// <summary>Табличка без подсветки не занимает ночные огни [[DecorSystem]].</summary>
+    public IReadOnlyList<Light> Lights => IsSign && (sign == null || !sign.glow) ? NoLights : lights;
     /// <summary>Модель не скрыта отсечением дальности.</summary>
     public bool IsShown => cullProbe == null || cullProbe.enabled;
     public bool CanInteract
@@ -50,7 +58,7 @@ public class Decoration : BuildingBase, IInteractable
         get
         {
             Rig();
-            return IsPlaced && paintRenderers.Count > 0;
+            return IsPlaced && (IsSign || paintRenderers.Count > 0 || Zipline.IsPost(this));
         }
     }
 
@@ -58,6 +66,10 @@ public class Decoration : BuildingBase, IInteractable
     {
         get
         {
+            if (Zipline.IsPost(this))
+                return UiLocale.T("zip.hint");
+            if (IsSign)
+                return UiLocale.T("sign.hint");
             int cost = DecorSystem.TintCost;
             return cost > 0
                 ? DecorText.T("decor.hint_tint", IndustryUi.Money(cost))
@@ -80,7 +92,15 @@ public class Decoration : BuildingBase, IInteractable
         ApplyTint();
         BuildFx();
         RefreshText(true);
+        if (IsSign)
+        {
+            if (sign == null)
+                sign = SignPresets.Default();
+            RebuildSign();
+        }
         DecorSystem.Register(this);
+        if (Zipline.IsPost(this))
+            Zipline.EnsureCables();
     }
 
     public override void OnRemoved()
@@ -111,11 +131,19 @@ public class Decoration : BuildingBase, IInteractable
     public override void WriteSave(BuildingSaveData save)
     {
         base.WriteSave(save);
-        if (save == null || tint == 0)
+        if (save == null)
             return;
+        if (tint != 0)
+            Extra(save, "tint", tint.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        if (IsSign && sign != null)
+            Extra(save, "sign", sign.ToJson());
+    }
+
+    static void Extra(BuildingSaveData save, string key, string value)
+    {
         if (save.extras == null)
             save.extras = new List<SaveKeyValue>();
-        save.extras.Add(new SaveKeyValue { key = "tint", value = tint.ToString(System.Globalization.CultureInfo.InvariantCulture) });
+        save.extras.Add(new SaveKeyValue { key = key, value = value });
     }
 
     public override void ReadSave(BuildingSaveData save)
@@ -129,10 +157,36 @@ public class Decoration : BuildingBase, IInteractable
                 SaveKeyValue row = save.extras[i];
                 if (row != null && row.key == "tint")
                     int.TryParse(row.value, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out tint);
+                else if (row != null && row.key == "sign" && IsSign)
+                    sign = SignData.FromJson(row.value) ?? sign;
             }
         }
 
         ApplyTint();
+        if (IsSign && IsPlaced)
+            RebuildSign();
+    }
+
+    /// <summary>Состояние для копирования/чертежа: содержимое таблички или цвет краски.</summary>
+    public string CopyState()
+    {
+        if (IsSign && sign != null)
+            return "sign:" + sign.ToJson();
+        return tint != 0 ? "tint:" + tint.ToString(System.Globalization.CultureInfo.InvariantCulture) : "";
+    }
+
+    public void PasteState(string state)
+    {
+        if (string.IsNullOrEmpty(state))
+            return;
+        if (state.StartsWith("sign:", System.StringComparison.Ordinal))
+        {
+            if (IsSign)
+                SetSign(SignData.FromJson(state.Substring(5)));
+        }
+        else if (state.StartsWith("tint:", System.StringComparison.Ordinal)
+            && int.TryParse(state.Substring(5), System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out int t))
+            SetTint(t);
     }
 
     // ---------- Перекраска (E) ----------
@@ -141,6 +195,18 @@ public class Decoration : BuildingBase, IInteractable
     {
         if (!CanInteract)
             return;
+        if (Zipline.IsPost(this))
+        {
+            Zipline.TryRide(this, interactor);
+            return;
+        }
+
+        if (IsSign)
+        {
+            SignEditorUI.OpenFor(this);
+            return;
+        }
+
         int cost = DecorSystem.TintCost;
         if (cost > 0 && PlayerWallet.Instance != null && !PlayerWallet.Instance.TrySpendCoins(cost, MoneySource.Decor))
         {
@@ -191,6 +257,61 @@ public class Decoration : BuildingBase, IInteractable
         return m.name.StartsWith(PaintMaterial, System.StringComparison.Ordinal);
     }
 
+    // ---------- Табличка ----------
+
+    /// <summary>Копия содержимого таблички (правки — через <see cref="SetSign"/>).</summary>
+    public SignData Sign => sign != null ? sign.Clone() : SignPresets.Default();
+
+    public void SetSign(SignData value)
+    {
+        if (!IsSign)
+            return;
+        sign = value != null ? value.Clone() : SignPresets.Default();
+        if (IsPlaced)
+            RebuildSign();
+    }
+
+    void RebuildSign()
+    {
+        Transform visual = transform.Find(BuildingRestyle.VisualName);
+        if (visual == null || sign == null)
+            return;
+        signView = SignView.Build(visual, sign, gameObject.layer, true);
+        cullProbe = signView.Probe;
+        signView.SetBrightness(SignBrightness());
+        nextSignTick = Time.unscaledTime + 0.5f;
+
+        var box = GetComponent<BoxCollider>();
+        if (box != null)
+        {
+            float top = Mathf.Max(0.5f, signView.Top);
+            box.size = new Vector3(box.size.x, top, box.size.z);
+            box.center = new Vector3(box.center.x, top * 0.5f, box.center.z);
+        }
+
+        if (lights.Count > 0 && lights[0] != null)
+            lights[0].transform.position = signView.LightPoint;
+        if (!sign.glow)
+            SetLightsOn(false);
+        RecaptureCullRenderers();
+    }
+
+    void SignTick()
+    {
+        if (signView == null || Time.unscaledTime < nextSignTick)
+            return;
+        nextSignTick = Time.unscaledTime + 0.5f;
+        signView.SetBrightness(SignBrightness());
+    }
+
+    /// <summary>Шрифт без освещения: ночью надпись тускнеет вместе с миром, с подсветкой — нет.</summary>
+    float SignBrightness()
+    {
+        if ((sign != null && sign.glow) || !GameSettings.DayNightEnabled)
+            return 1f;
+        return Mathf.Lerp(0.42f, 1f, DayNight.Evaluate(DayNight.Hour).dayFactor);
+    }
+
     // ---------- Сборка ----------
 
     void Rig()
@@ -215,6 +336,8 @@ public class Decoration : BuildingBase, IInteractable
 
             Transform t = visual.Find(DecorCatalog.TextName);
             text = t != null ? t.GetComponent<TextMesh>() : null;
+            Transform tb = visual.Find(DecorCatalog.TextBackName);
+            textBack = tb != null ? tb.GetComponent<TextMesh>() : null;
             Transform body = visual.Find("WiModel");
             cullProbe = body != null ? body.GetComponentInChildren<Renderer>(true) : null;
         }
@@ -300,6 +423,12 @@ public class Decoration : BuildingBase, IInteractable
         Camera cam = Camera.main;
         if (cam != null && (cam.transform.position - transform.position).sqrMagnitude > 70f * 70f)
             return;
+
+        if (IsSign)
+        {
+            SignTick();
+            return;
+        }
 
         float t = Time.time + phase;
         float dt = Time.deltaTime;
@@ -493,6 +622,8 @@ public class Decoration : BuildingBase, IInteractable
     /// <summary>[[DecorSystem]] включает свет ночью у ближних декораций.</summary>
     public void SetLightsOn(bool on)
     {
+        if (IsSign && (sign == null || !sign.glow))
+            on = false;
         lightsWanted = on;
         for (int i = 0; i < lights.Count; i++)
         {
@@ -529,6 +660,11 @@ public class Decoration : BuildingBase, IInteractable
             return;
         text.text = value;
         FitText();
+        if (textBack != null)
+        {
+            textBack.text = value;
+            textBack.characterSize = text.characterSize;
+        }
     }
 
     void FitText()

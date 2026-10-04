@@ -14,6 +14,8 @@ public class AvatarAnimator
         public float speed01;
         public bool grounded;
         public float lookPitch;
+        /// <summary>Сидит (в вагонетке на ленте).</summary>
+        public bool sitting;
     }
 
     const float ActionTime = 0.38f;
@@ -26,6 +28,7 @@ public class AvatarAnimator
     float time;
     float action = -1f;
     float lookPitch;
+    float sitWeight;
 
     public AvatarAnimator(AvatarRig rig)
     {
@@ -52,6 +55,7 @@ public class AvatarAnimator
         runWeight = Mathf.Lerp(runWeight, targetRun, k);
         airWeight = Mathf.Lerp(airWeight, m.grounded ? 0f : 1f, 1f - Mathf.Exp(-12f * dt));
         lookPitch = Mathf.Lerp(lookPitch, Mathf.Clamp(m.lookPitch, -70f, 70f), 1f - Mathf.Exp(-14f * dt));
+        sitWeight = Mathf.Lerp(sitWeight, m.sitting ? 1f : 0f, 1f - Mathf.Exp(-12f * dt));
 
         // Шаг: ~1.7 Гц пешком, ~2.6 Гц бегом. Фаза идёт, только пока движемся.
         float freq = Mathf.Lerp(1.7f, 2.6f, runWeight);
@@ -65,7 +69,7 @@ public class AvatarAnimator
 
         // ----- таз и корпус -----
         float bob = Mathf.Abs(sin) * Mathf.Lerp(0.03f, 0.06f, runWeight) * moveWeight;
-        rig.hips.localPosition = new Vector3(0f, rig.hipHeight + bob - 0.06f * airWeight, 0f);
+        rig.hips.localPosition = new Vector3(0f, rig.hipHeight + bob - 0.06f * airWeight - 0.36f * sitWeight, -0.08f * sitWeight);
         rig.hips.localRotation = Quaternion.Euler(0f, sin * 6f * moveWeight, 0f);
         float lean = 3f * moveWeight + 9f * runWeight + breathe * 1.2f * (1f - moveWeight);
         rig.spine.localRotation = Quaternion.Euler(lean, -sin * 8f * moveWeight, 0f);
@@ -80,6 +84,11 @@ public class AvatarAnimator
         legR = Mathf.Lerp(legR, -8f, airWeight);
         kneeL = Mathf.Lerp(kneeL, 55f, airWeight);
         kneeR = Mathf.Lerp(kneeR, 35f, airWeight);
+        // Сидя: бёдра вперёд, колени согнуты.
+        legL = Mathf.Lerp(legL, -82f, sitWeight);
+        legR = Mathf.Lerp(legR, -82f, sitWeight);
+        kneeL = Mathf.Lerp(kneeL, 95f, sitWeight);
+        kneeR = Mathf.Lerp(kneeR, 95f, sitWeight);
         rig.thighL.localRotation = Quaternion.Euler(legL, 0f, 0f);
         rig.thighR.localRotation = Quaternion.Euler(legR, 0f, 0f);
         rig.kneeL.localRotation = Quaternion.Euler(kneeL, 0f, 0f);
@@ -93,6 +102,11 @@ public class AvatarAnimator
         float elbowBend = Mathf.Lerp(12f, 70f, runWeight) * moveWeight + 8f * (1f - moveWeight);
         armL = Mathf.Lerp(armL, -25f, airWeight);
         armR = Mathf.Lerp(armR, -25f, airWeight);
+        // Сидя: руки на бортах вагонетки.
+        armL = Mathf.Lerp(armL, -30f, sitWeight);
+        armR = Mathf.Lerp(armR, -30f, sitWeight);
+        armOut = Mathf.Lerp(armOut, 28f, sitWeight);
+        elbowBend = Mathf.Lerp(elbowBend, 40f, sitWeight);
         Quaternion shoulderL = Quaternion.Euler(armL, 0f, -armOut);
         Quaternion shoulderR = Quaternion.Euler(armR, 0f, armOut);
         Quaternion elbowL = Quaternion.Euler(-elbowBend, 0f, 0f);

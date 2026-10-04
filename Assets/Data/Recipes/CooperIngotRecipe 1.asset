@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: CooperIngotRecipe 1
   m_EditorClassIdentifier: 
   id: recipe_cooper_ingot
-  displayName: Cooper Ingot
+  displayName: Copper Ingot
   inputs:
   - item: {fileID: 11400000, guid: 43ec0e9396945c64bbd4da95fb1e7f16, type: 2}
     amount: 1

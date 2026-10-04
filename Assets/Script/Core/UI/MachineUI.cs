@@ -19,6 +19,8 @@ public class MachineUI : MonoBehaviour
     public RecipeData[] allRecipes;
 
     public bool IsOpen { get; private set; }
+    /// <summary>Станок, чьё окно открыто (null — лаборатория/ничего).</summary>
+    public BuildingBase CurrentBuilding => IsOpen ? currentBuilding : null;
 
     VisualElement overlay;
     Label statusLabel;
@@ -578,7 +580,7 @@ public class MachineUI : MonoBehaviour
         IndustryUi.Show(bodyList, true);
         bodyList.Clear();
         string fuel = gen.Powered
-            ? UiLocale.T("machine.power_on", gen.RemainingFuel.ToString("0.0"))
+            ? UiLocale.T("machine.power_on", gen.RemainingFuel.ToString("0") + " / " + gen.MaxFuelTime.ToString("0"))
             : UiLocale.T("machine.power_off");
         bodyList.Add(IndustryUi.ActionCard(
             UiLocale.T("machine.powered"),
@@ -1045,6 +1047,19 @@ public class MachineUI : MonoBehaviour
         ResearchTree.FillDetail(researchDetail, selected, () => StartPickedResearch(selected));
     }
 
+    /// <summary>Открыть дерево исследований на узле (из Карты производства, целей, подсказок).</summary>
+    public void OpenResearch(string researchId)
+    {
+        OpenLab();
+        if (!IsOpen)
+            return;
+        if (!string.IsNullOrEmpty(researchId))
+            selectedResearchId = researchId;
+        OpenLabTab(TabResearch);
+        FillResearchTab();
+        ScrollResearchIntoView(selectedResearchId);
+    }
+
     void OnPickResearch(ResearchNodeData node)
     {
         if (node == null)
@@ -1228,9 +1243,7 @@ public class MachineUI : MonoBehaviour
             MachineIdleHud.IdleRow row = watch.Rows[i];
             if (row.building == null)
                 continue;
-            string why = row.reason == "input"
-                ? UiLocale.T("idle.no_input")
-                : UiLocale.T("idle.output_full");
+            string why = MachineIdleHud.ReasonText(row);
             string sub = why + "  ·  " + row.cell.x + "," + row.cell.y;
             Vector2Int cell = row.cell;
             idleList.Add(IndustryUi.ActionCard(

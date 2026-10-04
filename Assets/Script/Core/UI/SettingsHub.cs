@@ -404,6 +404,14 @@ public static class SettingsHub
 
         parent.Add(SettingsControls.Group("settings.tutorial"));
         parent.Add(SettingsControls.Toggle("settings.tutorial_skip", () => GameSettings.TutorialSkip, v => GameSettings.TutorialSkip = v));
+        parent.Add(SettingsControls.Toggle("settings.goal_card", () => GameSettings.GoalCard, v => GameSettings.GoalCard = v));
+        parent.Add(SettingsControls.ChipRow("settings.hints",
+            (UiLocale.T("settings.hints_all"), () => GameSettings.Hints == 0, () => GameSettings.Hints = 0),
+            (UiLocale.T("settings.hints_important"), () => GameSettings.Hints == 1, () => GameSettings.Hints = 1),
+            (UiLocale.T("settings.hints_off"), () => GameSettings.Hints == 2, () => GameSettings.Hints = 2)));
+        parent.Add(SettingsControls.Describe(
+            SettingsControls.Toggle("settings.auto_recipe", () => GameSettings.AutoRecipe, v => GameSettings.AutoRecipe = v),
+            "settings.auto_recipe_desc"));
         if (TutorialSystem.Instance != null && WorldCatalog.HasActive)
         {
             parent.Add(SettingsControls.ActionRow("settings.tutorial_restart", "settings.tutorial_restart_btn", () =>

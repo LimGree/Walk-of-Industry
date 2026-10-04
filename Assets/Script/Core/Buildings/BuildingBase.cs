@@ -56,6 +56,12 @@ public abstract class BuildingBase : MonoBehaviour
         BreakEscalated = false;
     }
 
+    /// <summary>Консоль (/craft speed): множитель скорости работы всех станков и добычи.</summary>
+    public static float DevGlobalWork = 1f;
+    /// <summary>Консоль (/craft speed here|radius): множитель этого здания, не сохраняется.</summary>
+    [System.NonSerialized] public float DevWork = 1f;
+    public float DevWorkMul => DevGlobalWork * DevWork;
+
     public int OutputBufferCount => outputBuffer.Count;
     public int OutputBufferFree => Mathf.Max(0, maxOutputBuffer - outputBuffer.Count);
     public virtual bool StayInFlushQueue => outputBuffer.Count > 0;
@@ -467,6 +473,21 @@ public abstract class BuildingBase : MonoBehaviour
             t = t.parent;
         }
         return false;
+    }
+
+    /// <summary>Модель пересобрана кодом (табличка): отсечение дальности берёт новые рендереры.</summary>
+    protected void RecaptureCullRenderers()
+    {
+        if (cullRenderers == null)
+            return;
+        cullRenderers = GetComponentsInChildren<Renderer>(true);
+        if (worldShown)
+            return;
+        for (int i = 0; i < cullRenderers.Length; i++)
+        {
+            if (cullRenderers[i] != null)
+                cullRenderers[i].enabled = false;
+        }
     }
 
     void CaptureCull()

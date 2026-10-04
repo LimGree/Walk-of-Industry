@@ -79,6 +79,15 @@ public class ProductionStats : MonoBehaviour
         rubiesGained = 0;
     }
 
+    /// <summary>Сколько предмета сделано за всю игру (по сейву).</summary>
+    public int TotalProduced(ItemData item)
+    {
+        if (item == null || string.IsNullOrEmpty(item.id))
+            return 0;
+        producedTotal.TryGetValue(item.id, out int total);
+        return total;
+    }
+
     public void RecordProduced(ItemData item, int amount)
     {
         if (item == null || amount <= 0 || string.IsNullOrEmpty(item.id))

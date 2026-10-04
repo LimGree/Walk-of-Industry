@@ -45,6 +45,12 @@ public static class AlphaBuild
 
         WriteStatus(statusPath, "RUNNING");
 
+        // Данные: входы станков, рецепты, цены исследований. Ошибки — в лог, билд не стопорим.
+        if (ContentValidator.Run(out string validation) > 0)
+            Debug.LogError(validation);
+        else
+            Debug.Log(validation);
+
         if (Directory.Exists(outDir))
             Directory.Delete(outDir, true);
         Directory.CreateDirectory(outDir);

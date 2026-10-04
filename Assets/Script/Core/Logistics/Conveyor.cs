@@ -462,10 +462,16 @@ public class Conveyor : BuildingBase, IInteractable
                     ReleaseCargoVisual(cargo[front]);
 
                 cargo.RemoveAt(front);
+                BlockedSeconds = 0f;
             }
             else
+            {
                 cargo[front].progress = 1f;
+                BlockedSeconds += dt;
+            }
         }
+        else
+            BlockedSeconds = 0f;
     }
 
     void SubmitCargoDraws()
@@ -561,6 +567,16 @@ public class Conveyor : BuildingBase, IInteractable
     }
 
     public int CargoCount => cargo.Count;
+
+    /// <summary>Сколько секунд передний предмет не может сойти с ленты (затор).</summary>
+    public float BlockedSeconds { get; private set; }
+
+    /// <summary>Скорость в клетках в секунду с учётом прокачки лент.</summary>
+    public float CellsPerSecond => speed * (BeltSpeedSystem.Instance != null ? BeltSpeedSystem.Instance.Multiplier : 1f)
+        / Mathf.Max(0.05f, GridFootprint.CellSize);
+
+    public ItemData CargoItemAt(int i) => i >= 0 && i < cargo.Count ? cargo[i].item : null;
+    public float CargoProgressAt(int i) => i >= 0 && i < cargo.Count ? cargo[i].progress : 0f;
 
     public void DevClearCargo()
     {

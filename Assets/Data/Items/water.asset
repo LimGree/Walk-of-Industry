@@ -22,4 +22,5 @@ MonoBehaviour:
   isFuel: 0
   fuelValue: 0
   isFluid: 1
+  extractedBy: water_extractor
   sellValue: 2

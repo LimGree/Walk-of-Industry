@@ -77,6 +77,8 @@ public class BuildSelectionController : MonoBehaviour
         public ItemData filter;
         public bool pairExit;
         public int pairId;
+        /// <summary>Содержимое таблички / краска декора (<see cref="Decoration.CopyState"/>).</summary>
+        public string decor;
     }
 
     struct PreviewItem
@@ -89,6 +91,7 @@ public class BuildSelectionController : MonoBehaviour
         public ItemData filter;
         public bool pairExit;
         public int pairId;
+        public string decor;
         public GameObject ghost;
         public bool valid;
     }
@@ -474,7 +477,8 @@ public class BuildSelectionController : MonoBehaviour
                 recipeId = recipe != null ? recipe.id : "",
                 filterItemId = filter != null ? filter.id : "",
                 pairExit = tunnel != null && tunnel.isExit,
-                pairId = tunnel != null ? tunnel.PairId : 0
+                pairId = tunnel != null ? tunnel.PairId : 0,
+                decor = ReadDecor(b)
             });
         }
 
@@ -507,7 +511,8 @@ public class BuildSelectionController : MonoBehaviour
                 recipe = GameDatabase.FindRecipe(piece.recipeId),
                 filter = GameDatabase.FindItem(piece.filterItemId),
                 pairExit = piece.pairExit,
-                pairId = piece.pairId
+                pairId = piece.pairId,
+                decor = piece.decor
             });
         }
 
@@ -559,7 +564,8 @@ public class BuildSelectionController : MonoBehaviour
                 recipe = ReadRecipe(b),
                 filter = ReadFilter(b),
                 pairExit = tunnel != null && tunnel.isExit,
-                pairId = tunnel != null ? tunnel.PairId : 0
+                pairId = tunnel != null ? tunnel.PairId : 0,
+                decor = ReadDecor(b)
             });
         }
 
@@ -883,6 +889,7 @@ public class BuildSelectionController : MonoBehaviour
                 filter = c.filter,
                 pairExit = c.pairExit,
                 pairId = c.pairId,
+                decor = c.decor,
                 ghost = CreateGhost(c.data, c.pairExit)
             });
         }
@@ -1099,6 +1106,7 @@ public class BuildSelectionController : MonoBehaviour
                 b.ApplyLevel(item.level);
                 ApplyRecipe(b, item.recipe);
                 ApplyFilter(b, item.filter);
+                ApplyDecor(b, item.decor);
                 BuildUndo.NotePlaced(b);
                 spawned.Add(b);
             }
@@ -1321,6 +1329,19 @@ public class BuildSelectionController : MonoBehaviour
             return arm.Filter;
         Conveyor belt = b as Conveyor;
         return belt != null ? belt.Filter : null;
+    }
+
+    static string ReadDecor(BuildingBase b)
+    {
+        Decoration d = b as Decoration;
+        return d != null ? d.CopyState() : "";
+    }
+
+    static void ApplyDecor(BuildingBase b, string state)
+    {
+        Decoration d = b as Decoration;
+        if (d != null)
+            d.PasteState(state);
     }
 
     static void ApplyRecipe(BuildingBase b, RecipeData recipe)

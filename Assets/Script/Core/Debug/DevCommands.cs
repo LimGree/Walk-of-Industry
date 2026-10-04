@@ -4,125 +4,176 @@ using System.IO;
 using System.Text;
 using UnityEngine;
 
-public static class DevCommands
+/// <summary>
+/// Команды консоли ([[DevConsole]]). Команда — метод с [[DevCommandAttribute]], реестр — [[DevRegistry]].
+/// Файлы DevCommands.*.cs — группы команд по темам.
+/// </summary>
+public static partial class DevCommands
 {
-    static readonly string[] Catalog =
+    /// <summary>Метка вида строки в начале результата: e — ошибка, w — предупреждение, o — успех, s — служебное.</summary>
+    public const char Mark = '\u0001';
+
+    static string Err(string text) => Mark + "e" + text;
+    static string Warn(string text) => Mark + "w" + text;
+    static string Ok(string text) => Mark + "o" + text;
+
+    /// <summary>Кнопка в строке вывода: клик выполняет команду.</summary>
+    static string Btn(string label, string command) => "[[" + label + "|" + command + "]]";
+
+    static string UsageOf(DevArgs a)
     {
-        "/help",
-        "/help research",
-        "/economy",
-        "/economy 10",
-        "/money add ",
-        "/money remove ",
-        "/ruby add ",
-        "/ruby remove ",
-        "/research list",
-        "/research skip ",
-        "/research skipall",
-        "/tutorial restart",
-        "/tutorial skip",
-        "/unlock recipe ",
-        "/unlock recipe all",
-        "/unlock build ",
-        "/unlock build all",
-        "/tp biome ",
-        "/tp cluster ",
-        "/tp veins ",
-        "/time set morning",
-        "/time set day",
-        "/time set evening",
-        "/time set night",
-        "/time set midnight",
-        "/time set ",
-        "/timeskip ",
-        "/timeskip 0:01:00",
-        "/timeskip 1:00:00",
-        "/stat cluster",
-        "/stat veins",
-        "/stat biome",
-        "/locate biome",
-        "/locate cluster",
-        "/locate veins",
-        "/regenWorldMap",
-        "/belts",
-        "/conveer speed ",
-        "/conveyor speed ",
-        "/belt speed ",
-        "/clearcargo",
-        "/killitems",
-        "/dump cell",
-        "/save",
-        "/load",
-        "/godsave",
-        "/fps",
-        "/perf",
-        "/log on belts",
-        "/log off belts",
-        "/spawn vein ",
-        "/spawn builder ",
-        "/break ",
-        "/break 5",
-        "/break here",
-        "/repair ",
-        "/repair all",
-        "/repair here",
-        "/breakdown info",
-        "/breakdown now",
-        "/decor all",
-        "/decor reset",
-        "/decor info",
-        "/decor give "
+        return Warn(DevRegistry.Usage(DevRegistry.Find(a.Command)));
+    }
+
+    // ---------- Подтверждение ----------
+
+    static System.Func<string> pendingAction;
+    static string pendingWhat;
+
+    /// <summary>Ждёт ли консоль «yes / да» на опасную команду.</summary>
+    public static bool AwaitingConfirm => pendingAction != null;
+
+    static string AskConfirm(string what, System.Func<string> action)
+    {
+        pendingAction = action;
+        pendingWhat = what;
+        return Warn(what + "\nвведи yes или да, чтобы подтвердить; другое — отмена");
+    }
+
+    // ---------- Запуск ----------
+
+    /// <summary>Одна команда (без «;»). Возвращает текст результата, возможно с меткой вида.</summary>
+    public static string Run(string raw)
+    {
+        string line = (raw ?? "").Trim();
+        if (line.StartsWith("/"))
+            line = line.Substring(1).Trim();
+
+        if (pendingAction != null)
+        {
+            System.Func<string> action = pendingAction;
+            string what = pendingWhat;
+            pendingAction = null;
+            pendingWhat = null;
+            string low = line.ToLowerInvariant();
+            if (low == "yes" || low == "y" || low == "да" || low == "д")
+            {
+                try
+                {
+                    return action();
+                }
+                catch (System.Exception e)
+                {
+                    Debug.LogException(e);
+                    return Err(e.GetType().Name + ": " + e.Message);
+                }
+            }
+
+            return Warn("отменено: " + what);
+        }
+
+        if (line.Length == 0)
+            return "";
+
+        string[] p = line.Split(new[] { ' ' }, System.StringSplitOptions.RemoveEmptyEntries);
+        DevRegistry.Entry entry = DevRegistry.Find(p[0]);
+        if (entry == null)
+            return Err("нет команды /" + p[0] + " — /help");
+
+        string[] args = new string[p.Length - 1];
+        System.Array.Copy(p, 1, args, 0, args.Length);
+        try
+        {
+            return entry.run(new DevArgs(entry.name, args));
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogException(e);
+            return Err(e.GetType().Name + ": " + e.Message);
+        }
+    }
+
+    // ---------- Значения для подсказок ----------
+
+    static readonly string[] VeinNames =
+    {
+        "iron", "copper", "cooper", "coal", "stone", "sand", "sulfur", "tree", "log"
     };
 
-    public static void Suggest(string raw, List<string> into)
+    static readonly string[] BiomeNames =
     {
-        into.Clear();
-        string q = Normalize(raw);
-        if (q.Length == 0)
-            q = "/";
-        for (int i = 0; i < Catalog.Length; i++)
-        {
-            if (Catalog[i].StartsWith(q, true, CultureInfo.InvariantCulture))
-                AddUnique(into, Catalog[i]);
-        }
+        "field", "woodland", "forest", "beach", "lake", "ocean", "peak", "slope", "mountain"
+    };
 
-        AddPrefixed(into, q, "/spawn builder ", BuildingIds());
-        AddPrefixed(into, q, "/unlock build ", BuildingIds());
-        AddPrefixed(into, q, "/decor give ", DecorIds());
-        AddPrefixed(into, q, "/unlock recipe ", RecipeIds());
-        AddPrefixed(into, q, "/research skip ", ResearchIds());
-        AddPrefixed(into, q, "/spawn vein ", VeinIds());
-        AddPrefixed(into, q, "/tp veins ", VeinIds());
-        AddPrefixed(into, q, "/locate veins ", VeinIds());
-        AddPrefixed(into, q, "/tp biome ", BiomeIds());
-        AddPrefixed(into, q, "/locate biome ", BiomeIds());
-        AddPrefixed(into, q, "/tp cluster ", ClusterIds());
-        AddPrefixed(into, q, "/locate cluster ", ClusterIds());
-    }
+    static readonly string[] MinigameNames = { "wires", "signal", "engine", "math", "captcha" };
+    static readonly string[] GizmoNames = { "ports", "power", "occupancy", "chunks", "drones", "off" };
+    static readonly string[] RotNames = { "0", "90", "180", "270" };
 
-    static void AddPrefixed(List<string> into, string query, string prefix, IList<string> ids)
+    /// <summary>Значения для &lt;hole&gt; в синтаксисе; null — свободный ввод.</summary>
+    public static IList<string> HoleValues(string hole)
     {
-        if (ids == null || string.IsNullOrEmpty(query) || string.IsNullOrEmpty(prefix))
-            return;
-        string stem = prefix.TrimEnd();
-        if (!query.StartsWith(stem, true, CultureInfo.InvariantCulture))
-            return;
-
-        for (int i = 0; i < ids.Count; i++)
+        switch (hole)
         {
-            if (string.IsNullOrEmpty(ids[i]))
-                continue;
-            string line = prefix + ids[i];
-            if (line.StartsWith(query, true, CultureInfo.InvariantCulture))
-                AddUnique(into, line);
+            case "item": return ItemIds(false);
+            case "fluid": return ItemIds(true);
+            case "building":
+            case "type": return BuildingIds();
+            case "recipe": return RecipeIds();
+            case "research": return ResearchIds();
+            case "vein": return VeinNames;
+            case "biome": return BiomeNames;
+            case "cluster": return ClusterIds();
+            case "decor": return DecorIds();
+            case "minigame": return MinigameNames;
+            case "gizmo": return GizmoNames;
+            case "rot": return RotNames;
+            case "save": return DevSaveNames();
+            case "command": return CommandNames();
+            default: return null;
         }
     }
 
-    static void AddUnique(List<string> into, string line)
+    /// <summary>Проверять ли значение по списку (иначе — любое, подсказки только для удобства).</summary>
+    public static bool HoleIsStrict(string hole)
     {
-        if (string.IsNullOrEmpty(line) || into.Contains(line))
-            return;
-        into.Add(line);
+        switch (hole)
+        {
+            case "item":
+            case "fluid":
+            case "building":
+            case "type":
+            case "recipe":
+            case "research":
+            case "decor":
+            case "minigame":
+            case "gizmo":
+            case "command":
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    static List<string> CommandNames()
+    {
+        var list = new List<string>(96);
+        IReadOnlyList<DevRegistry.Entry> all = DevRegistry.Entries;
+        for (int i = 0; i < all.Count; i++)
+            list.Add(all[i].name);
+        return list;
+    }
+
+    static List<string> ItemIds(bool fluidOnly)
+    {
+        var list = new List<string>();
+        ItemData[] all = GameDatabase.AllItems();
+        for (int i = 0; i < all.Length; i++)
+        {
+            if (all[i] != null && !string.IsNullOrEmpty(all[i].id) && (!fluidOnly || all[i].isFluid))
+                list.Add(all[i].id);
+        }
+
+        return list;
     }
 
     static List<string> BuildingIds()
@@ -164,223 +215,6 @@ public static class DevCommands
         return list;
     }
 
-    static readonly string[] VeinNames =
-    {
-        "iron", "copper", "cooper", "coal", "stone", "sand", "sulfur", "tree", "log"
-    };
-
-    static readonly string[] BiomeNames =
-    {
-        "field", "woodland", "forest", "beach", "lake", "ocean", "peak", "slope", "mountain"
-    };
-
-    static IList<string> VeinIds()
-    {
-        return VeinNames;
-    }
-
-    static IList<string> BiomeIds()
-    {
-        return BiomeNames;
-    }
-
-    static IList<string> ClusterIds()
-    {
-        WorldResourceScatterer s = WorldResourceScatterer.Instance;
-        if (s == null || s.ClusterKindKeys == null || s.ClusterKindKeys.Count == 0)
-            return VeinNames;
-        var list = new List<string>();
-        for (int i = 0; i < s.ClusterKindKeys.Count; i++)
-            AddUnique(list, s.ClusterKindKeys[i]);
-        return list.Count > 0 ? list : VeinNames;
-    }
-
-    public static string Run(string raw)
-    {
-        string line = Normalize(raw);
-        if (line.StartsWith("/"))
-            line = line.Substring(1).Trim();
-        if (line.Length == 0)
-            return "";
-
-        string[] p = Split(line);
-        string a0 = p[0].ToLowerInvariant();
-        string a1 = p.Length > 1 ? p[1].ToLowerInvariant() : "";
-        string a2 = p.Length > 2 ? p[2] : "";
-
-        try
-        {
-            if (a0 == "help")
-                return a1 == "research" ? HelpResearch() : Help();
-            if (a0 == "money")
-                return Money(a1, a2);
-            if (a0 == "ruby")
-                return Ruby(a1, a2);
-            if (a0 == "research")
-                return Research(a1, a2);
-            if (a0 == "tutorial")
-                return Tutorial(a1);
-            if (a0 == "unlock")
-                return Unlock(a1, a2);
-            if (a0 == "tp")
-                return Tp(a1, a2);
-            if (a0 == "time")
-                return TimeSet(a1, a2);
-            if (a0 == "timeskip")
-                return Timeskip(p);
-            if (a0 == "stat")
-                return Stat(a1);
-            if (a0 == "economy" || a0 == "eco")
-                return EconomyCmd(a1);
-            if (a0 == "locate")
-                return Locate(a1, a2);
-            if (a0 == "regenworldmap")
-                return Regen();
-            if (a0 == "belts")
-                return Belts();
-            if (a0 == "conveer" || a0 == "conveyor" || a0 == "belt")
-                return BeltSpeed(a1, a2);
-            if (a0 == "clearcargo")
-                return ClearCargo();
-            if (a0 == "killitems")
-                return KillItems();
-            if (a0 == "dump")
-                return Dump(a1);
-            if (a0 == "save")
-                return Save();
-            if (a0 == "load")
-                return Load();
-            if (a0 == "godsave")
-                return GodSave();
-            if (a0 == "fps" || a0 == "perf")
-                return Fps();
-            if (a0 == "log")
-                return Log(a1, a2);
-            if (a0 == "spawn")
-                return Spawn(a1, a2);
-            if (a0 == "break")
-                return Break(a1);
-            if (a0 == "repair")
-                return Repair(a1);
-            if (a0 == "breakdown")
-                return Breakdown(a1);
-            if (a0 == "decor")
-                return Decor(a1, a2);
-            return "unknown: /" + line;
-        }
-        catch (System.Exception e)
-        {
-            return e.GetType().Name + ": " + e.Message;
-        }
-    }
-
-    static string Break(string arg)
-    {
-        BreakdownSystem sys = BreakdownSystem.Instance;
-        if (sys == null)
-            return "no breakdown system";
-        if (arg == "here")
-        {
-            BuildingBase b = AimedBuilding();
-            if (b == null || !BreakdownSystem.CanBreak(b))
-                return "не станок/добыча под прицелом";
-            if (b.IsBroken)
-                return "уже сломан";
-            sys.BreakNow(b, true);
-            return "сломан: " + (b.data != null ? b.data.id : b.name) + (b.BreakMode == 2 ? " (1/4 силы)" : "");
-        }
-
-        if (!TryPercent(arg, out float pct))
-            return "break N | break here";
-        int n = sys.BreakPercent(pct);
-        return "сломано " + n + " (всего сломано " + BreakdownSystem.BrokenCount + " / " + BreakdownSystem.EligibleCount() + ")";
-    }
-
-    static string Repair(string arg)
-    {
-        BreakdownSystem sys = BreakdownSystem.Instance;
-        if (sys == null)
-            return "no breakdown system";
-        if (arg == "here")
-        {
-            BuildingBase b = AimedBuilding();
-            if (b == null || !b.IsBroken)
-                return "под прицелом нет сломанного";
-            sys.Repair(b, false);
-            return "починен: " + (b.data != null ? b.data.id : b.name);
-        }
-
-        float pct = 100f;
-        if (arg != "all" && !TryPercent(arg, out pct))
-            return "repair N | repair all | repair here";
-        int n = sys.RepairPercent(pct);
-        return "починено " + n + ", осталось " + BreakdownSystem.BrokenCount;
-    }
-
-    static string Breakdown(string arg)
-    {
-        BreakdownSystem sys = BreakdownSystem.Instance;
-        if (sys == null)
-            return "no breakdown system";
-        if (arg == "now")
-        {
-            int before = BreakdownSystem.BrokenCount;
-            sys.ForceOne();
-            return BreakdownSystem.BrokenCount > before ? "одна поломка" : "некого ломать (или лимит 25%)";
-        }
-
-        return sys.Describe();
-    }
-
-    static bool TryPercent(string arg, out float pct)
-    {
-        pct = 0f;
-        if (string.IsNullOrEmpty(arg))
-            return false;
-        return float.TryParse(arg.TrimEnd('%').Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out pct)
-            && pct > 0f;
-    }
-
-    static BuildingBase AimedBuilding()
-    {
-        Camera cam = Camera.main;
-        if (cam == null)
-            return null;
-        if (Physics.Raycast(cam.transform.position, cam.transform.forward, out RaycastHit hit, 12f))
-        {
-            BuildingBase b = hit.collider.GetComponentInParent<BuildingBase>();
-            if (b != null)
-                return b;
-        }
-
-        return null;
-    }
-
-    static string Help()
-    {
-        var sb = new StringBuilder();
-        sb.AppendLine("money add|remove N");
-        sb.AppendLine("ruby add|remove N");
-        sb.AppendLine("research list|skip <id>|skipall");
-        sb.AppendLine("tutorial restart|skip");
-        sb.AppendLine("unlock recipe <id|all>");
-        sb.AppendLine("unlock build <id|all>");
-        sb.AppendLine("tp biome <id> | cluster <type> | veins <type>");
-        sb.AppendLine("time set morning|day|evening|night|midnight|HH[:MM[:SS]]");
-        sb.AppendLine("timeskip HH:MM:SS");
-        sb.AppendLine("economy [минут] — доходы/расходы по источникам");
-        sb.AppendLine("stat cluster|veins|biome");
-        sb.AppendLine("locate biome|cluster|veins [id]");
-        sb.AppendLine("regenWorldMap | belts | conveer speed X | clearcargo | killitems | dump cell");
-        sb.AppendLine("save | load | godsave | fps | perf");
-        sb.AppendLine("log on|off belts");
-        sb.AppendLine("spawn vein <type> | spawn builder <id>");
-        sb.AppendLine("break N% | break here | repair N% | repair all|here | breakdown info|now");
-        sb.AppendLine("decor all|reset|info | decor give <id>");
-        sb.Append("help research");
-        return sb.ToString();
-    }
-
     static List<string> DecorIds()
     {
         var list = new List<string>();
@@ -390,102 +224,120 @@ public static class DevCommands
         return list;
     }
 
-    static string Decor(string op, string id)
+    static IList<string> ClusterIds()
     {
-        DecorSystem sys = DecorSystem.Instance;
-        if (sys == null)
-            return "no decor system";
-        if (op == "all")
+        WorldResourceScatterer s = WorldResourceScatterer.Instance;
+        if (s == null || s.ClusterKindKeys == null || s.ClusterKindKeys.Count == 0)
+            return VeinNames;
+        var list = new List<string>();
+        for (int i = 0; i < s.ClusterKindKeys.Count; i++)
         {
-            sys.GrantAll(true);
-            return "декорации открыты: " + sys.OwnedCount() + " / " + DecorCatalog.All.Count;
+            if (!string.IsNullOrEmpty(s.ClusterKindKeys[i]) && !list.Contains(s.ClusterKindKeys[i]))
+                list.Add(s.ClusterKindKeys[i]);
         }
 
-        if (op == "reset")
-        {
-            sys.GrantAll(false);
-            return "покупки декораций сброшены";
-        }
-
-        if (op == "give")
-        {
-            DecorCatalog.Def def = DecorCatalog.Find(id);
-            if (def == null)
-                return "нет декорации " + id;
-            return sys.Grant(def) ? "открыта: " + def.id : "уже есть или не продаётся: " + def.id;
-        }
-
-        DecorCatalog.Def deal = DecorSystem.Deal();
-        return "куплено " + sys.OwnedCount() + " / " + DecorCatalog.All.Count
-            + " · красота " + DecorSystem.Beauty.ToString("0.#", CultureInfo.InvariantCulture)
-            + " · поставлено " + DecorSystem.All.Count
-            + " · скидка дня: " + (deal != null ? deal.id : "-")
-            + " · ночь: " + (DecorSystem.IsNight ? "да" : "нет");
+        return list.Count > 0 ? list : (IList<string>)VeinNames;
     }
 
-    static string HelpResearch()
+    // ---------- Справка ----------
+
+    [DevCommand("help", "[<command>]", "список команд или подробно про одну")]
+    [DevCommand("help", "research", "список исследований (как /research list)")]
+    static string Help(DevArgs a)
     {
-        return Research("list", "");
+        if (a[0] == "research")
+            return ResearchList();
+        if (a.Has(0))
+        {
+            DevRegistry.Entry one = DevRegistry.Find(a[0]);
+            return one != null ? DevRegistry.Describe(one) : Err("нет команды " + a.Raw(0));
+        }
+
+        var sb = new StringBuilder(2048);
+        IReadOnlyList<DevRegistry.Entry> all = DevRegistry.Entries;
+        for (int i = 0; i < all.Count; i++)
+        {
+            DevRegistry.Entry e = all[i];
+            sb.Append(DevRegistry.Usage(e));
+            string help = e.Help;
+            if (!string.IsNullOrEmpty(help))
+                sb.Append("  — ").Append(help);
+            if (i < all.Count - 1)
+                sb.Append('\n');
+        }
+
+        sb.Append("\n/help <команда> — подробно; несколько команд в строке — через ;");
+        return sb.ToString();
     }
 
-    static string Money(string op, string n)
+    // ---------- Деньги ----------
+
+    [DevCommand("money", "add|remove|set <n>", "монеты")]
+    static string Money(DevArgs a)
     {
         if (PlayerWallet.Instance == null)
-            return "no wallet";
-        int v = ParseInt(n);
-        if (op == "add")
-            PlayerWallet.Instance.AddCoins(v, MoneySource.Cheat);
-        else if (op == "remove")
-            PlayerWallet.Instance.AddCoins(-v, MoneySource.Cheat);
+            return Err("no wallet");
+        if (!a.TryInt(1, out int v))
+            return UsageOf(a);
+        v = Mathf.Abs(v);
+        PlayerWallet w = PlayerWallet.Instance;
+        if (a[0] == "add")
+            w.AddCoins(v, MoneySource.Cheat);
+        else if (a[0] == "remove")
+            w.AddCoins(-v, MoneySource.Cheat);
+        else if (a[0] == "set")
+            w.AddCoins(v - w.Coins, MoneySource.Cheat);
         else
-            return "money add|remove N";
-        return "coins " + PlayerWallet.Instance.Coins;
+            return UsageOf(a);
+        return Ok("coins " + w.Coins);
     }
 
-    static string Ruby(string op, string n)
+    [DevCommand("ruby", "add|remove|set <n>", "рубины")]
+    static string Ruby(DevArgs a)
     {
         if (PlayerWallet.Instance == null)
-            return "no wallet";
-        int v = ParseInt(n);
-        if (op == "add")
-            PlayerWallet.Instance.AddRubies(v, MoneySource.Cheat);
-        else if (op == "remove")
-            PlayerWallet.Instance.AddRubies(-v, MoneySource.Cheat);
+            return Err("no wallet");
+        if (!a.TryInt(1, out int v))
+            return UsageOf(a);
+        v = Mathf.Abs(v);
+        PlayerWallet w = PlayerWallet.Instance;
+        if (a[0] == "add")
+            w.AddRubies(v, MoneySource.Cheat);
+        else if (a[0] == "remove")
+            w.AddRubies(-v, MoneySource.Cheat);
+        else if (a[0] == "set")
+            w.AddRubies(v - w.Rubies, MoneySource.Cheat);
         else
-            return "ruby add|remove N";
-        return "rubies " + PlayerWallet.Instance.Rubies;
+            return UsageOf(a);
+        return Ok("rubies " + w.Rubies);
     }
 
-    static string Research(string op, string id)
+    [DevCommand("economy", "[<min>]", "доходы/расходы по источникам", Alias = "eco")]
+    static string EconomyCmd(DevArgs a)
+    {
+        int minutes = 0;
+        if (a.Has(0) && !a.TryInt(0, out minutes))
+            return UsageOf(a);
+        return EconomyLedger.Summary(minutes);
+    }
+
+    // ---------- Исследования и обучение ----------
+
+    [DevCommand("research", "list", "все исследования, [done] — открыто")]
+    [DevCommand("research", "skip <research>", "завершить исследование")]
+    [DevCommand("research", "skipall", "завершить все")]
+    static string Research(DevArgs a)
     {
         ResearchSystem rs = ResearchSystem.Instance;
         if (rs == null)
-            return "no research";
-        if (op == "list")
+            return Err("no research");
+        if (a[0] == "list")
+            return ResearchList();
+        if (a[0] == "skipall")
+            return Ok("skipped " + rs.CompleteAllResearch(false));
+        if (a[0] == "skip")
         {
-            var sb = new StringBuilder();
-            ResearchNodeData[] all = GameDatabase.AllResearches();
-            if (all.Length == 0 && rs.allResearchNodes != null)
-                all = rs.allResearchNodes.ToArray();
-            for (int i = 0; i < all.Length; i++)
-            {
-                ResearchNodeData n = all[i];
-                if (n == null)
-                    continue;
-                sb.Append(n.Title);
-                sb.Append(" - ");
-                sb.Append(n.id);
-                if (rs.IsResearchUnlocked(n))
-                    sb.Append(" [done]");
-                if (i < all.Length - 1)
-                    sb.Append('\n');
-            }
-            return sb.Length == 0 ? "empty" : sb.ToString();
-        }
-        if (op == "skipall")
-            return "skipped " + rs.CompleteAllResearch(false);
-        if (op == "skip")
-        {
+            string id = a.Raw(1);
             ResearchNodeData node = GameDatabase.FindResearch(id);
             if (node == null && rs.allResearchNodes != null)
             {
@@ -496,40 +348,74 @@ public static class DevCommands
                         node = n;
                 }
             }
+
             if (node == null)
-                return "no research " + id;
+                return Err("no research " + id);
             rs.CompleteResearch(node, false);
-            return "done " + node.id;
+            return Ok("done " + node.id);
         }
-        return "research list|skip <id>|skipall";
+
+        return UsageOf(a);
     }
 
-    static string Tutorial(string op)
-    {
-        TutorialSystem t = TutorialSystem.Instance;
-        if (t == null)
-            return "no tutorial";
-        if (op == "skip")
-        {
-            t.Skip();
-            return "tutorial skipped";
-        }
-        if (op == "restart")
-        {
-            t.Restart();
-            return "tutorial restart";
-        }
-        return "tutorial restart|skip";
-    }
-
-    static string Unlock(string kind, string id)
+    static string ResearchList()
     {
         ResearchSystem rs = ResearchSystem.Instance;
         if (rs == null)
-            return "no research";
-        if (kind == "recipe")
+            return Err("no research");
+        var sb = new StringBuilder();
+        ResearchNodeData[] all = GameDatabase.AllResearches();
+        if (all.Length == 0 && rs.allResearchNodes != null)
+            all = rs.allResearchNodes.ToArray();
+        for (int i = 0; i < all.Length; i++)
         {
-            if (id == "all")
+            ResearchNodeData n = all[i];
+            if (n == null)
+                continue;
+            sb.Append(n.Title).Append(" - ").Append(n.id);
+            if (rs.IsResearchUnlocked(n))
+                sb.Append(" [done]");
+            else
+                sb.Append("  ").Append(Btn("skip", "/research skip " + n.id));
+            if (i < all.Length - 1)
+                sb.Append('\n');
+        }
+
+        return sb.Length == 0 ? "empty" : sb.ToString();
+    }
+
+    [DevCommand("tutorial", "restart|skip", "обучение заново или пропустить")]
+    static string Tutorial(DevArgs a)
+    {
+        TutorialSystem t = TutorialSystem.Instance;
+        if (t == null)
+            return Err("no tutorial");
+        if (a[0] == "skip")
+        {
+            t.Skip();
+            return Ok("tutorial skipped");
+        }
+
+        if (a[0] == "restart")
+        {
+            t.Restart();
+            return Ok("tutorial restart");
+        }
+
+        return UsageOf(a);
+    }
+
+    [DevCommand("unlock", "recipe all|<recipe>", "открыть рецепт")]
+    [DevCommand("unlock", "build all|<building>", "открыть здание")]
+    static string Unlock(DevArgs a)
+    {
+        ResearchSystem rs = ResearchSystem.Instance;
+        if (rs == null)
+            return Err("no research");
+        string id = a.Raw(1);
+        if (a[0] == "recipe")
+        {
+            if (a[1] == "all")
             {
                 RecipeData[] all = GameDatabase.AllRecipes();
                 int n = 0;
@@ -538,17 +424,20 @@ public static class DevCommands
                     if (rs.UnlockRecipe(all[i]))
                         n++;
                 }
-                return "recipes +" + n;
+
+                return Ok("recipes +" + n);
             }
+
             RecipeData recipe = GameDatabase.FindRecipe(id);
             if (recipe == null)
-                return "no recipe " + id;
+                return Err("no recipe " + id);
             rs.UnlockRecipe(recipe);
-            return "recipe " + recipe.id;
+            return Ok("recipe " + recipe.id);
         }
-        if (kind == "build")
+
+        if (a[0] == "build")
         {
-            if (id == "all")
+            if (a[1] == "all")
             {
                 BuildingData[] all = GameDatabase.AllBuildings();
                 int n = 0;
@@ -557,125 +446,41 @@ public static class DevCommands
                     if (rs.UnlockBuilding(all[i]))
                         n++;
                 }
-                return "buildings +" + n;
+
+                return Ok("buildings +" + n);
             }
+
             BuildingData b = GameDatabase.FindBuilding(id);
             if (b == null)
-                return "no building " + id;
+                return Err("no building " + id);
             rs.UnlockBuilding(b);
-            return "building " + b.id;
+            return Ok("building " + b.id);
         }
-        return "unlock recipe|build <id|all>";
+
+        return UsageOf(a);
     }
 
-    static string Tp(string kind, string id)
-    {
-        PlayerMovement move = Object.FindFirstObjectByType<PlayerMovement>();
-        if (move == null)
-            return "no player";
-        Vector2Int cell;
-        if (kind == "biome")
-        {
-            WorldBiome biome;
-            if (!TryParseBiome(id, out biome))
-                return "biome: field woodland forest beach lake ocean peak slope mountain";
-            if (!NearestBiome(biome, out cell))
-                return "no cell";
-        }
-        else if (kind == "cluster")
-        {
-            if (!NearestCluster(id, out cell))
-                return "no cluster " + id;
-        }
-        else if (kind == "veins" || kind == "vein")
-        {
-            if (!NearestVein(id, out cell))
-                return "no vein " + id;
-        }
-        else
-            return "tp biome|cluster|veins <id>";
-        move.TeleportToCell(cell);
-        return "tp " + cell.x + "," + cell.y;
-    }
+    // ---------- Время ----------
 
-    static string TimeSet(string op, string value)
+    [DevCommand("time", "set morning|day|evening|night|midnight|<time>", "час мира: слово или ЧЧ[:ММ[:СС]]")]
+    static string TimeSet(DevArgs a)
     {
-        if (op != "set")
-            return "time set ...";
-        float hour;
-        if (!TryParseHour(value, out hour))
-            return "time set morning|day|evening|night|midnight|HH[:MM[:SS]]";
+        if (a[0] != "set" || !TryParseHour(a.Raw(1), out float hour))
+            return UsageOf(a);
         AchievementSystem.NotifyTimeCheat();
         DayNight.Hour = DayNight.WrapHour(hour);
         GameSettings.ApplyAtmosphere();
-        return "time " + DayNight.FormatHour(DayNight.Hour);
+        return Ok("time " + DayNight.FormatHour(DayNight.Hour));
     }
 
-    public static string Describe(string raw)
+    [DevCommand("timeskip", "<duration> ...", "симуляция сдачи в лабу по текущим скоростям (монеты и жилы, без рубинов): ЧЧ:ММ:СС")]
+    static string Timeskip(DevArgs a)
     {
-        string q = Normalize(raw);
-        if (q.Length == 0)
-            q = "/";
-        string best = "";
-        for (int i = 0; i < Catalog.Length; i++)
-        {
-            if (!Catalog[i].StartsWith(q, true, CultureInfo.InvariantCulture))
-                continue;
-            best = Catalog[i];
-            break;
-        }
-
-        if (best.StartsWith("/timeskip", true, CultureInfo.InvariantCulture) || q.StartsWith("/timeskip", true, CultureInfo.InvariantCulture))
-            return "симуляция сдачи в лабу по текущим скоростям (монеты и жилы, рубины не трогать). синтаксис: /timeskip ЧЧ:ММ:СС";
-        if (best.StartsWith("/time", true, CultureInfo.InvariantCulture) || q.StartsWith("/time", true, CultureInfo.InvariantCulture))
-            return "поставить час мира. синтаксис: /time set morning|day|evening|night|midnight|ЧЧ[:ММ[:СС]]";
-        if (best.StartsWith("/money", true, CultureInfo.InvariantCulture))
-            return "монеты. синтаксис: /money add|remove N";
-        if (best.StartsWith("/ruby", true, CultureInfo.InvariantCulture))
-            return "рубины. синтаксис: /ruby add|remove N";
-        if (best.StartsWith("/research", true, CultureInfo.InvariantCulture))
-            return "исследования. синтаксис: /research list|skip <id>|skipall";
-        if (best.StartsWith("/unlock", true, CultureInfo.InvariantCulture))
-            return "открыть рецепт или здание. синтаксис: /unlock recipe|build <id|all>";
-        if (best.StartsWith("/tp", true, CultureInfo.InvariantCulture))
-            return "телепорт. синтаксис: /tp biome <id> | cluster <type> | veins <type>";
-        if (best.StartsWith("/spawn", true, CultureInfo.InvariantCulture))
-            return "заспавнить. синтаксис: /spawn vein <type> | spawn builder <id>";
-        if (best.StartsWith("/conveer", true, CultureInfo.InvariantCulture)
-            || best.StartsWith("/conveyor", true, CultureInfo.InvariantCulture)
-            || q.StartsWith("/conveer", true, CultureInfo.InvariantCulture)
-            || q.StartsWith("/conveyor", true, CultureInfo.InvariantCulture)
-            || q.StartsWith("/belt speed", true, CultureInfo.InvariantCulture))
-            return "множитель скорости лент. синтаксис: /conveer speed X";
-        if (best.StartsWith("/breakdown", true, CultureInfo.InvariantCulture) || q.StartsWith("/breakdown", true, CultureInfo.InvariantCulture))
-            return "поломки: info — сводка, now — одна ночная поломка сейчас (с тостом). синтаксис: /breakdown info|now";
-        if (best.StartsWith("/break", true, CultureInfo.InvariantCulture) || q.StartsWith("/break", true, CultureInfo.InvariantCulture))
-            return "сломать процент ломаемых зданий (станки и добыча) или здание под прицелом. синтаксис: /break N | /break here";
-        if (best.StartsWith("/repair", true, CultureInfo.InvariantCulture) || q.StartsWith("/repair", true, CultureInfo.InvariantCulture))
-            return "починить процент сломанных, все или под прицелом (без мини-игры). синтаксис: /repair N | all | here";
-        if (best.StartsWith("/help", true, CultureInfo.InvariantCulture))
-            return "список команд. синтаксис: /help [research]";
-        if (string.IsNullOrEmpty(best))
-            return "";
-        return "Tab — подставить. синтаксис: " + best;
-    }
-
-    static string EconomyCmd(string arg)
-    {
-        int minutes = 0;
-        if (!string.IsNullOrEmpty(arg) && !int.TryParse(arg, out minutes))
-            return "economy [минут]";
-        return EconomyLedger.Summary(minutes);
-    }
-
-    static string Timeskip(string[] p)
-    {
-        string spec = p.Length >= 2 ? p[1] : "";
-        if (p.Length >= 4)
-            spec = p[1] + ":" + p[2] + ":" + p[3];
-        float seconds;
-        if (!TryParseDuration(spec, out seconds) || seconds <= 0f)
-            return "timeskip HH:MM:SS";
+        string spec = a.Raw(0);
+        if (a.Count >= 3)
+            spec = a.Raw(0) + ":" + a.Raw(1) + ":" + a.Raw(2);
+        if (!TryParseDuration(spec, out float seconds) || seconds <= 0f)
+            return UsageOf(a);
         AchievementSystem.NotifyTimeCheat();
 
         float minutes = seconds / 60f;
@@ -716,7 +521,7 @@ public static class DevCommands
         sb.Append("  +").Append(coinGain).Append("c");
         sb.Append("  items ").Append(submitted).Append(" / ").Append(kinds).Append(" kinds");
         sb.Append("  clock ").Append(DayNight.FormatHour(DayNight.Hour));
-        return sb.ToString();
+        return Ok(sb.ToString());
     }
 
     static bool IsRubyItem(ItemData item)
@@ -734,8 +539,7 @@ public static class DevCommands
         string[] parts = spec.Split(':');
         if (parts.Length == 1)
         {
-            float v;
-            if (!float.TryParse(parts[0], NumberStyles.Float, CultureInfo.InvariantCulture, out v))
+            if (!float.TryParse(parts[0], NumberStyles.Float, CultureInfo.InvariantCulture, out float v))
                 return false;
             seconds = v;
             return seconds > 0f;
@@ -744,16 +548,11 @@ public static class DevCommands
         if (parts.Length == 2 || parts.Length == 3)
         {
             float h = 0f;
-            float m;
             float s = 0f;
             int i = 0;
-            if (parts.Length == 3)
-            {
-                if (!float.TryParse(parts[i++], NumberStyles.Float, CultureInfo.InvariantCulture, out h))
-                    return false;
-            }
-
-            if (!float.TryParse(parts[i++], NumberStyles.Float, CultureInfo.InvariantCulture, out m))
+            if (parts.Length == 3 && !float.TryParse(parts[i++], NumberStyles.Float, CultureInfo.InvariantCulture, out h))
+                return false;
+            if (!float.TryParse(parts[i++], NumberStyles.Float, CultureInfo.InvariantCulture, out float m))
                 return false;
             if (i < parts.Length
                 && !float.TryParse(parts[i], NumberStyles.Float, CultureInfo.InvariantCulture, out s))
@@ -765,175 +564,186 @@ public static class DevCommands
         return false;
     }
 
-    static string Stat(string kind)
+    static bool TryParseHour(string value, out float hour)
     {
-        if (kind == "biome")
-            return StatBiome();
-        if (kind == "veins")
-            return StatVeins();
-        if (kind == "cluster")
-            return StatClusters();
-        return "stat cluster|veins|biome";
+        hour = 0f;
+        if (string.IsNullOrEmpty(value))
+            return false;
+        switch (value.ToLowerInvariant())
+        {
+            case "morning": hour = 7.5f; return true;
+            case "day": hour = 12f; return true;
+            case "evening": hour = 18.5f; return true;
+            case "night": hour = 21f; return true;
+            case "midnight": hour = 0f; return true;
+        }
+
+        string[] parts = value.Split(':');
+        if (parts.Length == 1)
+        {
+            if (!int.TryParse(parts[0], out int h))
+                return false;
+            hour = h;
+            return true;
+        }
+
+        if (parts.Length >= 2)
+        {
+            int s = 0;
+            if (!int.TryParse(parts[0], out int h) || !int.TryParse(parts[1], out int m))
+                return false;
+            if (parts.Length >= 3 && !int.TryParse(parts[2], out s))
+                return false;
+            hour = h + m / 60f + s / 3600f;
+            return true;
+        }
+
+        return false;
     }
 
-    static string Locate(string kind, string id)
+    // ---------- Мир: биомы, жилы, кластеры ----------
+
+    [DevCommand("stat", "cluster|veins|biome", "сколько кластеров / жил / клеток биомов")]
+    static string Stat(DevArgs a)
     {
+        if (a[0] == "biome")
+            return StatBiome();
+        if (a[0] == "veins")
+            return StatVeins();
+        if (a[0] == "cluster")
+            return StatClusters();
+        return UsageOf(a);
+    }
+
+    [DevCommand("locate", "biome <biome>", "клетки биома")]
+    [DevCommand("locate", "cluster [<cluster>]", "центры кластеров")]
+    [DevCommand("locate", "veins [<vein>]", "жилы")]
+    static string Locate(DevArgs a)
+    {
+        string kind = a[0];
+        string id = a.Raw(1);
         var sb = new StringBuilder();
         int shown = 0;
         if (kind == "biome")
         {
-            WorldBiome biome;
-            if (!TryParseBiome(id, out biome) && !string.IsNullOrEmpty(id))
-                return "bad biome";
             WorldBiomeMap map = WorldBiomeMap.Instance;
             if (map == null || !map.IsReady)
-                return "no map";
+                return Err("no map");
+            if (!TryParseBiome(id, out WorldBiome biome))
+                return UsageOf(a);
             var cells = new List<Vector2Int>(64);
-            if (!TryParseBiome(id, out biome))
-                return "locate biome field|woodland|forest|beach|lake|ocean|peak|slope|mountain";
             map.CollectBiomeCells(biome, cells);
             for (int i = 0; i < cells.Count && shown < 20; i += Mathf.Max(1, cells.Count / 20))
             {
-                sb.Append(cells[i].x);
-                sb.Append(',');
-                sb.Append(cells[i].y);
-                sb.Append(' ');
+                sb.Append(Btn(cells[i].x + "," + cells[i].y, "/tp " + cells[i].x + " " + cells[i].y)).Append(' ');
                 shown++;
             }
-            sb.Append("(");
-            sb.Append(cells.Count);
-            sb.Append(")");
+
+            sb.Append('(').Append(cells.Count).Append(')');
             return sb.ToString();
         }
+
         if (kind == "cluster")
         {
             WorldResourceScatterer s = WorldResourceScatterer.Instance;
             if (s == null)
-                return "no scatter";
+                return Err("no scatter");
             for (int i = 0; i < s.ClusterCenters.Count && shown < 30; i++)
             {
                 string k = i < s.ClusterKindKeys.Count ? s.ClusterKindKeys[i] : "";
                 if (!string.IsNullOrEmpty(id) && !KindMatch(k, id))
                     continue;
-                sb.Append(k);
-                sb.Append(' ');
-                sb.Append(s.ClusterCenters[i].x);
-                sb.Append(',');
-                sb.Append(s.ClusterCenters[i].y);
-                sb.Append('\n');
+                Vector2Int c = s.ClusterCenters[i];
+                if (shown > 0)
+                    sb.Append('\n');
+                sb.Append(k).Append(' ').Append(c.x).Append(',').Append(c.y).Append("  ").Append(Btn("tp", "/tp " + c.x + " " + c.y));
                 shown++;
             }
-            return shown == 0 ? "none" : sb.ToString();
+
+            return shown == 0 ? Warn("none") : sb.ToString();
         }
+
         if (kind == "veins" || kind == "vein")
         {
             WorldResourceScatterer s = WorldResourceScatterer.Instance;
             if (s == null)
-                return "no scatter";
+                return Err("no scatter");
             for (int i = 0; i < s.Veins.Count && shown < 30; i++)
             {
                 string label = s.Veins[i].label ?? "";
                 if (!string.IsNullOrEmpty(id) && !KindMatch(label, id))
                     continue;
-                sb.Append(label);
-                sb.Append(' ');
-                sb.Append(s.Veins[i].cell.x);
-                sb.Append(',');
-                sb.Append(s.Veins[i].cell.y);
-                sb.Append('\n');
+                Vector2Int c = s.Veins[i].cell;
+                if (shown > 0)
+                    sb.Append('\n');
+                sb.Append(label).Append(' ').Append(c.x).Append(',').Append(c.y).Append("  ").Append(Btn("tp", "/tp " + c.x + " " + c.y));
                 shown++;
             }
-            return shown == 0 ? "none" : sb.ToString();
+
+            return shown == 0 ? Warn("none") : sb.ToString();
         }
-        return "locate biome|cluster|veins [id]";
+
+        return UsageOf(a);
     }
 
-    static string Regen()
+    [DevCommand("regenWorldMap", "", "пересоздать карту биомов и жилы (жилы под экстракторами остаются)")]
+    static string Regen(DevArgs a)
     {
         if (WorldBiomeMap.Instance != null)
             WorldBiomeMap.Instance.Generate();
         if (WorldResourceScatterer.Instance != null)
             WorldResourceScatterer.Instance.ScatterPreservingExtractorVeins();
-        return "regen";
+        return Ok("regen");
     }
 
-    static string BeltSpeed(string op, string value)
+    [DevCommand("spawn", "vein <vein>", "жила под игроком")]
+    [DevCommand("spawn", "builder <building>", "здание под игроком (старый способ, лучше /build)")]
+    static string Spawn(DevArgs a)
     {
-        if (op != "speed")
-            return "conveer speed X";
-        BeltSpeedSystem sys = BeltSpeedSystem.Instance;
-        if (sys == null)
-            return "no belts";
-        if (string.IsNullOrEmpty(value))
-            return "speed x" + sys.CheatMul.ToString("0.##") + "  total x" + sys.Multiplier.ToString("0.##");
-        float mul;
-        if (!float.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out mul))
-            return "conveer speed X";
-        sys.SetCheatMul(mul);
-        return "speed x" + sys.CheatMul.ToString("0.##") + "  total x" + sys.Multiplier.ToString("0.##");
-    }
-
-    static string Belts()
-    {
-        Conveyor[] belts = Object.FindObjectsByType<Conveyor>(FindObjectsSortMode.None);
-        int cargo = 0;
-        int forms = 0;
-        int onScreen = 0;
-        for (int i = 0; i < belts.Length; i++)
-        {
-            if (belts[i] == null)
-                continue;
-            cargo += belts[i].CargoCount;
-            if (belts[i].transform.childCount > 1)
-                forms++;
-            if (WorldView.InRange(belts[i].transform.position))
-                onScreen++;
-        }
-        Splitter[] splits = Object.FindObjectsByType<Splitter>(FindObjectsSortMode.None);
-        return "belts " + belts.Length + " cargo " + cargo + " extraForms " + forms + " onScreen " + onScreen + " splitters " + splits.Length;
-    }
-
-    static string ClearCargo()
-    {
-        Conveyor[] belts = Object.FindObjectsByType<Conveyor>(FindObjectsSortMode.None);
-        for (int i = 0; i < belts.Length; i++)
-        {
-            if (belts[i] != null)
-                belts[i].DevClearCargo();
-        }
-        Splitter[] splits = Object.FindObjectsByType<Splitter>(FindObjectsSortMode.None);
-        for (int i = 0; i < splits.Length; i++)
-        {
-            if (splits[i] != null)
-                splits[i].DevClearCargo();
-        }
-        return "cargo cleared";
-    }
-
-    static string KillItems()
-    {
-        BeltItemView.ClearPool();
-        Transform[] all = Object.FindObjectsByType<Transform>(FindObjectsSortMode.None);
-        int n = 0;
-        for (int i = 0; i < all.Length; i++)
-        {
-            if (all[i] == null)
-                continue;
-            if (!all[i].name.StartsWith("BeltItem_"))
-                continue;
-            Object.Destroy(all[i].gameObject);
-            n++;
-        }
-        return "killed " + n;
-    }
-
-    static string Dump(string what)
-    {
-        if (what != "cell")
-            return "dump cell";
-        PlayerMovement move = Object.FindFirstObjectByType<PlayerMovement>();
+        PlayerMovement move = Player();
         if (move == null)
-            return "no player";
+            return Err("no player");
+        Vector2Int cell = BuildingLinker.WorldToCell(move.transform.position);
+        string id = a.Raw(1);
+        if (a[0] == "vein")
+        {
+            if (WorldResourceScatterer.Instance == null)
+                return Err("no scatter");
+            if (!WorldResourceScatterer.Instance.DevSpawnVein(id, cell))
+                return Err("spawn vein failed");
+            return Ok("vein " + id + " " + cell.x + "," + cell.y);
+        }
+
+        if (a[0] == "builder" || a[0] == "building")
+        {
+            BuildingData data = GameDatabase.FindBuilding(id);
+            if (data == null || data.prefab == null)
+                return Err("no building " + id);
+            Vector3 pos = GridSystem.Instance != null
+                ? GridSystem.Instance.GetCellCenter(cell, move.transform.position.y)
+                : move.transform.position;
+            GameObject go = Object.Instantiate(data.prefab, pos, Quaternion.identity);
+            BuildingBase b = go.GetComponent<BuildingBase>();
+            if (b != null)
+            {
+                b.data = data;
+                b.OnPlaced();
+            }
+
+            return Ok("spawn " + data.id);
+        }
+
+        return UsageOf(a);
+    }
+
+    [DevCommand("dump", "cell", "что в клетке под игроком")]
+    static string Dump(DevArgs a)
+    {
+        if (a[0] != "cell")
+            return UsageOf(a);
+        PlayerMovement move = Player();
+        if (move == null)
+            return Err("no player");
         Vector2Int cell = BuildingLinker.WorldToCell(move.transform.position);
         WorldBiome biome = WorldBiomeMap.Instance != null ? WorldBiomeMap.Instance.Get(cell) : WorldBiome.Field;
         GameObject occ = GridOccupancy.GetAt(cell);
@@ -949,160 +759,23 @@ public static class DevCommands
             + " vein " + (node != null && node.resource != null ? node.resource.id : (vein ?? "-"));
     }
 
-    static string Save()
-    {
-        if (SaveSystem.Instance == null)
-            return "no save";
-        SaveSystem.Instance.SaveGame();
-        return "saved";
-    }
-
-    static string Load()
-    {
-        if (SaveSystem.Instance == null)
-            return "no save";
-        SaveSystem.Instance.LoadGame();
-        return "loading";
-    }
-
-    static string GodSave()
-    {
-        if (SaveSystem.Instance == null || !WorldCatalog.HasActive)
-            return "no world";
-        SaveSystem.Instance.SaveGame();
-        string src = WorldCatalog.ActiveSavePath;
-        if (string.IsNullOrEmpty(src) || !File.Exists(src))
-            return "no file";
-        string dst = src + ".god";
-        File.Copy(src, dst, true);
-        return "godsave " + Path.GetFileName(dst);
-    }
-
-    static string Fps()
-    {
-        float dt = Time.unscaledDeltaTime;
-        float fps = dt > 0.0001f ? 1f / dt : 0f;
-        Conveyor[] belts = Object.FindObjectsByType<Conveyor>(FindObjectsSortMode.None);
-        int items = 0;
-        Transform[] tr = Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None);
-        for (int i = 0; i < tr.Length; i++)
-        {
-            if (tr[i] != null && tr[i].name.StartsWith("BeltItem_"))
-                items++;
-        }
-        MeshRenderer[] mesh = Object.FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None);
-        int shown = 0, shadow = 0;
-        for (int i = 0; i < mesh.Length; i++)
-        {
-            if (mesh[i] == null || !mesh[i].enabled || !mesh[i].isVisible)
-                continue;
-            shown++;
-            if (mesh[i].shadowCastingMode != UnityEngine.Rendering.ShadowCastingMode.Off)
-                shadow++;
-        }
-
-        int lights = 0;
-        foreach (Light l in Object.FindObjectsByType<Light>(FindObjectsSortMode.None))
-        {
-            if (l != null && l.enabled)
-                lights++;
-        }
-
-        int audio = 0;
-        foreach (AudioSource a in Object.FindObjectsByType<AudioSource>(FindObjectsSortMode.None))
-        {
-            if (a != null && a.isPlaying)
-                audio++;
-        }
-
-        BuildingBase[] buildings = Object.FindObjectsByType<BuildingBase>(FindObjectsSortMode.None);
-        long managed = System.GC.GetTotalMemory(false) / (1024 * 1024);
-        long unity = UnityEngine.Profiling.Profiler.GetTotalAllocatedMemoryLong() / (1024 * 1024);
-        // Сравнивай в начале игры и через 40 минут: что растёт, то и тормозит.
-        return "fps " + fps.ToString("0.0") + " (≈" + (1f / Mathf.Max(0.0001f, Time.smoothDeltaTime)).ToString("0") + ")"
-            + "\nздания " + buildings.Length + " · ленты " + belts.Length + " · декор " + DecorSystem.All.Count
-            + "\nгруз на лентах " + items + " · пул " + BeltItemView.PooledCount
-            + "\nобъектов " + tr.Length + " · мешей " + mesh.Length + " · видно " + shown + " · с тенью " + shadow
-            + "\nсвет " + lights + " · звуки " + audio
-            + "\nпамять C# " + managed + " МБ · Unity " + unity + " МБ";
-    }
-
-    static string Log(string onOff, string target)
-    {
-        bool on = onOff == "on";
-        if (target != "belts")
-            return "log on|off belts";
-        Conveyor[] belts = Object.FindObjectsByType<Conveyor>(FindObjectsSortMode.None);
-        for (int i = 0; i < belts.Length; i++)
-        {
-            if (belts[i] != null)
-                belts[i].showDebug = on;
-        }
-        Extractor[] ex = Object.FindObjectsByType<Extractor>(FindObjectsSortMode.None);
-        for (int i = 0; i < ex.Length; i++)
-        {
-            if (ex[i] != null)
-                ex[i].showDebug = on;
-        }
-        return "debug belts " + on;
-    }
-
-    static string Spawn(string kind, string id)
-    {
-        PlayerMovement move = Object.FindFirstObjectByType<PlayerMovement>();
-        if (move == null)
-            return "no player";
-        Vector2Int cell = BuildingLinker.WorldToCell(move.transform.position);
-        if (kind == "vein")
-        {
-            if (WorldResourceScatterer.Instance == null)
-                return "no scatter";
-            if (!WorldResourceScatterer.Instance.DevSpawnVein(id, cell))
-                return "spawn vein failed";
-            return "vein " + id + " " + cell.x + "," + cell.y;
-        }
-        if (kind == "builder" || kind == "building")
-        {
-            BuildingData data = GameDatabase.FindBuilding(id);
-            if (data == null || data.prefab == null)
-                return "no building " + id;
-            Vector3 pos = GridSystem.Instance != null
-                ? GridSystem.Instance.GetCellCenter(cell, move.transform.position.y)
-                : move.transform.position;
-            GameObject go = Object.Instantiate(data.prefab, pos, Quaternion.identity);
-            BuildingBase b = go.GetComponent<BuildingBase>();
-            if (b != null)
-            {
-                b.data = data;
-                b.OnPlaced();
-            }
-            return "spawn " + data.id;
-        }
-        return "spawn vein <type> | spawn builder <id>";
-    }
-
     static string StatBiome()
     {
         WorldBiomeMap map = WorldBiomeMap.Instance;
         if (map == null || !map.IsReady)
-            return "no map";
-        var counts = new Dictionary<WorldBiome, int>();
+            return Err("no map");
+        var sb = new StringBuilder();
         var tmp = new List<Vector2Int>(256);
         for (int i = 0; i <= (int)WorldBiome.MountainSlope; i++)
         {
             tmp.Clear();
             var biome = (WorldBiome)i;
             map.CollectBiomeCells(biome, tmp);
-            counts[biome] = tmp.Count;
+            if (sb.Length > 0)
+                sb.Append('\n');
+            sb.Append(biome).Append(' ').Append(tmp.Count);
         }
-        var sb = new StringBuilder();
-        foreach (KeyValuePair<WorldBiome, int> pair in counts)
-        {
-            sb.Append(pair.Key);
-            sb.Append(' ');
-            sb.Append(pair.Value);
-            sb.Append('\n');
-        }
+
         return sb.ToString();
     }
 
@@ -1110,25 +783,19 @@ public static class DevCommands
     {
         WorldResourceScatterer s = WorldResourceScatterer.Instance;
         if (s == null)
-            return "no scatter";
+            return Err("no scatter");
         var map = new Dictionary<string, int>();
         for (int i = 0; i < s.Veins.Count; i++)
         {
             string k = s.Veins[i].label ?? "?";
-            int n;
-            map.TryGetValue(k, out n);
+            map.TryGetValue(k, out int n);
             map[k] = n + 1;
         }
+
         var sb = new StringBuilder();
         foreach (KeyValuePair<string, int> pair in map)
-        {
-            sb.Append(pair.Key);
-            sb.Append(' ');
-            sb.Append(pair.Value);
-            sb.Append('\n');
-        }
-        sb.Append("total ");
-        sb.Append(s.Veins.Count);
+            sb.Append(pair.Key).Append(' ').Append(pair.Value).Append('\n');
+        sb.Append("total ").Append(s.Veins.Count);
         return sb.ToString();
     }
 
@@ -1136,25 +803,19 @@ public static class DevCommands
     {
         WorldResourceScatterer s = WorldResourceScatterer.Instance;
         if (s == null)
-            return "no scatter";
+            return Err("no scatter");
         var map = new Dictionary<string, int>();
         for (int i = 0; i < s.ClusterKindKeys.Count; i++)
         {
             string k = s.ClusterKindKeys[i] ?? "?";
-            int n;
-            map.TryGetValue(k, out n);
+            map.TryGetValue(k, out int n);
             map[k] = n + 1;
         }
+
         var sb = new StringBuilder();
         foreach (KeyValuePair<string, int> pair in map)
-        {
-            sb.Append(pair.Key);
-            sb.Append(' ');
-            sb.Append(pair.Value);
-            sb.Append('\n');
-        }
-        sb.Append("total ");
-        sb.Append(s.ClusterCenters.Count);
+            sb.Append(pair.Key).Append(' ').Append(pair.Value).Append('\n');
+        sb.Append("total ").Append(s.ClusterCenters.Count);
         return sb.ToString();
     }
 
@@ -1162,7 +823,7 @@ public static class DevCommands
     {
         cell = Vector2Int.zero;
         WorldBiomeMap map = WorldBiomeMap.Instance;
-        PlayerMovement move = Object.FindFirstObjectByType<PlayerMovement>();
+        PlayerMovement move = Player();
         if (map == null || move == null)
             return false;
         Vector2Int origin = BuildingLinker.WorldToCell(move.transform.position);
@@ -1187,6 +848,7 @@ public static class DevCommands
                 best = i;
             }
         }
+
         cell = cells[best];
         return true;
     }
@@ -1195,7 +857,7 @@ public static class DevCommands
     {
         cell = Vector2Int.zero;
         WorldResourceScatterer s = WorldResourceScatterer.Instance;
-        PlayerMovement move = Object.FindFirstObjectByType<PlayerMovement>();
+        PlayerMovement move = Player();
         if (s == null || move == null)
             return false;
         Vector2Int origin = BuildingLinker.WorldToCell(move.transform.position);
@@ -1213,6 +875,7 @@ public static class DevCommands
                 best = i;
             }
         }
+
         if (best < 0)
             return false;
         cell = s.ClusterCenters[best];
@@ -1223,7 +886,7 @@ public static class DevCommands
     {
         cell = Vector2Int.zero;
         WorldResourceScatterer s = WorldResourceScatterer.Instance;
-        PlayerMovement move = Object.FindFirstObjectByType<PlayerMovement>();
+        PlayerMovement move = Player();
         if (s == null || move == null)
             return false;
         Vector2Int origin = BuildingLinker.WorldToCell(move.transform.position);
@@ -1240,6 +903,7 @@ public static class DevCommands
                 best = i;
             }
         }
+
         if (best < 0)
             return false;
         cell = s.Veins[best].cell;
@@ -1295,55 +959,341 @@ public static class DevCommands
         return have.Contains(want);
     }
 
-    static bool TryParseHour(string value, out float hour)
+    // ---------- Ленты (старое) ----------
+
+    [DevCommand("belts", "", "сводка по лентам и грузу")]
+    static string Belts(DevArgs a)
     {
-        hour = 0f;
-        if (string.IsNullOrEmpty(value))
+        Conveyor[] belts = Object.FindObjectsByType<Conveyor>(FindObjectsSortMode.None);
+        int cargo = 0;
+        int forms = 0;
+        int onScreen = 0;
+        for (int i = 0; i < belts.Length; i++)
+        {
+            if (belts[i] == null)
+                continue;
+            cargo += belts[i].CargoCount;
+            if (belts[i].transform.childCount > 1)
+                forms++;
+            if (WorldView.InRange(belts[i].transform.position))
+                onScreen++;
+        }
+
+        Splitter[] splits = Object.FindObjectsByType<Splitter>(FindObjectsSortMode.None);
+        return "belts " + belts.Length + " cargo " + cargo + " extraForms " + forms + " onScreen " + onScreen + " splitters " + splits.Length;
+    }
+
+    [DevCommand("clearcargo", "", "убрать груз со всех лент и сплиттеров (как /belt flush all)")]
+    static string ClearCargo(DevArgs a)
+    {
+        return BeltFlush(BeltScope.All, 0f, false);
+    }
+
+    [DevCommand("killitems", "", "удалить все визуалы груза (BeltItem_*) и пул")]
+    static string KillItems(DevArgs a)
+    {
+        BeltItemView.ClearPool();
+        Transform[] all = Object.FindObjectsByType<Transform>(FindObjectsSortMode.None);
+        int n = 0;
+        for (int i = 0; i < all.Length; i++)
+        {
+            if (all[i] == null || !all[i].name.StartsWith("BeltItem_"))
+                continue;
+            Object.Destroy(all[i].gameObject);
+            n++;
+        }
+
+        return Ok("killed " + n);
+    }
+
+    [DevCommand("log", "on|off belts", "отладочный лог лент и экстракторов в Unity-консоль")]
+    static string Log(DevArgs a)
+    {
+        bool on = a[0] == "on";
+        if (a[1] != "belts" || !a.Is(0, "on", "off"))
+            return UsageOf(a);
+        Conveyor[] belts = Object.FindObjectsByType<Conveyor>(FindObjectsSortMode.None);
+        for (int i = 0; i < belts.Length; i++)
+        {
+            if (belts[i] != null)
+                belts[i].showDebug = on;
+        }
+
+        Extractor[] ex = Object.FindObjectsByType<Extractor>(FindObjectsSortMode.None);
+        for (int i = 0; i < ex.Length; i++)
+        {
+            if (ex[i] != null)
+                ex[i].showDebug = on;
+        }
+
+        return Ok("debug belts " + on);
+    }
+
+    // ---------- Производительность ----------
+
+    [DevCommand("fps", "", "fps, объекты, память", Alias = "perf")]
+    static string Fps(DevArgs a)
+    {
+        float dt = Time.unscaledDeltaTime;
+        float fps = dt > 0.0001f ? 1f / dt : 0f;
+        Conveyor[] belts = Object.FindObjectsByType<Conveyor>(FindObjectsSortMode.None);
+        int items = 0;
+        Transform[] tr = Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        for (int i = 0; i < tr.Length; i++)
+        {
+            if (tr[i] != null && tr[i].name.StartsWith("BeltItem_"))
+                items++;
+        }
+
+        MeshRenderer[] mesh = Object.FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None);
+        int shown = 0, shadow = 0;
+        for (int i = 0; i < mesh.Length; i++)
+        {
+            if (mesh[i] == null || !mesh[i].enabled || !mesh[i].isVisible)
+                continue;
+            shown++;
+            if (mesh[i].shadowCastingMode != UnityEngine.Rendering.ShadowCastingMode.Off)
+                shadow++;
+        }
+
+        int lights = 0;
+        foreach (Light l in Object.FindObjectsByType<Light>(FindObjectsSortMode.None))
+        {
+            if (l != null && l.enabled)
+                lights++;
+        }
+
+        int audio = 0;
+        foreach (AudioSource s in Object.FindObjectsByType<AudioSource>(FindObjectsSortMode.None))
+        {
+            if (s != null && s.isPlaying)
+                audio++;
+        }
+
+        BuildingBase[] buildings = Object.FindObjectsByType<BuildingBase>(FindObjectsSortMode.None);
+        long managed = System.GC.GetTotalMemory(false) / (1024 * 1024);
+        long unity = UnityEngine.Profiling.Profiler.GetTotalAllocatedMemoryLong() / (1024 * 1024);
+        // Сравнивай в начале игры и через 40 минут: что растёт, то и тормозит.
+        return "fps " + fps.ToString("0.0") + " (≈" + (1f / Mathf.Max(0.0001f, Time.smoothDeltaTime)).ToString("0") + ")"
+            + "\nздания " + buildings.Length + " · ленты " + belts.Length + " · декор " + DecorSystem.All.Count
+            + "\nгруз на лентах " + items + " · пул " + BeltItemView.PooledCount
+            + "\nобъектов " + tr.Length + " · мешей " + mesh.Length + " · видно " + shown + " · с тенью " + shadow
+            + "\nсвет " + lights + " · звуки " + audio
+            + "\nпамять C# " + managed + " МБ · Unity " + unity + " МБ";
+    }
+
+    // ---------- Поломки (старое) ----------
+
+    [DevCommand("break", "<n>|here", "сломать N% станков и добычи или здание под прицелом")]
+    static string Break(DevArgs a)
+    {
+        BreakdownSystem sys = BreakdownSystem.Instance;
+        if (sys == null)
+            return Err("no breakdown system");
+        if (a[0] == "here")
+        {
+            BuildingBase b = AimedBuilding();
+            if (b == null || !BreakdownSystem.CanBreak(b))
+                return Err("не станок/добыча под прицелом");
+            if (b.IsBroken)
+                return Warn("уже сломан");
+            sys.BreakNow(b, true);
+            return Ok("сломан: " + Name(b) + (b.BreakMode == 2 ? " (1/4 силы)" : ""));
+        }
+
+        if (!TryPercent(a.Raw(0), out float pct))
+            return UsageOf(a);
+        int n = sys.BreakPercent(pct);
+        return Ok("сломано " + n + " (всего сломано " + BreakdownSystem.BrokenCount + " / " + BreakdownSystem.EligibleCount() + ")");
+    }
+
+    [DevCommand("repair", "<n>|all|here", "починить N% сломанных, все или под прицелом (без мини-игры)")]
+    static string Repair(DevArgs a)
+    {
+        BreakdownSystem sys = BreakdownSystem.Instance;
+        if (sys == null)
+            return Err("no breakdown system");
+        if (a[0] == "here")
+        {
+            BuildingBase b = AimedBuilding();
+            if (b == null || !b.IsBroken)
+                return Err("под прицелом нет сломанного");
+            sys.Repair(b, false);
+            return Ok("починен: " + Name(b));
+        }
+
+        float pct = 100f;
+        if (a[0] != "all" && !TryPercent(a.Raw(0), out pct))
+            return UsageOf(a);
+        int n = sys.RepairPercent(pct);
+        return Ok("починено " + n + ", осталось " + BreakdownSystem.BrokenCount);
+    }
+
+    static bool TryPercent(string arg, out float pct)
+    {
+        return DevRegistry.TryNumber(arg, out pct) && pct > 0f;
+    }
+
+    // ---------- Декор ----------
+
+    [DevCommand("decor", "all|reset|info", "открыть все / сбросить покупки / сводка")]
+    [DevCommand("decor", "give <decor>", "открыть одну декорацию")]
+    static string Decor(DevArgs a)
+    {
+        DecorSystem sys = DecorSystem.Instance;
+        if (sys == null)
+            return Err("no decor system");
+        if (a[0] == "all")
+        {
+            sys.GrantAll(true);
+            return Ok("декорации открыты: " + sys.OwnedCount() + " / " + DecorCatalog.All.Count);
+        }
+
+        if (a[0] == "reset")
+        {
+            sys.GrantAll(false);
+            return Ok("покупки декораций сброшены");
+        }
+
+        if (a[0] == "give")
+        {
+            DecorCatalog.Def def = DecorCatalog.Find(a.Raw(1));
+            if (def == null)
+                return Err("нет декорации " + a.Raw(1));
+            return sys.Grant(def) ? Ok("открыта: " + def.id) : Warn("уже есть или не продаётся: " + def.id);
+        }
+
+        DecorCatalog.Def deal = DecorSystem.Deal();
+        return "куплено " + sys.OwnedCount() + " / " + DecorCatalog.All.Count
+            + " · красота " + DecorSystem.Beauty.ToString("0.#", CultureInfo.InvariantCulture)
+            + " · поставлено " + DecorSystem.All.Count
+            + " · скидка дня: " + (deal != null ? deal.id : "-")
+            + " · ночь: " + (DecorSystem.IsNight ? "да" : "нет");
+    }
+
+    // ---------- Общие помощники ----------
+
+    static PlayerMovement cachedPlayer;
+
+    static PlayerMovement Player()
+    {
+        if (cachedPlayer == null)
+            cachedPlayer = Object.FindFirstObjectByType<PlayerMovement>();
+        return cachedPlayer;
+    }
+
+    static string Name(BuildingBase b)
+    {
+        if (b == null)
+            return "-";
+        return b.data != null && !string.IsNullOrEmpty(b.data.id) ? b.data.id : b.name;
+    }
+
+    static Vector2Int CellOf(BuildingBase b)
+    {
+        return BuildingLinker.WorldToCell(b.transform.position);
+    }
+
+    static string CellText(Vector2Int c)
+    {
+        return c.x + "," + c.y;
+    }
+
+    /// <summary>Кнопка телепорта к зданию: на свободную клетку рядом, а не на крышу.</summary>
+    static string TpBtn(BuildingBase b)
+    {
+        Vector2Int c = NearFreeCell(b);
+        return Btn("tp", "/tp " + c.x + " " + c.y);
+    }
+
+    static Vector2Int NearFreeCell(BuildingBase b)
+    {
+        Vector2Int center = CellOf(b);
+        Vector2Int size = b.FootprintSize;
+        int reach = Mathf.Max(size.x, size.y) / 2 + 1;
+        for (int r = reach; r <= reach + 4; r++)
+        {
+            for (int dx = -r; dx <= r; dx++)
+            {
+                for (int dy = -r; dy <= r; dy++)
+                {
+                    if (Mathf.Abs(dx) != r && Mathf.Abs(dy) != r)
+                        continue;
+                    Vector2Int c = center + new Vector2Int(dx, dy);
+                    if (GridOccupancy.GetAt(c) == null)
+                        return c;
+                }
+            }
+        }
+
+        return center;
+    }
+
+    static Camera AimCamera()
+    {
+        Camera cam = Camera.main;
+        return cam;
+    }
+
+    /// <summary>Точка под прицелом (центр экрана). В 3-м лице луч проходит сквозь игрока.</summary>
+    static bool AimHit(out RaycastHit hit, float distance = 60f)
+    {
+        hit = default;
+        Camera cam = AimCamera();
+        if (cam == null)
             return false;
-        switch (value.ToLowerInvariant())
-        {
-            case "morning": hour = 7.5f; return true;
-            case "day": hour = 12f; return true;
-            case "evening": hour = 18.5f; return true;
-            case "night": hour = 21f; return true;
-            case "midnight": hour = 0f; return true;
-        }
-        string[] parts = value.Split(':');
-        if (parts.Length == 1)
-        {
-            int h;
-            if (!int.TryParse(parts[0], out h))
-                return false;
-            hour = h;
-            return true;
-        }
-        if (parts.Length >= 2)
-        {
-            int h, m, s = 0;
-            if (!int.TryParse(parts[0], out h) || !int.TryParse(parts[1], out m))
-                return false;
-            if (parts.Length >= 3 && !int.TryParse(parts[2], out s))
-                return false;
-            hour = h + m / 60f + s / 3600f;
-            return true;
-        }
-        return false;
+        var ray = new Ray(cam.transform.position, cam.transform.forward);
+        return PlayerMovement.AimRaycast(ray, out hit, distance, ~0, QueryTriggerInteraction.Ignore);
     }
 
-    static int ParseInt(string s)
+    /// <summary>Поставленное здание под прицелом: по коллайдеру или по клетке в точке попадания.</summary>
+    static BuildingBase AimedBuilding()
     {
-        int v;
-        int.TryParse(s, out v);
-        return Mathf.Abs(v);
+        if (!AimHit(out RaycastHit hit))
+            return null;
+        BuildingBase b = hit.collider != null ? hit.collider.GetComponentInParent<BuildingBase>() : null;
+        if (b != null && b.IsPlaced)
+            return b;
+        GameObject occ = GridOccupancy.GetAt(BuildingLinker.WorldToCell(hit.point));
+        b = occ != null ? occ.GetComponent<BuildingBase>() : null;
+        return b != null && b.IsPlaced ? b : null;
     }
 
-    static string Normalize(string raw)
+    static bool AimCell(out Vector2Int cell, out Vector3 point)
     {
-        return raw == null ? "" : raw.Trim();
+        cell = default;
+        point = default;
+        if (!AimHit(out RaycastHit hit))
+            return false;
+        point = hit.point;
+        cell = BuildingLinker.WorldToCell(hit.point);
+        return true;
     }
 
-    static string[] Split(string line)
+    /// <summary>Поставленные здания в радиусе r клеток от игрока.</summary>
+    static void CollectNear(float r, List<BuildingBase> into)
     {
-        return line.Split(new[] { ' ' }, System.StringSplitOptions.RemoveEmptyEntries);
+        into.Clear();
+        PlayerMovement move = Player();
+        if (move == null)
+            return;
+        Vector3 p = move.transform.position;
+        float r2 = r * GridFootprint.CellSize * r * GridFootprint.CellSize;
+        IReadOnlyList<BuildingBase> all = WorldSim.Buildings;
+        for (int i = 0; i < all.Count; i++)
+        {
+            BuildingBase b = all[i];
+            if (b == null || !b.IsPlaced)
+                continue;
+            Vector3 d = b.transform.position - p;
+            d.y = 0f;
+            if (d.sqrMagnitude <= r2)
+                into.Add(b);
+        }
+    }
+
+    static string F(float v, string format = "0.##")
+    {
+        return v.ToString(format, CultureInfo.InvariantCulture);
     }
 }

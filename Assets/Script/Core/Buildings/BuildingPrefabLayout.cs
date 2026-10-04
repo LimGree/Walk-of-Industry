@@ -45,6 +45,16 @@ public static class BuildingPrefabLayout
         if (building.outputSockets != null && building.outputSockets.Length > 0 && building.outputSockets[0] != null)
             PlaceSocket(building.outputSockets[0].transform, new Vector3(0f, y, halfZ), OutputRotation);
 
+        // Конструктор: оба входа сзади (левая и правая клетки), выход спереди, по бокам ничего.
+        if (building is Constructor && building.inputSockets != null && building.inputSockets.Length > 1
+            && building.inputSockets[0] != null && building.inputSockets[1] != null)
+        {
+            float quarterX = size.x * cell * 0.25f;
+            PlaceSocket(building.inputSockets[0].transform, new Vector3(-quarterX, y, -halfZ), InputRotation);
+            PlaceSocket(building.inputSockets[1].transform, new Vector3(quarterX, y, -halfZ), InputRotation);
+            return;
+        }
+
         if (building.inputSockets != null && building.inputSockets.Length > 1 && building.inputSockets[1] != null)
         {
             float halfX = Mathf.Max(0.2f, size.x * cell * 0.5f - 0.02f);

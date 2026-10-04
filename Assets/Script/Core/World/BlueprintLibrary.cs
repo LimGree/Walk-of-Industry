@@ -15,6 +15,8 @@ public class BlueprintBuilding
     public string filterItemId;
     public bool pairExit;
     public int pairId;
+    /// <summary>Содержимое таблички / краска декора (<see cref="Decoration.CopyState"/>).</summary>
+    public string decor;
 }
 
 [Serializable]

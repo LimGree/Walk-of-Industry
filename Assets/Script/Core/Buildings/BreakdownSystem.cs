@@ -32,6 +32,11 @@ public class BreakdownSystem : MonoBehaviour
     public const int GameCount = 5;
 
     public static BreakdownSystem Instance { get; private set; }
+
+    /// <summary>Консоль (/breakdown off): авто-поломки выключены, ручные (/break) работают.</summary>
+    public static bool DevOff;
+    /// <summary>Консоль (/breakdown chance): множитель доли поломок за ночь.</summary>
+    public static float DevRateMul = 1f;
     public static event Action Changed;
 
     static readonly HashSet<BuildingBase> Broken = new HashSet<BuildingBase>();
@@ -140,7 +145,7 @@ public class BreakdownSystem : MonoBehaviour
 
     public static bool CanBreak(BuildingBase b)
     {
-        return b != null && b.IsPlaced
+        return b != null && b.IsPlaced && !TestYard.InDemoHall(b)
             && (b is CrafterBuilding || b is Extractor || b is OilExtractor || b is WaterExtractor
                 || b is DroneLoadStation || b is DroneUnloadStation);
     }
@@ -193,7 +198,7 @@ public class BreakdownSystem : MonoBehaviour
             rate = 0.02f;
         else if (rs != null && rs.IsResearchIdUnlocked(ReliabilityResearch1))
             rate = 0.035f;
-        return rate * GameSettings.BreakdownRateMultiplier;
+        return rate * GameSettings.BreakdownRateMultiplier * DevRateMul;
     }
 
     /// <summary>Удар молнии (настройка «Гроза ломает станки»): ломает случайный станок, если поломки разрешены.</summary>
@@ -233,7 +238,7 @@ public class BreakdownSystem : MonoBehaviour
 
     bool AutoAllowed()
     {
-        if (!GameSettings.BreakdownsEnabled)
+        if (!GameSettings.BreakdownsEnabled || DevOff)
             return false;
         if (!WorldCatalog.HasActive)
             return false;

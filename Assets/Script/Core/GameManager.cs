@@ -63,6 +63,8 @@ public class GameManager : MonoBehaviour
             gameObject.AddComponent<RepairUI>();
         if (GetComponent<DroneStationUI>() == null)
             gameObject.AddComponent<DroneStationUI>();
+        if (GetComponent<SignEditorUI>() == null)
+            gameObject.AddComponent<SignEditorUI>();
         if (GetComponent<BuildingPicker>() == null)
             gameObject.AddComponent<BuildingPicker>();
         if (GetComponent<SelectionActionsUI>() == null)
@@ -79,6 +81,16 @@ public class GameManager : MonoBehaviour
             gameObject.AddComponent<TutorialSystem>();
         if (GetComponent<TutorialUI>() == null)
             gameObject.AddComponent<TutorialUI>();
+        if (GetComponent<GearHotbar>() == null)
+            gameObject.AddComponent<GearHotbar>();
+        if (GetComponent<PerkSystem>() == null)
+            gameObject.AddComponent<PerkSystem>();
+        if (GetComponent<GoalSystem>() == null)
+            gameObject.AddComponent<GoalSystem>();
+        if (GetComponent<GoalsUI>() == null)
+            gameObject.AddComponent<GoalsUI>();
+        if (GetComponent<ProductionMapUI>() == null)
+            gameObject.AddComponent<ProductionMapUI>();
         GameAudio.Ensure();
         GameSettings.Apply();
     }
@@ -104,6 +116,8 @@ public class GameManager : MonoBehaviour
 
     void OnPausePerformed(InputAction.CallbackContext context)
     {
+        if (LoadingScreen.IsLoading)
+            return;
         if (KeybindStore.BlocksGameplayInput)
             return;
         if (TutorialSystem.Instance != null && TutorialSystem.Instance.BlocksPause)
@@ -135,8 +149,11 @@ public class GameManager : MonoBehaviour
 
     public void SetPaused(bool paused)
     {
+        // Во время загрузки мира пауза не включается (Esc, потеря фокуса, настройки).
+        if (paused && LoadingScreen.IsLoading)
+            return;
         isPaused = paused;
-        Time.timeScale = paused ? 0f : GameSettings.GameSpeed;
+        Time.timeScale = paused ? 0f : GameSettings.PlaySpeed;
         AudioListener.pause = paused && GameSettings.PauseMutesWorld;
         if (paused)
             UiAudio.PlayPause();
@@ -217,6 +234,7 @@ public class GameManager : MonoBehaviour
             SaveSystem.Instance.SaveGame();
         UiStack.Clear();
         isPaused = false;
+        GameSettings.DevFrozen = false;
         Time.timeScale = 1f;
         AudioListener.pause = false;
         if (ResearchSystem.Instance != null)

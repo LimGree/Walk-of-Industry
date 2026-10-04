@@ -18,11 +18,12 @@ MonoBehaviour:
   icon: {fileID: 21300000, guid: 4dfca53da53548a3a765797a8a81dc36, type: 3}
   requiredItems:
   - item: {fileID: 11400000, guid: 9d495ae5fdb87d6479f40cd1e73fed53, type: 2}
-    amount: 400
+    amount: 300
   - item: {fileID: 11400000, guid: 69846796d4fa8ff47bc3d0a2f65ab91a, type: 2}
-    amount: 250
+    amount: 200
   requiredResearches:
-  - {fileID: 11400000, guid: d9e0f1a2b3c405162738495a6b7c8d9e, type: 2}
+  - {fileID: 11400000, guid: 7cd407ca38cd45708dad3df5bd252587, type: 2}
+  - {fileID: 11400000, guid: 36f000e1c18e499981637e4cd62b8198, type: 2}
   unlockedBuildings:
   - {fileID: 11400000, guid: aa77969c1caec2b4b9322b591842ed57, type: 2}
   unlockedRecipes: []

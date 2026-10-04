@@ -64,6 +64,7 @@ public abstract class CrafterBuilding : BuildingBase, IInteractable
         base.OnPlaced();
         craftProgress = 0f;
         inputBuffer.Clear();
+        TryAutoRecipe(null);
     }
 
     protected virtual void Update()
@@ -93,7 +94,7 @@ public abstract class CrafterBuilding : BuildingBase, IInteractable
             return;
         }
 
-        craftProgress += dt * CraftSpeed * breakMul;
+        craftProgress += dt * CraftSpeed * breakMul * DevWorkMul;
 
         if (craftProgress >= need)
         {
@@ -109,10 +110,24 @@ public abstract class CrafterBuilding : BuildingBase, IInteractable
         return item != null && !item.isFluid;
     }
 
+    /// <summary>Консоль (/machine finish): завершить цикл сейчас. false — нет ингредиентов или места на выходе.</summary>
+    public bool DevFinishCycle()
+    {
+        if (!TryCraft())
+            return false;
+        craftProgress = 0f;
+        return true;
+    }
+
     public override bool TryReceiveItem(ItemData item, BuildingSocket fromSocket)
     {
+        if (currentRecipe == null && item != null && AutoRecipeFromItem)
+            TryAutoRecipe(item);
         if (currentRecipe == null || !AcceptsItem(item))
+        {
+            NoteRejected(item);
             return false;
+        }
 
         int required = 0;
         bool needed = false;
@@ -131,7 +146,10 @@ public abstract class CrafterBuilding : BuildingBase, IInteractable
         }
 
         if (!needed)
+        {
+            NoteRejected(item);
             return false;
+        }
 
         int maxKeep = Mathf.Max(1, required) * Mathf.Max(1, inputBufferMultiplier);
         inputBuffer.TryGetValue(item, out int have);
@@ -152,15 +170,132 @@ public abstract class CrafterBuilding : BuildingBase, IInteractable
         return have;
     }
 
+    /// <summary>
+    /// Почему стоит: "recipe" — рецепта нет; "wrong" — на вход пришёл предмет, который рецепт не берёт
+    /// (лента встала); "input" — ждёт ингредиент; "output" — выход забит; null — работает.
+    /// </summary>
     public string IdleReason()
     {
         if (currentRecipe == null)
-            return null;
+            return "recipe";
         if (!HasEnoughInputs())
-            return "input";
+            return RecentlyRejected ? "wrong" : "input";
         if (!HasSpaceForRecipeOutputs())
             return "output";
         return null;
+    }
+
+    /// <summary>Причина простоя одной строкой для метки над станком и списков.</summary>
+    public string IdleText()
+    {
+        switch (IdleReason())
+        {
+            case "recipe":
+                return UiLocale.T("idle.no_recipe", KeybindStore.Hint("Interact"));
+            case "wrong":
+                return UiLocale.T("idle.wrong_item", LastRejected != null ? LastRejected.Title : "?");
+            case "input":
+                ItemData missing = MissingInput();
+                return missing != null ? UiLocale.T("idle.waiting", missing.Title) : UiLocale.T("idle.no_input");
+            case "output":
+                return UiLocale.T("idle.output_full");
+            default:
+                return null;
+        }
+    }
+
+    /// <summary>Первый ингредиент рецепта, которого не хватает.</summary>
+    public ItemData MissingInput()
+    {
+        if (currentRecipe == null || currentRecipe.inputs == null)
+            return null;
+        for (int i = 0; i < currentRecipe.inputs.Count; i++)
+        {
+            ItemStack need = currentRecipe.inputs[i];
+            if (need.item == null)
+                continue;
+            inputBuffer.TryGetValue(need.item, out int have);
+            if (have < need.amount)
+                return need.item;
+        }
+
+        return null;
+    }
+
+    public ItemData LastRejected { get; private set; }
+    float lastRejectedAt = -100f;
+    bool RecentlyRejected => LastRejected != null && Time.time - lastRejectedAt < 3f;
+
+    void NoteRejected(ItemData item)
+    {
+        if (item == null)
+            return;
+        LastRejected = item;
+        lastRejectedAt = Time.time;
+    }
+
+    /// <summary>
+    /// Можно ли выбрать рецепт по пришедшему предмету (внутри приёма). Станки, у которых рецепт
+    /// переключает сокеты (НПЗ), — нельзя: переподключение посреди передачи предмета.
+    /// </summary>
+    protected virtual bool AutoRecipeFromItem => true;
+
+    /// <summary>Открытые рецепты, которые можно поставить в этот станок.</summary>
+    public List<RecipeData> AvailableRecipes()
+    {
+        var list = new List<RecipeData>(4);
+        RecipeData[] all = GameDatabase.AllRecipes();
+        if (all == null || data == null)
+            return list;
+        for (int i = 0; i < all.Length; i++)
+        {
+            RecipeData r = all[i];
+            if (r == null || !r.AllowsBuilding(data))
+                continue;
+            if (ResearchSystem.Instance != null && !ResearchSystem.Instance.IsRecipeUnlocked(r))
+                continue;
+            list.Add(r);
+        }
+
+        return list;
+    }
+
+    /// <summary>
+    /// Авторецепт: без предмета — если доступен ровно один рецепт; с предметом — если ровно один
+    /// доступный рецепт берёт этот предмет. Выключается настройкой.
+    /// </summary>
+    public bool TryAutoRecipe(ItemData item)
+    {
+        if (currentRecipe != null || !GameSettings.AutoRecipe)
+            return false;
+        List<RecipeData> list = AvailableRecipes();
+        RecipeData pick = null;
+        int matches = 0;
+        for (int i = 0; i < list.Count; i++)
+        {
+            if (item != null && !UsesInput(list[i], item))
+                continue;
+            pick = list[i];
+            matches++;
+        }
+
+        if (matches != 1 || pick == null)
+            return false;
+        SetRecipe(pick);
+        return currentRecipe == pick;
+    }
+
+    static bool UsesInput(RecipeData recipe, ItemData item)
+    {
+        if (recipe == null || recipe.inputs == null)
+            return false;
+        for (int i = 0; i < recipe.inputs.Count; i++)
+        {
+            if (recipe.inputs[i].item == item)
+                return true;
+        }
+
+        return false;
     }
 
     public virtual void SetRecipe(RecipeData recipe)

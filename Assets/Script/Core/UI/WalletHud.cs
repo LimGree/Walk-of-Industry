@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UIElements;
@@ -12,9 +13,6 @@ public class WalletHud : MonoBehaviour
     Label buildCostText;
     Label shopCoins;
     Label shopRubies;
-    Label offer1;
-    Label offer5;
-    Label offerAll;
     VisualElement toastHost;
     InputAction shopAction;
 
@@ -130,9 +128,11 @@ public class WalletHud : MonoBehaviour
         // Вкладки: декорации ([[DecorShopView]]) и обмен рубинов.
         var tabs = IndustryUi.El("ShopTabs", "shop-tabs");
         var tabRow = IndustryUi.El("Tabs", "tab-row");
-        tabDecor = IndustryUi.Btn(DecorText.T("decor.tab.decor"), () => SetTab(true), "tab");
-        tabExchange = IndustryUi.Btn(DecorText.T("decor.tab.exchange"), () => SetTab(false), "tab");
+        tabDecor = IndustryUi.Btn(DecorText.T("decor.tab.decor"), () => SetTab(TabDecor), "tab");
+        tabGear = IndustryUi.Btn(UiLocale.T("perkshop.tab"), () => SetTab(TabGear), "tab");
+        tabExchange = IndustryUi.Btn(DecorText.T("decor.tab.exchange"), () => SetTab(TabExchange), "tab");
         tabRow.Add(tabDecor);
+        tabRow.Add(tabGear);
         tabRow.Add(tabExchange);
         tabs.Add(tabRow);
         tabs.Add(IndustryUi.El("Spacer", "grow"));
@@ -148,6 +148,8 @@ public class WalletHud : MonoBehaviour
 
         decorView = new DecorShopView();
         body.Add(decorView.Build());
+        perkView = new PerkShopView();
+        body.Add(perkView.Build());
 
         exchangeView = IndustryUi.El("Exchange", "col");
         body.Add(exchangeView);
@@ -169,20 +171,110 @@ public class WalletHud : MonoBehaviour
         balances.Add(rubyTile);
         panel.Add(balances);
 
+        // Обмен в обе стороны: быстрые суммы + своё число.
         panel.Add(IndustryUi.Section(UiLocale.T("shop.exchange_title")));
-        offer1 = AddOffer(panel, () => Exchange(1));
-        offer5 = AddOffer(panel, () => Exchange(5));
-        offerAll = AddOffer(panel, () =>
-        {
-            if (PlayerWallet.Instance != null)
-                Exchange(PlayerWallet.Instance.Rubies);
-        });
+        sellRow = ExchangeRow(panel, "SellRubies", true);
+        panel.Add(IndustryUi.Section(UiLocale.T("shop.buy_title", Economy.CoinsPerRubyBuy)));
+        buyRow = ExchangeRow(panel, "BuyRubies", false);
         root.Add(shop);
-        SetTab(true);
+        SetTab(TabDecor);
+    }
+
+
+    static readonly int[] QuickAmounts = { 1, 5, 10, 100, 500, 1000 };
+
+    sealed class ExRow
+    {
+        public bool sell;
+        public readonly List<Button> quick = new List<Button>();
+        public IntegerField amount;
+        public Button go;
+        public Label preview;
+    }
+
+    ExRow sellRow;
+    ExRow buyRow;
+
+    /// <summary>Строка обмена: быстрые суммы рубинов и поле «своё число». sell — рубины → монеты.</summary>
+    ExRow ExchangeRow(VisualElement panel, string name, bool sell)
+    {
+        var row = new ExRow { sell = sell };
+        var quick = IndustryUi.El(name + "Quick", "row", "shop-quick");
+        for (int i = 0; i < QuickAmounts.Length; i++)
+        {
+            int n = QuickAmounts[i];
+            Button b = IndustryUi.Btn(n.ToString(), () => DoExchange(sell, n), "btn-small");
+            b.Insert(0, IndustryUi.Icon(GameHudIcons.Ruby, "decor-buy-icon"));
+            row.quick.Add(b);
+            quick.Add(b);
+        }
+
+        panel.Add(quick);
+        var custom = IndustryUi.El(name + "Custom", "set-row", "shop-offer");
+        custom.Add(IndustryUi.Icon(GameHudIcons.Ruby, "icon-32"));
+        row.amount = new IntegerField { name = name + "Amount", value = 25 };
+        row.amount.AddToClassList("shop-amount");
+        row.amount.RegisterValueChangedCallback(_ => Refresh());
+        custom.Add(row.amount);
+        row.preview = IndustryUi.Text("Preview", "", "set-label", "grow");
+        custom.Add(row.preview);
+        row.go = IndustryUi.Btn(UiLocale.T("shop.exchange"), () => DoExchange(sell, Mathf.Max(0, row.amount.value)), "btn-small", "btn-primary");
+        custom.Add(row.go);
+        panel.Add(custom);
+        return row;
+    }
+
+    void DoExchange(bool sell, int rubies)
+    {
+        if (sell)
+            Exchange(rubies);
+        else
+            BuyRubies(rubies);
+    }
+
+    void RefreshExchange(ExRow row, int rubies, int coins)
+    {
+        if (row == null)
+            return;
+        int max = row.sell ? rubies : coins / Economy.CoinsPerRubyBuy;
+        for (int i = 0; i < row.quick.Count; i++)
+            row.quick[i].SetEnabled(QuickAmounts[i] <= max);
+        int n = Mathf.Max(0, row.amount.value);
+        row.preview.text = row.sell
+            ? UiLocale.T("shop.ex_sell_preview", n, IndustryUi.Money(n * Economy.CoinsPerRuby), rubies)
+            : UiLocale.T("shop.ex_buy_preview", n, IndustryUi.Money(n * Economy.CoinsPerRubyBuy), max);
+        row.go.SetEnabled(n > 0 && n <= max);
+    }
+
+    static Label AddBuyOffer(VisualElement panel, System.Action onClick)
+    {
+        var row = IndustryUi.El("Buy", "set-row", "shop-offer");
+        row.Add(IndustryUi.Icon(GameHudIcons.Coin, "icon-32"));
+        var label = IndustryUi.Text("L", "", "set-label", "grow");
+        row.Add(label);
+        row.Add(IndustryUi.Icon(GameHudIcons.Ruby, "icon-32"));
+        row.Add(IndustryUi.Btn(UiLocale.T("shop.buy"), onClick, "btn-small", "btn-primary"));
+        panel.Add(row);
+        return label;
+    }
+
+    void BuyRubies(int rubies)
+    {
+        if (PlayerWallet.Instance != null && PlayerWallet.Instance.TryBuyRubies(rubies))
+            UiAudio.PlayConfirm();
+        else
+            UiAudio.PlayError();
+        Refresh();
     }
 
     Button tabDecor;
     Button tabExchange;
+    Button tabGear;
+    PerkShopView perkView;
+    const int TabDecor = 0;
+    const int TabGear = 1;
+    const int TabExchange = 2;
+    int tab;
     Label miniRubies;
     Label miniCoins;
     DecorShopView decorView;
@@ -192,17 +284,36 @@ public class WalletHud : MonoBehaviour
     int lastRubies = -1;
     float nextDecorRefresh;
 
-    void SetTab(bool decor)
+    /// <summary>Открыть магазин на вкладке «Снаряжение».</summary>
+    public void OpenGearShop()
     {
+        if (!shopOpen)
+            SetShopOpen(true);
+        SetTab(TabGear);
+    }
+
+    void SetTab(int which)
+    {
+        tab = which;
+        bool decor = which == TabDecor;
         decorTab = decor;
         IndustryUi.SetOn(tabDecor, decor, "is-selected");
-        IndustryUi.SetOn(tabExchange, !decor, "is-selected");
+        IndustryUi.SetOn(tabGear, which == TabGear, "is-selected");
+        IndustryUi.SetOn(tabExchange, which == TabExchange, "is-selected");
+        if (perkView != null)
+        {
+            IndustryUi.Show(perkView.Root, which == TabGear);
+            if (which == TabGear)
+                perkView.Refresh();
+        }
         if (decorView != null)
             IndustryUi.Show(decorView.Root, decor);
-        IndustryUi.Show(exchangeView, !decor);
+        IndustryUi.Show(exchangeView, which == TabExchange);
         IndustryUi.WindowSubtitle(shop, decor
             ? DecorText.T("decor.sub")
-            : UiLocale.T("shop.sub", Economy.CoinsPerRuby));
+            : which == TabGear
+                ? UiLocale.T("perkshop.sub")
+                : UiLocale.T("shop.sub", Economy.CoinsPerRuby));
         if (decor && decorView != null)
             decorView.Refresh();
     }
@@ -212,7 +323,7 @@ public class WalletHud : MonoBehaviour
     {
         if (!shopOpen)
             SetShopOpen(true);
-        SetTab(true);
+        SetTab(TabDecor);
     }
 
     void OnDecorChanged()
@@ -296,13 +407,11 @@ public class WalletHud : MonoBehaviour
         {
             lastRubies = rubies;
             decorDirty = true;
+            if (tab == TabGear && perkView != null)
+                perkView.Refresh();
         }
-        if (offer1 != null) offer1.text = UiLocale.T("shop.offer1", Economy.CoinsPerRuby);
-        if (offer5 != null) offer5.text = UiLocale.T("shop.offer5", 5 * Economy.CoinsPerRuby);
-        if (offerAll != null)
-            offerAll.text = rubies <= 0
-                ? UiLocale.T("shop.none")
-                : UiLocale.T("shop.all", rubies, rubies * Economy.CoinsPerRuby);
+        RefreshExchange(sellRow, rubies, coins);
+        RefreshExchange(buyRow, rubies, coins);
         RefreshBuildCost();
     }
 

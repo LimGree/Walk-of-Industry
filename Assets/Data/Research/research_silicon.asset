@@ -20,7 +20,7 @@ MonoBehaviour:
   - item: {fileID: 11400000, guid: 9bb6b85117cb79e4f94d5ff91ad70187, type: 2}
     amount: 480
   requiredResearches:
-  - {fileID: 11400000, guid: 36f000e1c18e499981637e4cd62b8198, type: 2}
+  - {fileID: 11400000, guid: 30b30a210e1b4538afb4eab773d4170e, type: 2}
   unlockedBuildings: []
   unlockedRecipes:
   - {fileID: 11400000, guid: 8ae7ac3ad4adca6499c962d3ffe5097f, type: 2}

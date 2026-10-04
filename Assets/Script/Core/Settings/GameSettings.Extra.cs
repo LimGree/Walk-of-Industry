@@ -104,6 +104,12 @@ public static partial class GameSettings
     public static bool AutosaveNotice { get => GetB("GameSaveNotice", true); set => SetB("GameSaveNotice", value); }
     public static bool PauseOnUnfocus { get => GetB("GamePauseUnfocus", false); set => SetB("GamePauseUnfocus", value); }
     public static bool TutorialSkip { get => GetB("GameTutorialSkip", false); set => SetB("GameTutorialSkip", value); }
+    /// <summary>Станок сам берёт рецепт, если подходящий ровно один.</summary>
+    /// <summary>Карточка текущей цели на экране (Shift+J — переключить).</summary>
+    public static bool GoalCard { get => GetB("GameGoalCard", true); set => SetB("GameGoalCard", value); }
+    public static bool AutoRecipe { get => GetB("GameAutoRecipe", true); set => SetB("GameAutoRecipe", value); }
+    /// <summary>Подсказки «в первый раз»: 0 — все, 1 — только важные, 2 — выкл.</summary>
+    public static int Hints { get => GetI("GameHints", 0, 0, 2); set => SetI("GameHints", value, 0, 2, false); }
 
     /// <summary>0 — редко, 1 — норм, 2 — часто.</summary>
     public static int BreakdownRate { get => GetI("GameBreakRate", 1, 0, 2); set => SetI("GameBreakRate", value, 0, 2, false); }
@@ -123,11 +129,19 @@ public static partial class GameSettings
 
     public static bool StormDamage { get => GetB("GameStormDamage", false); set => SetB("GameStormDamage", value); }
 
+    /// <summary>Консоль (/timescale): множитель поверх скорости игры, 0.1–20. Не сохраняется.</summary>
+    public static float DevTimeScale = 1f;
+    /// <summary>Консоль (/pause): симуляция стоит без меню паузы, /step прогоняет кадры.</summary>
+    public static bool DevFrozen;
+
+    /// <summary>Time.timeScale, когда игра идёт: скорость игры × множитель консоли (0 при /pause).</summary>
+    public static float PlaySpeed => DevFrozen ? 0f : GameSpeed * DevTimeScale;
+
     /// <summary>Time.timeScale для «идёт игра» с учётом паузы и скорости.</summary>
     public static void ApplyTimeScale()
     {
         bool paused = GameManager.Instance != null && GameManager.Instance.IsPaused;
-        Time.timeScale = paused ? 0f : GameSpeed;
+        Time.timeScale = paused ? 0f : PlaySpeed;
     }
 
     // ===== Управление =====

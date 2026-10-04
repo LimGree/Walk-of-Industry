@@ -41,6 +41,39 @@ public class PlayerMovement : MonoBehaviour
     private bool wasGrounded = true;
     private float stepTimer;
 
+    // Плюшки ([[PerkSystem]]): прыжки в воздухе, рывок, фонарь на каске.
+    bool jumpEdge;
+    int airJumpsLeft;
+    bool fwdHeld;
+    float lastFwdTap = -10f;
+    float dashUntil;
+    float dashReadyAt;
+    Vector3 dashDir;
+    Light headLamp;
+    float nextWaterToast;
+    const float DashCells = 6f;
+    const float DashTime = 0.22f;
+    const float DashCooldown = 3f;
+    const float LakeSpeedMul = 0.6f;
+    static readonly float[] AirJumpShare = { 0.7f, 0.5f };
+
+    // Крылья: взлёт + планирование; крюк-кошка: полёт по тросу к точке.
+    bool gliding;
+    float wingsReadyAt;
+    bool grappling;
+    Vector3 grappleTarget;
+    float grappleUntil;
+    LineRenderer grappleLine;
+    const float WingsLaunchHeight = 12f;
+    const float WingsCooldown = 4f;
+    const float GlideFall = 1.4f;
+    const float GlideSpeed = 11f;
+    const float GrappleRange = 30f;
+    const float GrappleSpeed = 72f;
+
+    public bool IsGliding => gliding;
+    public bool IsGrappling => grappling;
+
     // Настройки управления и камеры (GameSettings): переключаемые бег/зум, автобег, сглаживание, покачивание.
     bool sprintLatched;
     bool zoomLatched;
@@ -62,6 +95,24 @@ public class PlayerMovement : MonoBehaviour
     float camDistance;
 
     public CameraView View => view;
+
+    /// <summary>Консоль (/speed): множитель скорости ходьбы и полёта noclip.</summary>
+    public static float DevSpeedMul = 1f;
+    /// <summary>Консоль (/noclip): полёт сквозь всё, без гравитации.</summary>
+    public static bool DevNoclip;
+    /// <summary>Камерой управляет консоль (/cam free|top): своя поза камеры не применяется.</summary>
+    public static bool ExternalCamera;
+    /// <summary>Свободная камера консоли: игрок стоит, мышь и WASD — у камеры.</summary>
+    public static bool FreeCamera;
+    bool noclipActive;
+
+    /// <summary>Консоль (/cam first|third|front).</summary>
+    public void SetView(CameraView next)
+    {
+        view = next;
+        PlayerPrefs.SetInt(CameraViewPref, (int)view);
+        camDistance = 0f;
+    }
 
     /// <summary>
     /// На сколько камера отъехала от головы. Добавляется к дальности стройки и взаимодействия:
@@ -140,6 +191,8 @@ public class PlayerMovement : MonoBehaviour
             gameObject.AddComponent<BeltRide>();
         if (GetComponent<PlayerAvatar>() == null)
             gameObject.AddComponent<PlayerAvatar>();
+        if (GetComponent<PlayerPerkFx>() == null)
+            gameObject.AddComponent<PlayerPerkFx>();
         EnsureFlashlight();
         zoomStrength = Mathf.Clamp(PlayerPrefs.GetFloat("CamZoom", 0.55f), 0.2f, 0.85f);
         view = (CameraView)Mathf.Clamp(PlayerPrefs.GetInt(CameraViewPref, 0), 0, 2);
@@ -164,7 +217,7 @@ public class PlayerMovement : MonoBehaviour
                 isSprinting = false;
         };
 
-        inputActions.Player.Jump.performed += ctx => jumpPressed = true;
+        inputActions.Player.Jump.performed += ctx => { jumpPressed = true; jumpEdge = true; };
         inputActions.Player.Jump.canceled += ctx => jumpPressed = false;
     }
 
@@ -210,8 +263,9 @@ public class PlayerMovement : MonoBehaviour
         if (viewAction != null && viewAction.WasPressedThisFrame() && !PhotoMode.IsActive)
             CycleView();
 
-        if (canLook) HandleMouseLook();
-        if (canMove) HandleMovement();
+        if (canLook && !FreeCamera) HandleMouseLook();
+        if (canMove && !FreeCamera) HandleMovement();
+        UpdateHeadLamp();
         HandleZoom();
         ApplyCameraFx();
     }
@@ -219,7 +273,7 @@ public class PlayerMovement : MonoBehaviour
     /// <summary>Покачивание при ходьбе + тряска поверх базовой позы камеры.</summary>
     void ApplyCameraFx()
     {
-        if (cameraTransform == null || !camBaseSet || PhotoMode.IsActive)
+        if (cameraTransform == null || !camBaseSet || PhotoMode.IsActive || ExternalCamera)
             return;
         float dt = Time.deltaTime;
         bool grounded = controller != null && controller.isGrounded;
@@ -422,7 +476,28 @@ public class PlayerMovement : MonoBehaviour
 
     void HandleMovement()
     {
+        if (DevNoclip)
+        {
+            NoclipMove();
+            return;
+        }
+
+        if (noclipActive)
+        {
+            noclipActive = false;
+            velocity = Vector3.zero;
+            controller.enabled = true;
+        }
+
+        if (grappling)
+        {
+            UpdateGrapple();
+            return;
+        }
+
         bool isGrounded = controller.isGrounded;
+        if (gliding && isGrounded && velocity.y <= 0f)
+            gliding = false;
         if (isGrounded && velocity.y < 0)
             velocity.y = -2f; // прижимает к земле, чтобы isGrounded не мигал
 
@@ -440,12 +515,20 @@ public class PlayerMovement : MonoBehaviour
             sprintLatched = false;
         bool sprinting = GameSettings.SprintToggle ? sprintLatched : isSprinting;
         Vector3 move = transform.right * input.x + transform.forward * input.y;
-        float speed = sprinting ? sprintSpeed : walkSpeed;
+        float speed = (sprinting ? sprintSpeed : walkSpeed) * PerkSystem.SpeedMul * DevSpeedMul;
+        if (WorldBiomeMap.InLake(transform.position))
+            speed *= LakeSpeedMul;
         Vector3 wish = move * speed * Time.deltaTime;
+        UpdateDash(input);
+        if (gliding && !isGrounded)
+            wish += transform.forward * GlideSpeed * Time.deltaTime;
+        if (Time.time < dashUntil)
+            wish += dashDir * (DashCells * GridFootprint.CellSize / DashTime) * Time.deltaTime;
         if (!TryWalk(wish))
         {
             if (!TryWalk(new Vector3(wish.x, 0f, 0f)))
                 TryWalk(new Vector3(0f, 0f, wish.z));
+            WaterToast();
         }
 
         if (isGrounded && move.sqrMagnitude > 0.2f)
@@ -462,17 +545,237 @@ public class PlayerMovement : MonoBehaviour
         else
             stepTimer = 0f;
 
-        // Прыжок
-        if (jumpPressed && isGrounded)
+        // Прыжок (высота — «Пружинные подошвы»)
+        if (isGrounded)
+            airJumpsLeft = PerkSystem.AirJumps;
+        if (jumpEdge && GearUsesJump())
         {
-            velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
+            // Крылья в руках: Пробел — взлёт/сложить/раскрыть, обычного прыжка нет.
+            WingsPress(isGrounded);
+            jumpPressed = false;
+        }
+        else if (jumpPressed && isGrounded && !GearUsesJump())
+        {
+            velocity.y = Mathf.Sqrt(PerkSystem.JumpHeight(jumpHeight) * -2f * gravity);
             jumpPressed = false; // Сбрасываем флаг, чтобы не прыгал каждый кадр
             GameAudio.Player("player_jump");
         }
+        else if (jumpEdge && !isGrounded && airJumpsLeft > 0 && !GearUsesJump())
+        {
+            // Двойной/тройной прыжок: новое нажатие Пробела в воздухе.
+            int used = PerkSystem.AirJumps - airJumpsLeft;
+            float share = AirJumpShare[Mathf.Clamp(used, 0, AirJumpShare.Length - 1)];
+            velocity.y = Mathf.Sqrt(PerkSystem.JumpHeight(jumpHeight) * share * -2f * gravity);
+            airJumpsLeft--;
+            GameAudio.Player("player_jump");
+        }
 
-        // Гравитация
+        jumpEdge = false;
+
+        // Гравитация (на крыльях — плавное снижение)
         velocity.y += gravity * Time.deltaTime;
+        if (gliding && velocity.y < -GlideFall)
+            velocity.y = -GlideFall;
         controller.Move(velocity * Time.deltaTime);
+    }
+
+    /// <summary>Полёт сквозь стены: WASD по взгляду камеры, Пробел — вверх, Ctrl/C — вниз, бег — быстрее.</summary>
+    void NoclipMove()
+    {
+        if (!noclipActive)
+        {
+            noclipActive = true;
+            gliding = false;
+            controller.enabled = false;
+        }
+
+        velocity = Vector3.zero;
+        Vector2 input = EffectiveMove();
+        Transform look = cameraTransform != null ? cameraTransform : transform;
+        Vector3 dir = look.forward * input.y + look.right * input.x;
+        Keyboard kb = Keyboard.current;
+        if (jumpPressed)
+            dir += Vector3.up;
+        if (kb != null && (kb.leftCtrlKey.isPressed || kb.cKey.isPressed))
+            dir += Vector3.down;
+        if (dir.sqrMagnitude > 1f)
+            dir.Normalize();
+        bool sprinting = GameSettings.SprintToggle ? sprintLatched : isSprinting;
+        float speed = walkSpeed * 2.5f * (sprinting ? 3f : 1f) * DevSpeedMul;
+        transform.position += dir * speed * Time.deltaTime;
+    }
+
+    /// <summary>Снаряжение в руках само забирает Пробел (крылья) — двойной прыжок тогда не срабатывает.</summary>
+    static bool GearUsesJump()
+    {
+        return GearHotbar.Instance != null && GearHotbar.Instance.Current == "wings";
+    }
+
+    /// <summary>Подбросить вверх (спрыгнуть с вагонетки и т.п.).</summary>
+    public void Launch(float upSpeed)
+    {
+        velocity.y = upSpeed;
+        // Пробел, которым спрыгнули, не должен сразу стать двойным прыжком.
+        jumpEdge = false;
+        jumpPressed = false;
+    }
+
+    /// <summary>Крылья в руках: Пробел на земле — взлёт на 12 м и планирование; в воздухе — сложить/раскрыть.</summary>
+    void WingsPress(bool grounded)
+    {
+        if (grounded)
+        {
+            if (Time.time < wingsReadyAt)
+                return;
+            velocity.y = Mathf.Sqrt(WingsLaunchHeight * -2f * gravity);
+            jumpPressed = false;
+            gliding = true;
+            wingsReadyAt = Time.time + WingsCooldown;
+            GameAudio.Player("player_jump");
+            CameraFx.Shake(0.2f);
+            return;
+        }
+
+        gliding = !gliding;
+    }
+
+    /// <summary>Крюк-кошка в руках, ЛКМ: луч из камеры до 30 м — по зданиям и земле.</summary>
+    public void FireGrapple()
+    {
+        if (grappling || viewCam == null)
+            return;
+        Ray ray = viewCam.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
+        if (!AimRaycast(ray, out RaycastHit hit, GrappleRange + ReachBonus, ~0, QueryTriggerInteraction.Ignore))
+        {
+            UiNotification.Push(UiLocale.T("gear.grapple_far"), "", UiStatus.Warning);
+            UiAudio.PlayError();
+            return;
+        }
+
+        if (WorldBiomeMap.BlocksPlayer(hit.point))
+        {
+            UiNotification.Push(UiLocale.T("water.lake"), UiLocale.T("water.lake_sub"), UiStatus.Warning);
+            return;
+        }
+
+        grappleTarget = hit.point + hit.normal * 0.6f;
+        grappling = true;
+        gliding = false;
+        grappleUntil = Time.time + 1f;
+        velocity = Vector3.zero;
+        GameAudio.Player("player_jump");
+        EnsureGrappleLine();
+        grappleLine.enabled = true;
+    }
+
+    void UpdateGrapple()
+    {
+        Vector3 pos = transform.position + Vector3.up * 1f;
+        Vector3 to = grappleTarget - pos;
+        float dist = to.magnitude;
+        bool done = dist < 1.4f || Time.time > grappleUntil;
+        if (!done)
+        {
+            Vector3 before = transform.position;
+            controller.Move(to / dist * Mathf.Min(dist, GrappleSpeed * Time.deltaTime));
+            // Упёрлись (стена, вода) — отпускаем трос.
+            if ((transform.position - before).sqrMagnitude < 0.0001f || WorldBiomeMap.BlocksPlayer(transform.position, controller.radius))
+            {
+                if (WorldBiomeMap.BlocksPlayer(transform.position, controller.radius))
+                    controller.Move(before - transform.position);
+                done = true;
+            }
+        }
+
+        if (grappleLine != null)
+        {
+            grappleLine.SetPosition(0, transform.position + Vector3.up * 1.3f + transform.right * 0.25f);
+            grappleLine.SetPosition(1, grappleTarget);
+        }
+
+        if (!done)
+            return;
+        grappling = false;
+        velocity = Vector3.up * 4f; // подскок на краю
+        if (grappleLine != null)
+            grappleLine.enabled = false;
+    }
+
+    void EnsureGrappleLine()
+    {
+        if (grappleLine != null)
+            return;
+        var go = new GameObject("GrappleLine");
+        go.transform.SetParent(transform, false);
+        grappleLine = go.AddComponent<LineRenderer>();
+        grappleLine.positionCount = 2;
+        grappleLine.startWidth = 0.04f;
+        grappleLine.endWidth = 0.025f;
+        grappleLine.useWorldSpace = true;
+        grappleLine.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        grappleLine.sharedMaterial = RuntimeMaterials.Create(new Color(0.25f, 0.22f, 0.2f));
+        grappleLine.enabled = false;
+    }
+
+    /// <summary>Рывок: двойное нажатие «вперёд» — 6 клеток за 0.22 с, перезарядка 3 с.</summary>
+    void UpdateDash(Vector2 input)
+    {
+        bool fwd = input.y > 0.5f && !autoRun;
+        if (fwd && !fwdHeld)
+        {
+            if (Time.time - lastFwdTap < 0.28f && PerkSystem.Has("dash") && Time.time >= dashReadyAt)
+            {
+                dashDir = transform.forward;
+                dashDir.y = 0f;
+                dashDir.Normalize();
+                dashUntil = Time.time + DashTime;
+                dashReadyAt = Time.time + DashCooldown;
+                GameAudio.Player("player_jump");
+                CameraFx.Shake(0.15f);
+                lastFwdTap = -10f;
+            }
+            else
+                lastFwdTap = Time.time;
+        }
+
+        fwdHeld = fwd;
+    }
+
+    /// <summary>Упёрся в воду — шутка про акул и подсказка про ласты (не чаще раза в 20 с).</summary>
+    void WaterToast()
+    {
+        if (Time.unscaledTime < nextWaterToast || WorldBiomeMap.Instance == null)
+            return;
+        Vector3 ahead = transform.position + transform.forward * 1.2f;
+        Vector2Int cell = BuildingLinker.WorldToCell(ahead);
+        if (!WorldBiomeMap.Instance.BlocksWalk(cell))
+            return;
+        nextWaterToast = Time.unscaledTime + 20f;
+        bool ocean = WorldBiomeMap.Instance.IsOcean(cell);
+        UiNotification.Push(UiLocale.T(ocean ? "water.ocean" : "water.lake"), UiLocale.T(ocean ? "water.ocean_sub" : "water.lake_sub"), UiStatus.Warning);
+    }
+
+    /// <summary>«Фонарь на каске»: свет вокруг игрока ночью, сам.</summary>
+    void UpdateHeadLamp()
+    {
+        bool want = PerkSystem.Has("lamp") && (DayNight.Hour >= 21f || DayNight.Hour < 6f);
+        if (headLamp == null)
+        {
+            if (!want)
+                return;
+            var go = new GameObject("HeadLamp");
+            go.transform.SetParent(transform, false);
+            go.transform.localPosition = new Vector3(0f, 2.2f, 0f);
+            headLamp = go.AddComponent<Light>();
+            headLamp.type = LightType.Point;
+            headLamp.range = 12f;
+            headLamp.intensity = 1.6f;
+            headLamp.color = new Color(1f, 0.93f, 0.78f);
+            headLamp.shadows = LightShadows.None;
+        }
+
+        if (headLamp.enabled != want)
+            headLamp.enabled = want;
     }
 
     bool TryWalk(Vector3 delta)
@@ -499,6 +802,13 @@ public class PlayerMovement : MonoBehaviour
         Vector3 center = WorldBiomeMap.Instance != null
             ? WorldBiomeMap.Instance.PlayableCenterWorld
             : transform.position;
+        if (WorldBiomeMap.Instance != null && WorldBiomeMap.Instance.IsReady)
+        {
+            Vector2Int here = BuildingLinker.WorldToCell(transform.position);
+            Vector2Int dry = WorldBiomeMap.Instance.NearestWalkable(here, 24);
+            if (dry != here)
+                center = WorldBiomeMap.Instance.CellWorld(dry);
+        }
         Vector3 dir = center - transform.position;
         dir.y = 0f;
         if (dir.sqrMagnitude < 0.0001f)

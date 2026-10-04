@@ -662,9 +662,12 @@ public class ResearchSystem : MonoBehaviour
             {
                 for (int i = 0; i < save.unlockedResearchIds.Count; i++)
                 {
-                    ResearchNodeData node = FindNode(save.unlockedResearchIds[i]);
+                    string id = save.unlockedResearchIds[i];
+                    ResearchNodeData node = FindNode(id);
                     if (node != null)
                         CompleteResearch(node, grantReward: false);
+                    else
+                        ApplyRemovedResearch(id);
                 }
             }
 
@@ -686,6 +689,27 @@ public class ResearchSystem : MonoBehaviour
         {
             eventHold--;
             FlushHeldEvents();
+        }
+    }
+
+    /// <summary>
+    /// Узлы, убранные из дерева: в старом сейве они открыты — отдаём то, что они давали.
+    /// Слитки теперь в research_smelter, сплиттер — в research_underground_conveyor.
+    /// </summary>
+    void ApplyRemovedResearch(string id)
+    {
+        string key = string.IsNullOrEmpty(id) ? "" : id.Trim();
+        switch (key)
+        {
+            case "research_iron_ingot":
+            case "research_cooper_ingot":
+                ResearchNodeData smelter = FindNode("research_smelter");
+                if (smelter != null && !IsResearchUnlocked(smelter))
+                    CompleteResearch(smelter, grantReward: false);
+                break;
+            case "research_splitter":
+                UnlockBuilding(GameDatabase.FindBuilding("splitter"));
+                break;
         }
     }
 

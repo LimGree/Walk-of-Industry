@@ -45,6 +45,11 @@ public class PlayerBuilder : MonoBehaviour
     }
     public BuildSelectionController Selection => selection;
 
+    /// <summary>Игрок повернул призрак или поставленное здание (для обучения).</summary>
+    public static event Action Rotated;
+    /// <summary>Протяжкой поставлено несколько зданий за один штрих: (здание, сколько).</summary>
+    public static event Action<BuildingData, int> LineStrokePlaced;
+
     BuildSelectionController selection;
     private InputSystem_Actions inputActions;
     private GameObject currentGhost;
@@ -234,34 +239,38 @@ public class PlayerBuilder : MonoBehaviour
     {
         if (!isBuildMode || strokeActive || IsGameplayBuildInputBlocked() || BlocksBuildInput || !HasHeldBuilding)
             return false;
-        currentRotationY = Mathf.Repeat(currentRotationY + (dir > 0 ? 90f : -90f), 360f);
-        if (currentGhost != null)
-            currentGhost.transform.rotation = Quaternion.Euler(0f, currentRotationY, 0f);
-        if (playerCamera != null)
-            GameAudio.World("world_rotate", playerCamera.transform.position);
+        if (TryRotatePlacedBuilding(dir > 0 ? 90f : -90f))
+            return true;
+        RotateGhost(dir > 0 ? 90f : -90f);
         return true;
     }
 
     void HandleRotateKey()
     {
-        if (HasHeldBuilding)
-        {
-            currentRotationY += 90f;
-            if (currentRotationY >= 360f)
-                currentRotationY = 0f;
-            if (currentGhost != null)
-                currentGhost.transform.rotation = Quaternion.Euler(0f, currentRotationY, 0f);
-            if (playerCamera != null)
-                GameAudio.World("world_rotate", playerCamera.transform.position);
+        // Смотрим на поставленное здание — крутим его, даже с другим зданием в руке.
+        // Призрак крутится, только когда под прицелом пустая клетка.
+        if (TryRotatePlacedBuilding(90f))
             return;
-        }
-
-        TryRotatePlacedBuilding();
+        if (HasHeldBuilding)
+            RotateGhost(90f);
     }
 
-    bool TryRotatePlacedBuilding()
+    void RotateGhost(float delta)
+    {
+        currentRotationY = Mathf.Repeat(currentRotationY + delta, 360f);
+        if (currentGhost != null)
+            currentGhost.transform.rotation = Quaternion.Euler(0f, currentRotationY, 0f);
+        if (playerCamera != null)
+            GameAudio.World("world_rotate", playerCamera.transform.position);
+        Rotated?.Invoke();
+    }
+
+    bool TryRotatePlacedBuilding(float delta)
     {
         if (playerCamera == null || GridSystem.Instance == null)
+            return false;
+        // Плитка/асфальт ложатся под здания: с ними в руке крутим только призрак.
+        if (IsFloorDecor(currentBuildingData))
             return false;
 
         BuildingBase building = BuildingUnderCrosshair();
@@ -272,7 +281,7 @@ public class PlayerBuilder : MonoBehaviour
 
         float prevYaw = building.transform.eulerAngles.y;
         Vector3 prevPos = building.transform.position;
-        float newYaw = prevYaw + 90f;
+        float newYaw = prevYaw + delta;
         building.transform.rotation = Quaternion.Euler(0f, newYaw, 0f);
 
         if (building.data != null)
@@ -299,6 +308,7 @@ public class PlayerBuilder : MonoBehaviour
         building.OnRotated();
         BuildUndo.NoteEdit(building, prevPos, prevYaw);
         GameAudio.World("world_rotate", building.transform.position);
+        Rotated?.Invoke();
         return true;
     }
 
@@ -1258,6 +1268,7 @@ public class PlayerBuilder : MonoBehaviour
             SpawnPaired(strokeSlots[0], strokeSlots[1], strokeBuilding);
         else
             SpawnStrokeSlots();
+        LineStrokePlaced?.Invoke(strokeBuilding, strokeSlots.Count);
 
         if (currentBuildingData != null)
         {

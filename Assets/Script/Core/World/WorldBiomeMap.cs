@@ -104,6 +104,7 @@ public class WorldBiomeMap : MonoBehaviour
             terrain = FindFirstObjectByType<Terrain>();
         if (WorldCatalog.HasActive)
             seed = WorldCatalog.Active.seed;
+        ApplyGenParams(WorldCatalog.Gen);
         Generate();
     }
 
@@ -127,6 +128,22 @@ public class WorldBiomeMap : MonoBehaviour
             Destroy(overlayTexture);
         if (Instance == this)
             Instance = null;
+    }
+
+    /// <summary>
+    /// Параметры генерации по версии мира. Gen 2: озёр примерно вдвое больше, пляж шире —
+    /// песка хватает (песок лежит только на пляжах). Старые миры (gen 0/1) — прежние числа.
+    /// </summary>
+    public void ApplyGenParams(int gen)
+    {
+        if (gen < 2)
+            return;
+        lakeThreshold = 0.66f;
+        lakeGrowThreshold = 0.62f;
+        maxLakeSeeds = 16;
+        lakeMinSpacing = 14;
+        lakeMinCells = 16;
+        beachWidth = 3;
     }
 
     [ContextMenu("Regenerate")]
@@ -204,7 +221,21 @@ public class WorldBiomeMap : MonoBehaviour
         int mountainCells = CountMountainCells();
         float avg = mountainCount > 0 ? mountainCells / (float)mountainCount : 0f;
         Debug.Log("[WorldBiomeMap] mountains: " + mountainCount + " massifs, "
-            + mountainCells + " cells (peak+slope), avg " + avg.ToString("0") + " per massif.");
+            + mountainCells + " cells (peak+slope), avg " + avg.ToString("0") + " per massif. "
+            + "lake cells: " + CountBiome(WorldBiome.Lake) + ", beach cells: " + CountBiome(WorldBiome.Beach)
+            + " (gen " + WorldCatalog.Gen + ")");
+    }
+
+    int CountBiome(WorldBiome biome)
+    {
+        int n = 0;
+        for (int i = 0; i < cells.Length; i++)
+        {
+            if (cells[i] == biome)
+                n++;
+        }
+
+        return n;
     }
 
     void PaintOcean(float seedOff)
@@ -994,11 +1025,28 @@ public class WorldBiomeMap : MonoBehaviour
         return Get(cell) == WorldBiome.Lake;
     }
 
+    /// <summary>
+    /// Куда игроку нельзя: океан всегда («там акулы»), озеро — без ласт ([[PerkSystem]] «flippers»).
+    /// </summary>
     public static bool BlocksPlayer(Vector3 world)
     {
         if (Instance == null || !Instance.ready)
             return false;
-        return Instance.IsOcean(WorldToCell(world));
+        return Instance.BlocksWalk(WorldToCell(world));
+    }
+
+    public bool BlocksWalk(Vector2Int cell)
+    {
+        if (IsOcean(cell))
+            return true;
+        // Ласты работают, только когда в руках (хотбар снаряжения).
+        return IsLake(cell) && !GearHotbar.Holding("flippers");
+    }
+
+    /// <summary>Игрок в озере (в ластах) — медленнее.</summary>
+    public static bool InLake(Vector3 world)
+    {
+        return Instance != null && Instance.ready && Instance.IsLake(WorldToCell(world));
     }
 
     public static bool BlocksPlayer(Vector3 world, float radius)
@@ -1016,7 +1064,7 @@ public class WorldBiomeMap : MonoBehaviour
 
     public Vector2Int NearestWalkable(Vector2Int cell, int maxRadius = 48)
     {
-        if (!IsOcean(cell))
+        if (!BlocksWalk(cell))
             return cell;
 
         for (int r = 1; r <= maxRadius; r++)
@@ -1024,20 +1072,20 @@ public class WorldBiomeMap : MonoBehaviour
             for (int dx = -r; dx <= r; dx++)
             {
                 Vector2Int a = new Vector2Int(cell.x + dx, cell.y - r);
-                if (!IsOcean(a))
+                if (!BlocksWalk(a))
                     return a;
                 Vector2Int b = new Vector2Int(cell.x + dx, cell.y + r);
-                if (!IsOcean(b))
+                if (!BlocksWalk(b))
                     return b;
             }
 
             for (int dz = -r + 1; dz <= r - 1; dz++)
             {
                 Vector2Int a = new Vector2Int(cell.x - r, cell.y + dz);
-                if (!IsOcean(a))
+                if (!BlocksWalk(a))
                     return a;
                 Vector2Int b = new Vector2Int(cell.x + r, cell.y + dz);
-                if (!IsOcean(b))
+                if (!BlocksWalk(b))
                     return b;
             }
         }

@@ -12,6 +12,8 @@ using UnityEngine;
 public static class DecorCatalog
 {
     public const string Prefix = "decor_";
+    /// <summary>Табличка со своей надписью ([[SignEditorUI]]): модель собирается кодом из <see cref="SignData"/>.</summary>
+    public const string SignId = "decor_custom_sign";
 
     public enum Cat { Light, Nature, Industry, Road, Rest, Monument, Season }
 
@@ -105,6 +107,7 @@ public static class DecorCatalog
     public const string PartPrefix = "Part_";
     public const string LightPrefix = "DecorLight";
     public const string TextName = "DecorText";
+    public const string TextBackName = "DecorTextBack";
 
     static readonly List<Def> all = new List<Def>();
     static readonly Dictionary<string, Def> byId = new Dictionary<string, Def>(StringComparer.OrdinalIgnoreCase);
@@ -257,6 +260,10 @@ public static class DecorCatalog
         float height = m != null ? Mathf.Max(0.05f, m.height) : 1f;
         if (m != null && m.floor)
             height = 0.06f;
+        if (def.id == Zipline.PostId)
+            height = Zipline.PostHeight;
+        if (def.id == SignId)
+            height = 2.2f;
         var box = go.AddComponent<BoxCollider>();
         box.size = new Vector3(def.size.x * 0.94f, height, def.size.y * 0.94f);
         box.center = new Vector3(0f, height * 0.5f, 0f);
@@ -313,30 +320,89 @@ public static class DecorCatalog
 
             if (m.text != null && !string.IsNullOrEmpty(m.text.kind))
             {
-                var tgo = new GameObject(TextName);
-                tgo.transform.SetParent(visual.transform, false);
-                tgo.transform.localPosition = Vec(m.text.pos);
-                // TextMesh читается со стороны −Z локали; разворачиваем лицом вперёд (+Z).
-                tgo.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
-                TextMesh tm = tgo.AddComponent<TextMesh>();
-                tm.anchor = TextAnchor.MiddleCenter;
-                tm.alignment = TextAlignment.Center;
-                tm.fontSize = 48;
-                tm.characterSize = Mathf.Max(0.005f, m.text.size);
-                tm.color = Col(m.text.color);
-                tm.richText = false;
-                Font font = DecorFont();
-                if (font != null)
-                {
-                    tm.font = font;
-                    tgo.GetComponent<MeshRenderer>().sharedMaterial = font.material;
-                }
+                // Надпись с двух сторон: передняя смотрит в +Z, задняя — зеркально за щитом.
+                // Обе односторонние и с тестом глубины, поэтому с каждой стороны читается своя.
+                Vector3 front = Vec(m.text.pos);
+                Vector3 back = new Vector3(front.x, front.y, -front.z - BackTextGap);
+                MakeText(visual.transform, TextName, front, 180f, m.text);
+                MakeText(visual.transform, TextBackName, back, 0f, m.text);
             }
         }
+
+        if (def.id == Zipline.PostId && m == null)
+            Zipline.BuildPostModel(visual.transform);
+        if (def.id == SignId)
+            BuildSignTemplate(go.transform, visual.transform, layer);
 
         foreach (Transform t in go.GetComponentsInChildren<Transform>(true))
             t.gameObject.layer = layer;
         return go;
+    }
+
+    /// <summary>Шаблон таблички: модель по умолчанию (её видно в призраке стройки) и выключенная ночная подсветка.</summary>
+    static void BuildSignTemplate(Transform root, Transform visual, int layer)
+    {
+        SignView view = SignView.Build(visual, SignPresets.Default(), layer, false);
+        var lgo = new GameObject(LightPrefix + "0");
+        lgo.transform.SetParent(root, false);
+        lgo.transform.position = view.LightPoint;
+        Light light = lgo.AddComponent<Light>();
+        light.type = LightType.Point;
+        light.range = 4.5f;
+        light.color = new Color(1f, 0.86f, 0.62f);
+        light.intensity = 1.6f;
+        light.shadows = LightShadows.None;
+        light.enabled = false;
+    }
+
+    /// <summary>Задняя надпись чуть дальше от центра: у вывесок сзади рамка толще лицевой панели.</summary>
+    const float BackTextGap = 0.025f;
+
+    static void MakeText(Transform parent, string name, Vector3 pos, float yaw, ManifestText spec)
+    {
+        var tgo = new GameObject(name);
+        tgo.transform.SetParent(parent, false);
+        tgo.transform.localPosition = pos;
+        // TextMesh читается со стороны −Z локали: yaw 180 — лицом вперёд (+Z), 0 — назад.
+        tgo.transform.localRotation = Quaternion.Euler(0f, yaw, 0f);
+        TextMesh tm = tgo.AddComponent<TextMesh>();
+        tm.anchor = TextAnchor.MiddleCenter;
+        tm.alignment = TextAlignment.Center;
+        tm.fontSize = 48;
+        tm.characterSize = Mathf.Max(0.005f, spec.size);
+        tm.color = Col(spec.color);
+        tm.richText = false;
+        Font f = DecorFont();
+        if (f != null)
+        {
+            tm.font = f;
+            MeshRenderer rend = tgo.GetComponent<MeshRenderer>();
+            rend.sharedMaterial = TextMaterial(f);
+            rend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            rend.receiveShadows = false;
+        }
+    }
+
+    static Material textMaterial;
+
+    /// <summary>Материал шрифта с отсечением задних граней и тестом глубины (см. WalkToBiomeText).</summary>
+    public static Material TextMaterial(Font f)
+    {
+        if (textMaterial != null)
+            return textMaterial;
+        Shader shader = Resources.Load<Shader>("WalkToBiomeText");
+        if (shader == null)
+            shader = Shader.Find("Hidden/WalkToBiome/Text");
+        if (shader == null)
+            return f.material;
+        textMaterial = new Material(shader) { name = "DecorText", mainTexture = f.material.mainTexture };
+        // Динамический шрифт пересобирает атлас при новых буквах — подхватываем новую текстуру.
+        Font.textureRebuilt += rebuilt =>
+        {
+            if (textMaterial != null && rebuilt == f)
+                textMaterial.mainTexture = rebuilt.material.mainTexture;
+        };
+        return textMaterial;
     }
 
     static Font font;
@@ -367,7 +433,7 @@ public static class DecorCatalog
 
     // ---------- Таблица ----------
 
-    const int RubyPriceScale = 20;
+    const int RubyPriceScale = 40; // ×2 к прежним 20 (плейтест: декор дешёвый)
 
     static Def D(string id, Cat cat, int sx, int sz, int rubies, int coins, float beauty,
         string ru, string en, string ruDesc, string enDesc)
@@ -427,6 +493,9 @@ public static class DecorCatalog
             "Центр площади: бьющая вода и брызги.", "A plaza centerpiece with splashing water.");
 
         // Промзона
+        D(Zipline.PostId, Cat.Industry, 1, 1, 1, 50, 1, "Опора троса", "Zipline Post",
+            "Тросовая дорога: две опоры до 40 клеток соединяются тросом. E у опоры — едешь, Пробел — отцепиться.",
+            "Zipline: two posts up to 40 cells apart get a cable. E at a post to ride, Space to let go.");
         D("decor_barrels", Cat.Industry, 1, 1, 2, 20, 1, "Штабель бочек", "Barrel Stack",
             "Бочки на поддоне. E — перекрасить.", "Barrels on a pallet. E — recolor.");
         D("decor_pallets", Cat.Industry, 1, 1, 2, 15, 1, "Стопка поддонов", "Pallet Stack",
@@ -451,6 +520,9 @@ public static class DecorCatalog
             "Дорожные конусы и полосатый барьер.", "Traffic cones and a striped barrier.");
         D("decor_sign_arrow", Cat.Road, 1, 1, 2, 15, 1, "Указатель-стрелка", "Arrow Sign",
             "Показывает дорогу. R — повернуть.", "Points the way. R — rotate.");
+        D(SignId, Cat.Road, 2, 1, 5, 40, 4, "Табличка", "Custom Sign",
+            "Своя надпись: текст, символы, иконки и плашки. E — редактор: цвет, размер, поворот, положение, стойка и подсветка.",
+            "Your own sign: text, symbols, icons and plates. E — editor: color, size, rotation, position, stand and night light.");
         D("decor_paving", Cat.Road, 1, 1, 3, 3, 0.25f, "Тротуарная плитка", "Paving",
             "Напольная: здания и ленты ставятся поверх.", "Floor tile: buildings and belts go on top.");
         D("decor_asphalt", Cat.Road, 1, 1, 3, 3, 0.25f, "Асфальт с разметкой", "Road Asphalt",

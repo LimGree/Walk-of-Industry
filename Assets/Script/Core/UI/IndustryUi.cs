@@ -807,6 +807,8 @@ public static class IndustryUi
         if (item != null && !string.IsNullOrEmpty(item.Info))
             meta.Add(Text("D", item.Info, "muted"));
         head.Add(meta);
+        if (item != null)
+            head.Add(Btn(UiLocale.T("codex.open_map"), () => ProductionMapUI.Instance?.Open(item), "btn-small", "btn-ghost"));
         card.Add(head);
 
         bool any = false;

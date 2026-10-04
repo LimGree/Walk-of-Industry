@@ -4,18 +4,20 @@ using UnityEngine;
 
 /// <summary>
 /// Песочница ([[TestYard]]): все здания, все формы лент и труб, подземки, рука, жилы всех видов
-/// с экстракторами, все декорации ([[Decorations]]) и напольная плитка под зданием.
+/// с экстракторами, все декорации ([[Decorations]]), напольная плитка под зданием и выставка табличек
+/// (шаблоны, стойки, размеры, подсветка и приёмы оформления — [[SignEditorUI]]).
+/// Восточнее — два огороженных цеха: все рецепты по стендам и цепочки от сырья до готового (TestYard.Halls.cs).
 /// Создаётся из главного меню: Shift+Ctrl+Alt + «Продолжить».
 /// Версия и угол двора пишутся в сейв: устаревший двор пересобирается при загрузке,
 /// а жилы двора (их нет в генерации мира) ставятся заново при каждой загрузке.
 /// </summary>
-public static class TestYard
+public static partial class TestYard
 {
     /// <summary>Поднять, когда меняется состав двора: старые тестовые миры пересоберутся.</summary>
-    public const int Version = 2;
+    public const int Version = 4;
 
     const int PadW = 60;
-    const int PadH = 72;
+    const int PadH = 86;
     const string KeyVersion = "testyard_v";
     const string KeyX = "testyard_x";
     const string KeyZ = "testyard_z";
@@ -43,6 +45,7 @@ public static class TestYard
         }
 
         RestoreVeins(padOrigin);
+        RestoreHalls(data);
     }
 
     public static void CaptureSave(SaveData data)
@@ -55,6 +58,7 @@ public static class TestYard
         data.extras.Add(new SaveKeyValue { key = KeyVersion, value = Version.ToString(inv) });
         data.extras.Add(new SaveKeyValue { key = KeyX, value = padOrigin.x.ToString(inv) });
         data.extras.Add(new SaveKeyValue { key = KeyZ, value = padOrigin.y.ToString(inv) });
+        CaptureHalls(data);
     }
 
     public static void Populate()
@@ -91,7 +95,9 @@ public static class TestYard
             PlaceVeinLines(o, extractor, belt, storage);         // z 16..18
             int z = PlaceBuildingGrid(o, VeinRowZ + 5, belt);
             z = PlaceFloorDemo(o, z + 2, storage, belt);
-            PlaceDecorGrid(o, z + 2);
+            z = PlaceDecorGrid(o, z + 2);
+            PlaceSignGallery(o, z + 3);
+            BuildDemoHalls(o);
             PlaceWater(o, water);
         }
         finally
@@ -193,16 +199,16 @@ public static class TestYard
         Put(storage, o, ax + 2, z, 0f);
 
         // склад → лента → лента в склад
-        Put(storage, o, ax + 5, z, 0f);
+        FaceOut(Put(storage, o, ax + 5, z, 0f), E);
         Put(belt, o, ax + 6, z, east);
         Put(belt, o, ax + 7, z, east);
-        Put(storage, o, ax + 8, z, 0f);
+        FaceIn(Put(storage, o, ax + 8, z, 0f), W);
 
         // бак → труба → бак
-        Put(tank, o, ax + 11, z, east);
+        FaceOut(Put(tank, o, ax + 11, z, east), E);
         Put(pipe, o, ax + 12, z, east);
         Put(pipe, o, ax + 13, z, east);
-        Put(tank, o, ax + 14, z, east);
+        FaceIn(Put(tank, o, ax + 14, z, east), W);
     }
 
     // ---------- Жилы ----------
@@ -216,7 +222,7 @@ public static class TestYard
             Put(extractor, o, x, VeinRowZ, 90f);
             Put(belt, o, x + 1, VeinRowZ, 90f);
             Put(belt, o, x + 2, VeinRowZ, 90f);
-            Put(storage, o, x + 3, VeinRowZ, 0f);
+            FaceIn(Put(storage, o, x + 3, VeinRowZ, 0f), W);
         }
     }
 
@@ -311,18 +317,18 @@ public static class TestYard
         }
 
         // здания и декорации стоят на плитке — она в своей сетке
-        Put(storage, o, 3, z0 + 2, 0f);
+        FaceOut(Put(storage, o, 3, z0 + 2, 0f), E);
         Put(belt, o, 4, z0 + 2, 90f);
         Put(belt, o, 5, z0 + 2, 90f);
-        Put(storage, o, 6, z0 + 2, 0f);
+        FaceIn(Put(storage, o, 6, z0 + 2, 0f), W);
         Put(GameDatabase.FindBuilding("decor_bench"), o, 3, z0 + 4, 180f);
         Put(GameDatabase.FindBuilding("decor_street_lamp"), o, 8, z0 + 4, 0f);
         Put(GameDatabase.FindBuilding("decor_vending"), o, 9, z0 + 1, 270f);
         return z0 + 5;
     }
 
-    /// <summary>Все декорации по категориям, лицом к дороге (−Z). Напольные — уже в демо плитки.</summary>
-    static void PlaceDecorGrid(Vector2Int o, int z0)
+    /// <summary>Все декорации по категориям, лицом к дороге (−Z). Напольные — уже в демо плитки. Возвращает z линии заборов.</summary>
+    static int PlaceDecorGrid(Vector2Int o, int z0)
     {
         IReadOnlyList<DecorCatalog.Def> all = DecorCatalog.All;
         int x = 2;
@@ -358,6 +364,167 @@ public static class TestYard
             Put(fence, o, 2 + k, fz, 90f);
             Put(wire, o, 10 + k, fz, 90f);
         }
+
+        return fz;
+    }
+
+    // ---------- Таблички ----------
+
+    /// <summary>
+    /// Выставка табличек лицом к −Z, три ряда: все шаблоны; стойки, размеры и подсветка;
+    /// приёмы (поворот, слои, иконки, символы, цвета, выравнивание, стили, односторонняя).
+    /// </summary>
+    static void PlaceSignGallery(Vector2Int o, int z0)
+    {
+        BuildingData data = GameDatabase.FindBuilding(DecorCatalog.SignId);
+        if (data == null)
+            return;
+
+        int x = 2;
+        PutSign(data, o, ref x, z0, Caption(L("ШАБЛОНЫ", "TEMPLATES")));
+        for (int i = 0; i < SignPresets.All.Length; i++)
+            PutSign(data, o, ref x, z0, SignPresets.All[i].make());
+
+        int z1 = z0 + 4;
+        x = 2;
+        PutSign(data, o, ref x, z1, Caption(L("СТОЙКИ\nРАЗМЕРЫ", "STANDS\nSIZES")));
+        string[] mounts = { L("Два столба", "Two posts"), L("Столб", "Pole"), L("Кронштейн", "Bracket"), L("Наклонная", "Tilted"), L("Постамент", "Plinth") };
+        for (int m = 0; m < mounts.Length; m++)
+        {
+            var d = new SignData { mount = m, board = "1F8A8A", frameColor = "E3D3A8", postColor = "2A2D31" };
+            d.items.Add(SignElement.Text(mounts[m], 0f, 0f, 0.22f, "FFFFFF", bold: true, shadow: true));
+            PutSign(data, o, ref x, z1, d);
+        }
+
+        string[] sizes = { "S", "M", "L" };
+        for (int k = 0; k < sizes.Length; k++)
+        {
+            var d = new SignData { size = k, board = "F2C230", frameColor = "0E0F11", postColor = "2A2D31" };
+            d.items.Add(SignElement.Text(sizes[k], 0f, 0.02f, 0.6f, "0E0F11", bold: true));
+            PutSign(data, o, ref x, z1, d);
+        }
+
+        var dim = new SignData { board = "1C2E5A", frameColor = "C8CCD0", postColor = "2A2D31" };
+        dim.items.Add(SignElement.Text(L("БЕЗ\nПОДСВЕТКИ", "NO\nLIGHT"), 0f, 0f, 0.2f, "FFFFFF", bold: true));
+        PutSign(data, o, ref x, z1, dim);
+        var glow = new SignData { board = "1C2E5A", frameColor = "F2C230", postColor = "2A2D31", glow = true };
+        glow.items.Add(SignElement.Text(L("С ПОДСВЕТКОЙ", "NIGHT\nLIGHT"), 0f, 0.05f, 0.2f, "F2C230", bold: true));
+        glow.items.Add(SignElement.Symbol("☼", 0f, -0.3f, 0.22f, "F2C230"));
+        PutSign(data, o, ref x, z1, glow);
+
+        int z2 = z1 + 4;
+        x = 2;
+        PutSign(data, o, ref x, z2, Caption(L("ПРИЁМЫ", "TRICKS")));
+        PutSign(data, o, ref x, z2, DemoRotation());
+        PutSign(data, o, ref x, z2, DemoLayers());
+        PutSign(data, o, ref x, z2, DemoIcons());
+        PutSign(data, o, ref x, z2, DemoSymbols());
+        PutSign(data, o, ref x, z2, DemoColors());
+        PutSign(data, o, ref x, z2, DemoAlign());
+        PutSign(data, o, ref x, z2, DemoStyles());
+        PutSign(data, o, ref x, z2, DemoOneSided());
+    }
+
+    static void PutSign(BuildingData data, Vector2Int o, ref int x, int z, SignData sign)
+    {
+        if (Put(data, o, x, z, 180f) is Decoration d)
+            d.SetSign(sign);
+        x += 3;
+    }
+
+    static string L(string ru, string en)
+    {
+        return UiLocale.IsRu ? ru : en;
+    }
+
+    static SignData Caption(string text)
+    {
+        var d = new SignData { mount = (int)SignMount.Stand, size = 0, frame = 2, board = "2A2D31", frameColor = "F08A24", postColor = "0E0F11" };
+        d.items.Add(SignElement.Text(text, 0f, 0f, 0.2f, "F08A24", bold: true));
+        return d;
+    }
+
+    static SignData DemoRotation()
+    {
+        var d = new SignData { board = "E3D3A8", frameColor = "2A2D31", postColor = "2A2D31" };
+        d.items.Add(SignElement.Text("0°", -0.32f, 0.22f, 0.2f, "0E0F11", bold: true));
+        d.items.Add(SignElement.Text("45°", 0.02f, 0.16f, 0.2f, "D23A2E", bold: true, rot: 45f));
+        d.items.Add(SignElement.Text("90°", 0.36f, 0f, 0.2f, "2F6FD6", bold: true, rot: 90f));
+        d.items.Add(SignElement.Text("−30°", -0.22f, -0.24f, 0.2f, "2E9B4E", bold: true, rot: -30f));
+        d.items.Add(SignElement.Text("180°", 0.12f, -0.28f, 0.17f, "7B4BC4", bold: true, rot: 180f));
+        return d;
+    }
+
+    static SignData DemoLayers()
+    {
+        var d = new SignData { board = "FFFFFF", frameColor = "2A2D31", postColor = "2A2D31" };
+        d.items.Add(SignElement.Plate(-0.17f, 0.08f, 0.4f, 0.55f, "D23A2E"));
+        d.items.Add(SignElement.Plate(0f, 0f, 0.4f, 0.55f, "F2C230"));
+        d.items.Add(SignElement.Plate(0.17f, -0.08f, 0.4f, 0.55f, "2F6FD6"));
+        d.items.Add(SignElement.Text(L("СЛОИ", "LAYERS"), 0f, 0f, 0.22f, "FFFFFF", bold: true, shadow: true));
+        return d;
+    }
+
+    static SignData DemoIcons()
+    {
+        var d = new SignData { board = "2A2D31", frameColor = "8CC63F", postColor = "2A2D31" };
+        string[] ids = { "item:iron_ore", "item:cooper_ore", "item:coal_ore", "item:iron_plate", "item:circuit_board", "bld:smelter" };
+        for (int i = 0; i < ids.Length; i++)
+            d.items.Add(SignElement.Icon(ids[i], -0.3f + (i % 3) * 0.3f, 0.06f - (i / 3) * 0.36f, 0.32f));
+        d.items.Add(SignElement.Text(L("ИКОНКИ", "ICONS"), 0f, 0.38f, 0.13f, "8CC63F", bold: true));
+        return d;
+    }
+
+    static SignData DemoSymbols()
+    {
+        var d = new SignData { size = 2, board = "0E0F11", frameColor = "3EC1E0", postColor = "2A2D31" };
+        string[] colors = { "F2C230", "3EC1E0", "E0559A", "8CC63F", "F08A24" };
+        for (int i = 0; i < 20 && i < SignGlyphs.All.Length; i++)
+        {
+            int c = i % 5;
+            int r = i / 5;
+            d.items.Add(SignElement.Symbol(SignGlyphs.All[i], -0.4f + c * 0.2f, 0.33f - r * 0.22f, 0.2f, colors[(c + r) % colors.Length]));
+        }
+
+        return d;
+    }
+
+    static SignData DemoColors()
+    {
+        var d = new SignData { board = "2A2D31", frameColor = "FFFFFF", postColor = "2A2D31" };
+        string word = L("РАДУГА", "COLORS");
+        string[] colors = { "D23A2E", "F08A24", "F2C230", "8CC63F", "3EC1E0", "7B4BC4" };
+        for (int i = 0; i < word.Length && i < colors.Length; i++)
+            d.items.Add(SignElement.Text(word[i].ToString(), -0.36f + i * 0.145f, 0.1f, 0.3f, colors[i], bold: true));
+        d.items.Add(SignElement.Text(L("любой цвет: #RRGGBB", "any color: #RRGGBB"), 0f, -0.26f, 0.12f, "C8CCD0", italic: true));
+        return d;
+    }
+
+    static SignData DemoAlign()
+    {
+        var d = new SignData { size = 2, board = "E3D3A8", frameColor = "6B4A2B", postColor = "4A3424" };
+        d.items.Add(SignElement.Text(L("влево\nстроки\nкраем", "left\naligned\nlines"), -0.44f, 0f, 0.13f, "0E0F11", align: 1));
+        d.items.Add(SignElement.Text(L("по\nцентру\nстроки", "center\naligned\nlines"), 0f, 0f, 0.13f, "6E1F2A", align: 0));
+        d.items.Add(SignElement.Text(L("вправо\nстроки\nкраем", "right\naligned\nlines"), 0.44f, 0f, 0.13f, "1C2E5A", align: 2));
+        return d;
+    }
+
+    static SignData DemoStyles()
+    {
+        var d = new SignData { board = "FFFFFF", frameColor = "7A8088", postColor = "2A2D31" };
+        d.items.Add(SignElement.Text(L("Обычный", "Regular"), 0f, 0.3f, 0.14f, "0E0F11"));
+        d.items.Add(SignElement.Text(L("Жирный", "Bold"), 0f, 0.1f, 0.14f, "0E0F11", bold: true));
+        d.items.Add(SignElement.Text(L("Курсив", "Italic"), 0f, -0.1f, 0.14f, "0E0F11", italic: true));
+        d.items.Add(SignElement.Text(L("С тенью", "Shadow"), 0f, -0.3f, 0.14f, "F2C230", bold: true, shadow: true));
+        return d;
+    }
+
+    static SignData DemoOneSided()
+    {
+        var d = new SignData { board = "6E1F2A", frameColor = "C9A24A", postColor = "2A2D31", twoSided = false };
+        d.items.Add(SignElement.Text(L("ТОЛЬКО\nСПЕРЕДИ", "FRONT\nONLY"), 0f, 0.05f, 0.2f, "F2C230", bold: true));
+        d.items.Add(SignElement.Text(L("сзади пусто", "back is blank"), 0f, -0.32f, 0.1f, "E3D3A8", italic: true));
+        return d;
     }
 
     static void PlaceWater(Vector2Int o, BuildingData water)
@@ -372,26 +539,27 @@ public static class TestYard
 
     // ---------- Установка ----------
 
-    static void Put(BuildingData data, Vector2Int origin, int x, int z, float yaw)
+    static BuildingBase Put(BuildingData data, Vector2Int origin, int x, int z, float yaw)
     {
-        PutAt(data, origin + new Vector2Int(x, z), yaw);
+        return PutAt(data, origin + new Vector2Int(x, z), yaw);
     }
 
-    static void PutAt(BuildingData data, Vector2Int min, float yaw)
+    static BuildingBase PutAt(BuildingData data, Vector2Int min, float yaw)
     {
         if (data == null || data.prefab == null)
-            return;
+            return null;
         Vector2Int size = GridFootprint.GetRotatedSize(data.size, yaw);
         bool free = DecorSystem.IsAreaFreeFor(data, min, size, null, null);
         if (!free && !data.allowOnWater)
-            return;
+            return null;
         Vector3 pos = GridFootprint.MinCellToCenter(min, size, GroundY(min, size));
         GameObject go = Object.Instantiate(data.prefab, pos, Quaternion.Euler(0f, yaw, 0f));
         BuildingBase building = go.GetComponent<BuildingBase>();
         if (building == null)
-            return;
+            return null;
         building.data = data;
         building.OnPlaced();
+        return building;
     }
 
     static void PutPair(BuildingData data, Vector2Int origin, int x0, int z0, int x1, int z1, float yaw)
@@ -436,7 +604,7 @@ public static class TestYard
         Vector2Int center = Vector2Int.zero;
         if (GridSystem.Instance != null)
             center = GridSystem.Instance.WorldToCell(map != null ? map.PlayableCenterWorld : Vector3.zero);
-        center -= new Vector2Int(PadW / 2, PadH / 2);
+        center -= new Vector2Int((PadW + HallsW) / 2, PadH / 2);
 
         Vector2Int best = center;
         float bestScore = float.MaxValue;
@@ -473,7 +641,7 @@ public static class TestYard
         float minY = float.MaxValue, maxY = float.MinValue;
         for (int z = 0; z < PadH; z += 2)
         {
-            for (int x = 0; x < PadW; x += 2)
+            for (int x = 0; x < PadW + HallsW; x += 2)
             {
                 Vector2Int c = o + new Vector2Int(x, z);
                 WorldBiome b = map.Get(c);

@@ -16,6 +16,13 @@ public class PipeSplitter : BuildingBase
 
     public int Buffered => buffer.Count;
 
+    /// <summary>Консоль (/pipe flush): вылить буфер.</summary>
+    public void DevClear()
+    {
+        buffer.Clear();
+        carry = 0f;
+    }
+
     public override bool TryReceiveItem(ItemData item, BuildingSocket fromSocket)
     {
         if (!IsPlaced || item == null || !item.isFluid || buffer.Count >= Capacity)

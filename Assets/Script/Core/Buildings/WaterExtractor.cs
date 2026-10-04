@@ -49,10 +49,10 @@ public class WaterExtractor : BuildingBase, IInteractable
         float breakMul = BreakWorkMul;
         GameAudio.Loop(this, "bld_water_loop", breakMul > 0f && HasOutputSpace(1));
 
-        timer += Time.deltaTime * breakMul;
+        timer += Time.deltaTime * breakMul * DevWorkMul;
         if (timer < CurrentInterval)
             return;
-        timer -= CurrentInterval;
+        timer = Mathf.Min(timer - CurrentInterval, CurrentInterval);
 
         int count = CurrentItemsPerCycle;
         if (!HasOutputSpace(count) && !CanPushAnyNow())
@@ -84,6 +84,15 @@ public class WaterExtractor : BuildingBase, IInteractable
                 return true;
         }
         return HasPushNeighbor();
+    }
+
+    /// <summary>Доля текущего цикла добычи (0..1).</summary>
+    public float CycleProgress => Mathf.Clamp01(timer / Mathf.Max(0.05f, CurrentInterval));
+
+    /// <summary>Консоль (/machine finish): цикл добычи завершится на следующем кадре.</summary>
+    public void DevFinishCycle()
+    {
+        timer = CurrentInterval;
     }
 
     public void Interact(GameObject interactor)

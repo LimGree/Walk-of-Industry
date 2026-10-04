@@ -1,0 +1,538 @@
+<title>Приёмка обновлений Walk of Industry</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Russo+One&family=Golos+Text:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: акт приёмки цеха — липкая шапка-табло прогресса, разделы-участки, строки-пункты с тумблером статуса, отчёт в конце */
+:root {
+  --bg: #eef1f2;
+  --panel: #ffffff;
+  --ink: #17252b;
+  --muted: #5c6f77;
+  --line: #d4dcdf;
+  --teal: #1a3d4f;
+  --copper: #b8662d;
+  --ok: #2f8a4c;
+  --no: #c23b2c;
+  --fix: #c98a12;
+  --ok-bg: #e3f3e8;
+  --no-bg: #f8e4e1;
+  --fix-bg: #fbf0d6;
+  --f-display: "Russo One", "Arial Black", system-ui, sans-serif;
+  --f-body: "Golos Text", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "JetBrains Mono", Consolas, ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #10181c; --panel: #172228; --ink: #e4ecee; --muted: #8fa3ab; --line: #2a3a42;
+    --teal: #9fd2e3; --copper: #e08c4f; --ok: #5cc27c; --no: #ec6a5a; --fix: #e8b13f;
+    --ok-bg: #173323; --no-bg: #3a1c19; --fix-bg: #3a2e12; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #10181c; --panel: #172228; --ink: #e4ecee; --muted: #8fa3ab; --line: #2a3a42;
+  --teal: #9fd2e3; --copper: #e08c4f; --ok: #5cc27c; --no: #ec6a5a; --fix: #e8b13f;
+  --ok-bg: #173323; --no-bg: #3a1c19; --fix-bg: #3a2e12; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 980px; margin: 0 auto; padding-inline: 16px; padding-block: 0 64px; }
+
+header.top {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+  background: var(--bg); border-bottom: 1px solid var(--line);
+  padding-block: 14px 12px;
+}
+.brand { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
+h1 { font-family: var(--f-display); font-weight: 400; font-size: clamp(20px, 3.4vw, 28px); margin: 0; letter-spacing: .5px; color: var(--teal); text-wrap: balance; }
+.stamp { font-family: var(--f-mono); font-size: 12px; color: var(--copper); border: 1px solid var(--copper); padding: 1px 7px; letter-spacing: 1px; text-transform: uppercase; }
+.board { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; align-items: center; }
+.meter { flex: 1 1 240px; height: 10px; background: var(--line); display: flex; overflow: hidden; min-width: 0; }
+.meter i { display: block; height: 100%; transition: width .25s; }
+.meter .m-ok { background: var(--ok); } .meter .m-fix { background: var(--fix); } .meter .m-no { background: var(--no); }
+.counts { display: flex; flex-wrap: wrap; gap: 6px; font-family: var(--f-mono); font-size: 12px; font-variant-numeric: tabular-nums; }
+.chip { border: 1px solid var(--line); background: var(--panel); color: var(--ink); padding: 3px 9px; cursor: pointer; font: inherit; }
+.chip[aria-pressed="true"] { background: var(--teal); color: var(--bg); border-color: var(--teal); }
+.chip b { font-weight: 600; }
+.c-ok b { color: var(--ok); } .c-no b { color: var(--no); } .c-fix b { color: var(--fix); }
+.chip[aria-pressed="true"] b { color: inherit; }
+
+.intro { color: var(--muted); max-width: 68ch; margin: 18px 0 4px; }
+.intro code, .hint code, .tools code { font-family: var(--f-mono); font-size: .88em; background: var(--panel); border: 1px solid var(--line); padding: 0 4px; }
+.tools { font-size: 13px; color: var(--muted); margin: 6px 0 0; }
+
+section.zone { margin-top: 28px; }
+.zone-head { display: flex; align-items: baseline; gap: 10px; border-bottom: 2px solid var(--teal); padding-bottom: 6px; flex-wrap: wrap; }
+.zone-no { font-family: var(--f-display); color: var(--copper); font-size: 18px; }
+h2 { font-family: var(--f-display); font-weight: 400; font-size: 18px; margin: 0; color: var(--teal); }
+.zone-sum { margin-left: auto; font-family: var(--f-mono); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.zone-note { font-size: 13px; color: var(--muted); margin: 6px 0 0; }
+h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted); margin: 16px 0 4px; font-weight: 600; }
+
+.item { display: grid; grid-template-columns: 1fr auto; gap: 6px 14px; padding: 10px 12px; border-bottom: 1px solid var(--line); background: var(--panel); border-left: 4px solid transparent; }
+.item[data-s="ok"] { border-left-color: var(--ok); }
+.item[data-s="no"] { border-left-color: var(--no); background: var(--no-bg); }
+.item[data-s="fix"] { border-left-color: var(--fix); background: var(--fix-bg); }
+.txt { min-width: 0; }
+.title { font-weight: 500; }
+.hint { font-size: 13px; color: var(--muted); margin-top: 2px; }
+.seg { display: inline-flex; align-self: start; border: 1px solid var(--line); }
+.seg button { font: 600 12px var(--f-body); padding: 6px 10px; border: 0; background: var(--panel); color: var(--muted); cursor: pointer; white-space: nowrap; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button:hover { color: var(--ink); }
+.seg button[aria-pressed="true"].b-ok { background: var(--ok); color: #fff; }
+.seg button[aria-pressed="true"].b-no { background: var(--no); color: #fff; }
+.seg button[aria-pressed="true"].b-fix { background: var(--fix); color: #1d1503; }
+button:focus-visible, textarea:focus-visible, .chip:focus-visible { outline: 2px solid var(--copper); outline-offset: 2px; }
+.note { grid-column: 1 / -1; }
+.note textarea { width: 100%; min-height: 58px; resize: vertical; font: 14px var(--f-body); color: var(--ink); background: var(--panel); border: 1px solid var(--line); padding: 7px 9px; }
+.note label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 3px; }
+.item.hide { display: none; }
+
+#report { margin-top: 40px; background: var(--panel); border: 2px solid var(--teal); padding: 18px; }
+#report h2 { font-size: 22px; }
+.r-sum { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin: 14px 0; }
+.r-sum div { border: 1px solid var(--line); padding: 10px; }
+.r-sum span { display: block; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+.r-sum strong { font-family: var(--f-display); font-weight: 400; font-size: 26px; font-variant-numeric: tabular-nums; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+.btn { font: 600 14px var(--f-body); padding: 9px 16px; border: 1px solid var(--teal); background: var(--teal); color: var(--bg); cursor: pointer; }
+.btn.ghost { background: transparent; color: var(--teal); }
+.btn.danger { background: transparent; color: var(--no); border-color: var(--no); }
+#out { width: 100%; min-height: 260px; font: 12.5px/1.5 var(--f-mono); color: var(--ink); background: var(--bg); border: 1px solid var(--line); padding: 10px; white-space: pre; overflow: auto; }
+.flash { font-size: 13px; color: var(--ok); min-height: 1.2em; }
+.confirm { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 14px; }
+@media (max-width: 560px) {
+  .item { grid-template-columns: 1fr; }
+  .seg { width: 100%; }
+  .seg button { flex: 1; }
+}
+@media (prefers-reduced-motion: reduce) { .meter i { transition: none; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <h1>Приёмка обновлений</h1>
+      <span class="stamp">Walk of Industry · Unity 6000.0.60f1</span>
+    </div>
+    <div class="board">
+      <div class="meter" aria-hidden="true"><i class="m-ok" id="mOk"></i><i class="m-fix" id="mFix"></i><i class="m-no" id="mNo"></i></div>
+      <div class="counts" role="group" aria-label="Фильтр">
+        <button class="chip" data-f="all" aria-pressed="true">все <b id="nAll">0</b></button>
+        <button class="chip" data-f="todo" aria-pressed="false">не отмечено <b id="nTodo">0</b></button>
+        <button class="chip c-ok" data-f="ok" aria-pressed="false">есть <b id="nOk">0</b></button>
+        <button class="chip c-fix" data-f="fix" aria-pressed="false">правка <b id="nFix">0</b></button>
+        <button class="chip c-no" data-f="no" aria-pressed="false">нет <b id="nNo">0</b></button>
+      </div>
+    </div>
+  </header>
+
+  <p class="intro">По каждому пункту выбери: <b>есть</b> — работает как описано, <b>нет</b> — не работает или отсутствует, <b>правка</b> — работает, но нужно доработать. Для «нет» и «правка» появится поле — опиши, что увидел и что поменять. Отметки сохраняются в этом браузере, можно проверять в несколько заходов. В конце — готовый отчёт: скопируй и пришли мне.</p>
+  <p class="tools">Консоль разработчика — клавиша <code>`</code> (ё): <code>tutorial restart</code> · <code>tutorial skip</code> · <code>research skip &lt;id&gt;</code> · <code>research skipall</code> · <code>time set night</code> · <code>break here</code> · <code>fps</code></p>
+
+  <main id="zones"></main>
+
+  <section id="report">
+    <h2>Отчёт</h2>
+    <div class="r-sum" id="rSum"></div>
+    <div class="actions">
+      <button class="btn" id="copy">Скопировать отчёт</button>
+      <button class="btn ghost" id="jumpTodo">К первому неотмеченному</button>
+      <button class="btn danger" id="reset">Сбросить все отметки</button>
+    </div>
+    <div class="confirm" id="confirm" hidden>
+      Стереть все отметки и описания?
+      <button class="btn danger" id="resetYes">Да, сбросить</button>
+      <button class="btn ghost" id="resetNo">Отмена</button>
+    </div>
+    <div class="flash" id="flash" role="status"></div>
+    <textarea id="out" readonly aria-label="Текст отчёта"></textarea>
+  </section>
+</div>
+
+<script>
+const ZONES = [
+  { id: "prep", name: "Подготовка в Unity", items: [
+    ["Unity перекомпилировал скрипты, в консоли нет красных ошибок"],
+    ["У новых скриптов появились .meta", "TutorialLog, BeltRouteHint, ProductionGraph, ProductionMapUI, GoalSystem, GoalsUI, PortNumberBillboard, ContentValidator"],
+    ["Walk of Industry → Validate Content: «ошибок 0»", "Ожидаемые предупреждения: water — тупик; рецепты с пробелом в id; стартовые рецепты без исследования"],
+    ["Input System не ругается на InputSystem_Actions", "Добавлены ProductionMap = K и Goals = J. Перегенерация C#-класса Unity — нормально"],
+  ]},
+  { id: "load", name: "Загрузка мира и пауза", note: "Тот самый баг: во время экрана загрузки пауза включаться не должна.", items: [
+    ["Новый мир: Esc во время загрузки не открывает паузу"],
+    ["Alt+Tab во время загрузки (с «Паузой при потере фокуса») — после загрузки игра не на паузе"],
+    ["K и J во время загрузки ничего не открывают"],
+    ["После загрузки Esc → пауза работает как раньше"],
+    ["Загрузка существующего сейва — всё то же"],
+  ]},
+  { id: "tut", name: "Вводная глава", note: "Новый мир, обучение не пропущено. Засеки время: первая руда в лаборатории ≤ 3 мин, первый слиток ≤ 8 мин.", groups: [
+    { name: "Общее", items: [
+      ["Нет модалки «Welcome» — сразу карточка слева сверху, «ОБУЧЕНИЕ 1/18»; если миникарта слева сверху — карточка уходит под неё"],
+      ["Хотбар уже заполнен: Экстрактор, Лента, Лаборатория"],
+      ["В карточке обучения нет кнопок (курсор заблокирован) — только строка «F1 — пропустить обучение · F2 — шаг · F3 — повтор»"],
+      ["F1 — пропустить всё, F2 — шаг, F3 — повтор"],
+    ]},
+    { name: "Шаги", items: [
+      ["1 · Intro сам уходит дальше через ~5 с"],
+      ["2 · Иди к железу: стрелка на краю экрана с метрами, столб света над жилой", "Когда гора в кадре — стрелка вниз над ней; через 30 с подсказка про карту"],
+      ["3 · Нажми B: подсвечена клавиша B в полосе подсказок"],
+      ["4 · Экстрактор: жёлтые клетки на свободной жиле, слот хотбара подсвечен"],
+      ["5 · «Руда выходит сюда»: подсвечена клетка перед выходом, через ~4 с дальше"],
+      ["6 · Лаборатория: жёлтые клетки в 3–7 клетках от выхода экстрактора"],
+      ["7 · Лента: голубые клетки маршрута от выхода до входа лаборатории", "Поставленные куски ленты гаснут; есть прогресс-бар руды"],
+      ["8 · Тост «Руда в лаборатории!»"],
+      ["9 · Иди к меди: стрелка и столб на медь"],
+      ["10 · Медная линия: после экстрактора — голубой маршрут к той же лаборатории"],
+      ["11 · Ожидание: прогресс «x/100 · y/100 · ≈N мин», жёлтые клетки свободных жил", "45 с без прогресса — текст «Руда не идёт…» и обводка экстракторов и лабы"],
+      ["Исследование «Плавильня» стоит 100 + 100 и идёт само"],
+      ["12 · Тост «Открыто: Плавильня» + рецепты обоих слитков"],
+      ["13 · Плавильня: подсвечены клетки железной ленты (не первая у экстрактора)"],
+      ["14 · Первый слиток: рецепт выбрался сам, без окна станка"],
+      ["15 · Копия: Tab, рамка, Ctrl+C — подсвечивается нужная клавиша"],
+      ["16 · Вставка на медную ленту: вторая плавильня сама взяла рецепт медного слитка"],
+      ["17 · E по плавильне — шаг засчитан при открытии окна"],
+      ["18 · «Обучение пройдено!» без кнопок, строка «K — карта производства · F2 — играть»", "K открывает карту и завершает обучение; F2 — завершает; само исчезает через ~12 с"],
+      ["После обучения справа появилась цель «Сборщик»"],
+    ]},
+    { name: "Время (впиши в описание)", items: [
+      ["Первая руда в лаборатории ≤ 3 мин", "Выбери «правка» и впиши фактическое время, если дольше"],
+      ["Первый слиток ≤ 8 мин"],
+    ]},
+    { name: "Сейвы и настройки", items: [
+      ["Сохранение посреди обучения (шаг 7) → загрузка → продолжается с того же шага"],
+      ["Старый мир с непройденным обучением не падает, перескакивает на подходящий шаг"],
+      ["«Пропускать обучение в новых мирах» → новый мир сразу с целями"],
+      ["«Начать обучение заново» работает"],
+      ["Создаётся tutorial_log.txt (AppData\\LocalLow\\…), в нём строки «шаг — секунды»"],
+    ]},
+  ]},
+  { id: "mach", name: "Станки: авторецепт и простой", items: [
+    ["Станок с одним доступным рецептом при постройке сразу получает рецепт"],
+    ["Станок с несколькими рецептами берёт рецепт по первому пришедшему предмету"],
+    ["Настройка «Авторецепт» выкл — станки рецепт сами не выбирают"],
+    ["НПЗ по предмету рецепт не выбирает; при постройке с одним рецептом — выбирает"],
+    ["Над станком без рецепта: «!» и «нет рецепта — E»"],
+    ["Нет ингредиента: «ждёт: <предмет>»"],
+    ["Пришёл не тот предмет, лента встала: «не тот предмет: <предмет>»"],
+    ["Выход забит: «выход забит»"],
+    ["Лаборатория → вкладка «Простой» — те же тексты причин"],
+    ["Подпись читается (без кракозябр и розовых квадратов), смотрит в камеру"],
+  ]},
+  { id: "tree", name: "Дерево исследований", items: [
+    ["Корень один — «Плавильня»; нет узлов «Железный слиток», «Медный слиток», «Сплиттер»"],
+    ["«Сборщик»: 150 железных слитков, требует только «Плавильню»"],
+    ["«Логистика» (бывшая «Подземная лента») открывает подземку и сплиттер"],
+    ["«Конструктор» требует «Шестерня» + «Провод»"],
+    ["«Кремний» требует «Сборщик»; «Сталь» требует «Железная пластина»"],
+    ["Цены: Кабель 300 + 600, Мотор 300 + 500, Бак 200 + 300"],
+    ["В «Логистика II» и «Надёжность I» в цене есть медная пластина"],
+    ["Карточка узла: кнопки «Как сделать: <предмет>» открывают Карту производства"],
+    ["Карточка узла: строка «Ведёт к: …»"],
+    ["Старый сейв с «Железным слитком» / «Сплиттером» → плавильня, рецепты и сплиттер доступны"],
+    ["Названия «Медная руда / Медный слиток» (EN: Copper), нигде нет «Cooper» и «Печь»"],
+  ]},
+  { id: "models", name: "Модели зданий", items: [
+    ["Конструктор: два люка — сзади и справа — с зелёными стрелками"],
+    ["Над входами Конструктора цифры 1 и 2"],
+    ["Цифры видны и на призраке при постройке"],
+    ["Химзавод: сзади люк для ленты, слева синий патрубок; плашки портов на месте (и на призраке)"],
+    ["НПЗ: с обеих сторон люк + патрубок; на серной кислоте плашки меняются (вход лента, выход труба)"],
+    ["Цвета плашек: вход — зелёный, выход — оранжевый, труба — синее кольцо"],
+    ["Поворот на 90/180/270 — люки и плашки поворачиваются вместе с сокетами"],
+    ["Иконки в меню стройки обновились; иконка Конструктора сзади-справа, видны оба люка"],
+    ["Плавильня, сборщик, экстрактор, склад, лаборатория не сломались"],
+  ]},
+  { id: "map", name: "Карта производства (K)", items: [
+    ["K открывает и закрывает окно, Esc закрывает"],
+    ["Столбцы «СЫРЬЁ», «СТУПЕНЬ 1…7»; у плитки иконка, имя, станок"],
+    ["Закрытое — бледное с замком; производимое — зелёная полоска"],
+    ["Клик по плитке: ингредиенты голубым, потребители оранжевым, стрелки между ними"],
+    ["Поиск по имени фильтрует плитки"],
+    ["«Скрыть закрытое» работает и запоминается"],
+    ["Скорость 10/30/60/120 пересчитывает число станков"],
+    ["«Как сделать»: дерево до руды, «станок ×N», у сырья «жила в N м» + «На карте»"],
+    ["«На карте» ставит метку на ближайшую жилу и открывает карту мира; метка видна в мире"],
+    ["Закрытый предмет: «Нужно исследование: …» и кнопка «В дереве исследований»"],
+    ["«Как подключить»: у Конструктора два входа (сзади, справа) и заметка «в любой вход»; у Химзавода синий вход"],
+    ["«Где используется» — клик переключает карту на предмет"],
+    ["Справочник рецептов (лаборатория → «Рецепты») — кнопка «На карте производства»"],
+    ["Окно выглядит нормально на 1920×1080 и на меньшем разрешении"],
+  ]},
+  { id: "goals", name: "Цели (J) и подсказки", groups: [
+    { name: "Цели", items: [
+      ["Справа карточка «ЦЕЛЬ · J — все цели · K — карта», условия ○/✓ со счётчиками, награда", "Карточка не перекрывает миникарту в любом углу и после перетаскивания/изменения размера миникарты"],
+      ["В журнале (J) клик по невыполненному условию открывает Карту производства на предмете"],
+      ["Выполнение «Сборщика» → тост, монеты начислены, следующая цель", "Быстро: research skip research_assembler + поставить сборщик + 20 стержней"],
+      ["J — журнал: 15 целей, текущая выделена, выполненные с ✓"],
+      ["«Отслеживать» на карте → блок «ОТСЛЕЖИВАЮ: X» с шагами; «Не отслеживать» убирает"],
+      ["Сохранение/загрузка: цели и отслеживание сохранились, награды повторно не выдаются"],
+      ["Старый сейв с прогрессом: пройденные цели засчитаны молча"],
+    ]},
+    { name: "Подсказки", items: [
+      ["Станок без рецепта > ~10 с → «Станку нужен рецепт»"],
+      ["Лента встала из-за не того предмета → «Не тот предмет»"],
+      ["Экстрактор упёрся выходом → «Выход упирается»"],
+      ["После «Сборщика» → «Карта производства — K»"],
+      ["Открыт Конструктор → «Два входа»"],
+      ["Конструктору подан один ингредиент > 15 с → «Нужен второй ингредиент»"],
+      ["Ближе к ночи (зданий > 6) → «Скоро ночь»", "time set evening и подождать"],
+      ["break here → «Поломка»"],
+      ["4+ станков → «Копируй линии»; 3+ простаивающих → «Простаивают станки»"],
+      ["Подсказка без кнопок: строка «Исчезнет сама · J — все подсказки», уходит через ~9 с; открытие J её закрывает; не перекрывает миникарту", "Повторно та же подсказка не появляется, в том числе после перезагрузки"],
+      ["J → «Справочник»: прочитанные подсказки с текстом"],
+      ["Настройка «Подсказки: Все / Только важные / Выкл» работает"],
+    ]},
+  ]},
+  { id: "common", name: "Общее", items: [
+    ["RU ↔ EN: все новые тексты переводятся, нет ключей вида pm.title / tut.obj / tip."],
+    ["Настройки → Управление: «Карта производства» (K) и «Цели» (J), переназначаются"],
+    ["FPS при обучении и с открытой картой заметно не просел (fps в консоли)"],
+    ["Альфа-билд собирается, в логе есть строка [Validate]"],
+  ]},
+  { id: "fix2", name: "Правки после первого прохода", note: "Кнопки в карточках, миникарта, скрытие карточек, озёра и песок.", groups: [
+    { name: "Карточки без мыши", items: [
+      ["В карточке обучения и в подсказке нет кнопок — только строки с клавишами"],
+      ["F2 на «Обучение пройдено!» завершает обучение; K открывает карту и тоже завершает"],
+      ["Подсказка уходит сама через ~9 с; J закрывает её и открывает журнал"],
+    ]},
+    { name: "Миникарта", items: [
+      ["Миникарта справа сверху: карточка цели стоит под ней, не перекрывает"],
+      ["Перенеси миникарту в другой угол (настройки карты) — карточки цели и обучения сами уходят от неё"],
+      ["Перетащи миникарту вручную и поменяй размер — перекрытий нет"],
+      ["Карточка подсказки снизу справа не перекрывает миникарту в нижнем правом углу"],
+    ]},
+    { name: "Скрытие карточки цели", items: [
+      ["Shift+J скрывает/показывает карточку цели, появляется тост"],
+      ["Настройки → «Показывать карточку цели» работает"],
+      ["В журнале (J) кнопка «Скрыть/Показать карточку цели»"],
+      ["После перезапуска игры выбор сохранился"],
+    ]},
+    { name: "Озёра и песок (только новые миры)", items: [
+      ["Новый мир: озёр заметно больше, пляжи шире", "В консоли строка [WorldBiomeMap] … lake cells: N, beach cells: M (gen 2) — впиши числа в описание"],
+      ["Песка заметно больше: несколько залежей, ближайшая недалеко от старта", "Карта производства → Песок → «жила в N м»"],
+      ["Старый мир (созданный до обновления) загружается с теми же озёрами и жилами, постройки не в воде", "В логе gen 0"],
+      ["Обучение в новом мире не ломается: железо и медь рядом, лаборатория встаёт"],
+    ]},
+    { name: "Езда по ленте", items: [
+      ["S — едешь назад, против хода ленты"],
+      ["Назад проходит повороты (угловые ленты) и сплиттеры"],
+      ["В начале линии (у экстрактора) задний ход останавливается, не улетаешь"],
+      ["W — разгон в 3 раза быстрее прежнего (×21 к скорости ленты)"],
+      ["На полной скорости камера не отстаёт и не дёргается"],
+      ["Отпустил W/S — едешь с обычной скоростью ленты; E/Esc — сойти"],
+      ["Во время езды в полосе подсказок: «W — быстрее, S — ехать назад, E — сойти»"],
+    ]},
+  ]},
+  { id: "perks", name: "Плюшки персонажа (магазин → Снаряжение)", note: "Рубины проще всего взять обменом: магазин (H) → Обмен → «Купить рубины». В песочнице всё бесплатно.", groups: [
+    { name: "Магазин и обмен", items: [
+      ["Вкладки магазина: Декор · Снаряжение · Обмен"],
+      ["Обмен в обе стороны: кнопки 1 / 5 / 10 / 100 / 500 / 1000 и поле «своё число» с предпросмотром; недоступные суммы серые", "100 монет = 1 рубин, 1 рубин = 50 монет"],
+      ["Снаряжение выглядит как вкладка декора: фильтры по разделам, плитки с иконками, цена ×6 (ботинки 90/300/900, крылья 720)", "Декор подорожал вдвое"],
+      ["Покупка списывает рубины, тост «Куплено», карточка становится зелёной"],
+      ["Сохранение/загрузка: купленное и надетое сохраняется; в другом мире — не куплено"],
+    ]},
+    { name: "Передвижение", items: [
+      ["Ботинки I–III: бег заметно быстрее с каждым уровнем"],
+      ["Пружины I–III: прыжок выше (на III запрыгиваешь на низкие станки)"],
+      ["Двойной прыжок: Пробел в воздухе; тройной — ещё раз"],
+      ["Рывок: двойное нажатие W — рывок вперёд ~6 клеток, перезарядка 3 с"],
+      ["Без ласт в руках в озеро не зайти, тост «Там акулы!»; в океан нельзя никогда"],
+      ["Ласты взяты в руки (хотбар снаряжения) — по озеру можно ходить, медленнее; убрал из рук на озере — выталкивает на берег"],
+      ["Вагонетка: без неё E по ленте — тост «Нужна вагонетка»; с ней — едешь сидя, вагонетка смотрит по ходу ленты и не крутится за мышью (и на поворотах)"],
+      ["Пробел в вагонетке — спрыгиваешь с подскоком (без двойного прыжка следом)"],
+      ["Вагонетка Mk2: на сплиттере зажать A/D — поворот влево/вправо"],
+      ["Гудок: G в вагонетке — паровозный гудок (магазин не открывается)"],
+    ]},
+    { name: "Снаряжение в руках", items: [
+      ["После покупки крыльев/крюка/спальника внизу (вне стройки) появляется полоса снаряжения с номерами"],
+      ["Хотбар снаряжения выглядит как хотбар стройки: иконки без подписей; название всплывает над ним на 4 с при выборе", "1–9 и колесо мыши вне стройки — выбор слота, 0 — пустые руки"],
+      ["I вне стройки — сумка как у стройки: вкладки «Снаряжение» (клик — в хотбар/убрать) и «Внешний вид» (клик — надеть/снять костюм, шляпу, скины, след, дрона), плитка «Снаряжение» ведёт в магазин"],
+      ["Крылья в руках: Пробел — взлёт ~12 м и планирование вперёд (теперь работает); Пробел в воздухе — сложить/раскрыть; крылья видны над головой"],
+      ["Крюк-кошка в руках: ЛКМ по зданию или земле до 30 м — летишь по тросу втрое быстрее (видна линия); далеко — тост"],
+      ["Спальник: ЛКМ ночью — ночь проматывается ~5 с до 6:30; днём — тост «только ночью»"],
+    ]},
+    { name: "Работа и экономика", items: [
+      ["Ремкомплект: E по сломанному станку — чинится сразу, без мини-игры, тост «Осталось на сегодня: 4/5»"],
+      ["Фонарь на каске: с 21:00 до 6:00 вокруг персонажа свет"],
+      ["Карта клиента: цена построек −10% (II — −20%) — видно в подсказке цены при стройке"],
+      ["Договор о возврате: снос возвращает полную цену"],
+      ["Страховка: плата за ремонт вдвое меньше"],
+      ["Опора троса (магазин → Декор → Индустрия): две опоры до 40 клеток — между ними трос"],
+      ["E у опоры — едешь по тросу к паре; Пробел — отцепиться; без пары — тост «Нет второй опоры»"],
+    ]},
+    { name: "Внешний вид", items: [
+      ["Костюмы (сварщик, инженер, шахтёр, ночная смена) меняют одежду; «Снять» — возвращается своя"],
+      ["Шляпы: каска с фонарём, шахтёрская, корона"],
+      ["Экран редактирования внешности показывает свою одежду (не костюм из магазина)"],
+      ["След: искры / пар / листья при беге"],
+      ["Раскраски вагонетки: медь, золото, паровоз (дымит)"],
+      ["Расцветки крыльев: полосы, закат (с дымным следом)"],
+      ["Дрон-компаньон летает за плечом, светит ночью, указывает стрелкой и мигает на сломанный (красный) / стоящий (жёлтый) станок"],
+    ]},
+  ]},
+  { id: "play", name: "Плейтест с новичком", note: "Главная проверка. Не объясняй голосом — каждое объяснение записывай в описание.", items: [
+    ["Новичок прошёл обучение без объяснений голосом", "Где застрял и что спросил — в описание"],
+    ["tutorial_log.txt приложен к отчёту (пришли файл отдельно)"],
+    ["Новичок ответил с помощью карты (K): из чего печатная плата, где песок, почему станок стоит"],
+  ]},
+];
+
+const KEY = "woi-acceptance-v1";
+let state = {};
+try { state = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { state = {}; }
+function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+
+const ALL = [];
+const zonesEl = document.getElementById("zones");
+const esc = s => s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+ZONES.forEach((z, zi) => {
+  const sec = document.createElement("section");
+  sec.className = "zone";
+  sec.id = "z-" + z.id;
+  sec.innerHTML = `<div class="zone-head"><span class="zone-no">${zi + 1}</span><h2>${esc(z.name)}</h2><span class="zone-sum" id="zs-${z.id}"></span></div>` + (z.note ? `<p class="zone-note">${esc(z.note)}</p>` : "");
+  const groups = z.groups || [{ name: null, items: z.items }];
+  groups.forEach((g, gi) => {
+    if (g.name) { const h = document.createElement("h3"); h.textContent = g.name; sec.appendChild(h); }
+    g.items.forEach((it, ii) => {
+      const id = `${z.id}-${gi}-${ii}`;
+      const rec = { id, zone: z, group: g.name, title: it[0], hint: it[1] || "" };
+      ALL.push(rec);
+      const row = document.createElement("div");
+      row.className = "item";
+      row.id = "i-" + id;
+      row.innerHTML = `
+        <div class="txt"><div class="title">${esc(rec.title)}</div>${rec.hint ? `<div class="hint">${esc(rec.hint)}</div>` : ""}</div>
+        <div class="seg" role="group" aria-label="Статус">
+          <button type="button" class="b-ok" data-v="ok" aria-pressed="false">Есть</button>
+          <button type="button" class="b-no" data-v="no" aria-pressed="false">Нет</button>
+          <button type="button" class="b-fix" data-v="fix" aria-pressed="false">Правка</button>
+        </div>
+        <div class="note" hidden><label for="n-${id}">Что не так и что поменять</label><textarea id="n-${id}" placeholder="Например: стрелка указывает не на ту гору; текст обрезается на 1366×768"></textarea></div>`;
+      rec.row = row;
+      row.querySelectorAll(".seg button").forEach(b => b.addEventListener("click", () => {
+        const cur = state[id] && state[id].s;
+        const v = cur === b.dataset.v ? undefined : b.dataset.v;
+        state[id] = Object.assign({}, state[id], { s: v });
+        if (!v && !(state[id].n)) delete state[id];
+        save(); paint(rec); refresh();
+        if (v === "no" || v === "fix") row.querySelector("textarea").focus();
+      }));
+      const ta = row.querySelector("textarea");
+      ta.value = (state[id] && state[id].n) || "";
+      ta.addEventListener("input", () => { state[id] = Object.assign({}, state[id], { n: ta.value }); save(); refresh(); });
+      paint(rec);
+      sec.appendChild(row);
+    });
+  });
+  zonesEl.appendChild(sec);
+});
+
+function paint(rec) {
+  const s = state[rec.id] && state[rec.id].s;
+  rec.row.dataset.s = s || "";
+  rec.row.querySelectorAll(".seg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === s)));
+  rec.row.querySelector(".note").hidden = !(s === "no" || s === "fix");
+}
+
+let filter = "all";
+document.querySelectorAll(".chip").forEach(c => c.addEventListener("click", () => {
+  filter = c.dataset.f;
+  document.querySelectorAll(".chip").forEach(x => x.setAttribute("aria-pressed", String(x === c)));
+  applyFilter();
+}));
+function applyFilter() {
+  ALL.forEach(r => {
+    const s = (state[r.id] && state[r.id].s) || "todo";
+    r.row.classList.toggle("hide", !(filter === "all" || filter === s));
+  });
+}
+
+function stat(list) {
+  const c = { ok: 0, no: 0, fix: 0, todo: 0 };
+  list.forEach(r => c[(state[r.id] && state[r.id].s) || "todo"]++);
+  return c;
+}
+
+function refresh() {
+  const c = stat(ALL), n = ALL.length;
+  document.getElementById("nAll").textContent = n;
+  document.getElementById("nTodo").textContent = c.todo;
+  document.getElementById("nOk").textContent = c.ok;
+  document.getElementById("nFix").textContent = c.fix;
+  document.getElementById("nNo").textContent = c.no;
+  document.getElementById("mOk").style.width = (c.ok / n * 100) + "%";
+  document.getElementById("mFix").style.width = (c.fix / n * 100) + "%";
+  document.getElementById("mNo").style.width = (c.no / n * 100) + "%";
+  ZONES.forEach(z => {
+    const zc = stat(ALL.filter(r => r.zone === z));
+    const total = zc.ok + zc.no + zc.fix + zc.todo;
+    document.getElementById("zs-" + z.id).textContent = `${total - zc.todo}/${total}` + (zc.no ? ` · нет ${zc.no}` : "") + (zc.fix ? ` · правка ${zc.fix}` : "");
+  });
+  document.getElementById("rSum").innerHTML =
+    [["Всего", n], ["Есть", c.ok], ["Правка", c.fix], ["Нет", c.no], ["Не отмечено", c.todo]]
+      .map(([k, v]) => `<div><span>${k}</span><strong>${v}</strong></div>`).join("");
+  document.getElementById("out").value = report(c, n);
+  if (filter !== "all") applyFilter();
+}
+
+function label(r) { return `${r.zone.name}${r.group ? " / " + r.group : ""} — ${r.title}`; }
+function report(c, n) {
+  const d = new Date();
+  const lines = [];
+  lines.push(`# Отчёт приёмки — Walk of Industry`);
+  lines.push(`${d.toLocaleDateString("ru-RU")} ${d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}`);
+  lines.push("");
+  lines.push(`Всего ${n} · есть ${c.ok} · правка ${c.fix} · нет ${c.no} · не отмечено ${c.todo}`);
+  const sect = (title, key, withNote) => {
+    const list = ALL.filter(r => ((state[r.id] && state[r.id].s) || "todo") === key);
+    if (!list.length) return;
+    lines.push("", `## ${title} (${list.length})`);
+    let zone = null;
+    list.forEach(r => {
+      if (r.zone !== zone) { zone = r.zone; lines.push("", `### ${zone.name}`); }
+      lines.push(`- ${r.group ? r.group + ": " : ""}${r.title}`);
+      if (withNote) {
+        const note = ((state[r.id] && state[r.id].n) || "").trim();
+        lines.push(note ? "  > " + note.replace(/\n+/g, "\n  > ") : "  > (без описания)");
+      }
+    });
+  };
+  sect("Не работает", "no", true);
+  sect("Требует правки", "fix", true);
+  sect("Не проверено", "todo", false);
+  const okNotes = ALL.filter(r => state[r.id] && state[r.id].s === "ok" && (state[r.id].n || "").trim());
+  if (okNotes.length) {
+    lines.push("", `## Работает, есть заметки (${okNotes.length})`);
+    okNotes.forEach(r => lines.push(`- ${label(r)}`, "  > " + state[r.id].n.trim().replace(/\n+/g, "\n  > ")));
+  }
+  return lines.join("\n");
+}
+
+const flash = msg => { const f = document.getElementById("flash"); f.textContent = msg; setTimeout(() => { if (f.textContent === msg) f.textContent = ""; }, 3000); };
+document.getElementById("copy").addEventListener("click", () => {
+  const out = document.getElementById("out");
+  const text = out.value;
+  const fallback = () => { out.focus(); out.select(); flash("Текст выделен — нажми Ctrl+C"); };
+  try {
+    navigator.clipboard.writeText(text).then(() => flash("Отчёт скопирован — вставь его в чат"), fallback);
+  } catch (e) { fallback(); }
+});
+document.getElementById("jumpTodo").addEventListener("click", () => {
+  const r = ALL.find(x => !(state[x.id] && state[x.id].s));
+  if (!r) { flash("Все пункты отмечены"); return; }
+  r.row.scrollIntoView({ behavior: "smooth", block: "center" });
+  r.row.querySelector(".seg button").focus({ preventScroll: true });
+});
+document.getElementById("reset").addEventListener("click", () => { document.getElementById("confirm").hidden = false; });
+document.getElementById("resetNo").addEventListener("click", () => { document.getElementById("confirm").hidden = true; });
+document.getElementById("resetYes").addEventListener("click", () => {
+  state = {}; save();
+  ALL.forEach(r => { r.row.querySelector("textarea").value = ""; paint(r); });
+  document.getElementById("confirm").hidden = true;
+  refresh(); flash("Отметки сброшены");
+});
+
+refresh();
+</script>

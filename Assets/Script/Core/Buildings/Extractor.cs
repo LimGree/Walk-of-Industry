@@ -220,9 +220,9 @@ public class Extractor : BuildingBase, IInteractable
         GameAudio.Loop(this, "bld_extractor_loop", working && WorldView.InRange(transform.position));
 
         float interval = CurrentInterval;
-        timer += dt * breakMul;
+        timer += dt * breakMul * DevWorkMul;
         if (timer < interval) return;
-        timer -= interval;
+        timer = Mathf.Min(timer - interval, interval);
 
         if (!HasOutputSpace(itemsPerCycle) && !CanPushAnyNow())
         {
@@ -332,6 +332,15 @@ public class Extractor : BuildingBase, IInteractable
         }
 
         return HasPushNeighbor();
+    }
+
+    /// <summary>Доля текущего цикла добычи (0..1).</summary>
+    public float CycleProgress => Mathf.Clamp01(timer / Mathf.Max(0.05f, CurrentInterval));
+
+    /// <summary>Консоль (/machine finish): цикл добычи завершится на следующем тике.</summary>
+    public void DevFinishCycle()
+    {
+        timer = CurrentInterval;
     }
 
     public void Interact(GameObject interactor)

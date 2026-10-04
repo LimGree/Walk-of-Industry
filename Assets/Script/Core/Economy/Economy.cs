@@ -18,6 +18,8 @@ public static class Economy
     const int RepairFeeHighBalance = 200000;
     public const int StartingRubies = 10;
     public const int CoinsPerRuby = 50;
+    /// <summary>Покупка рубина за монеты — вдвое дороже продажи, чтобы обмен туда-обратно не давал прибыли.</summary>
+    public const int CoinsPerRubyBuy = 100;
 
     public const int BeltMaxLevel = 10;
     public const int BeltFirstGears = 1000;
@@ -27,6 +29,9 @@ public static class Economy
 
     public const float CraftTimeMul = 1.8f;
     public const float ExtractTimeMul = 1.25f;
+
+    /// <summary>Консоль: стройка бесплатная, возврата при сносе нет (/freebuild).</summary>
+    public static bool DevFreeBuild;
 
     public static bool IsExtractorResource(ItemData item)
     {
@@ -58,10 +63,10 @@ public static class Economy
     /// </summary>
     public static int BuildCost(BuildingData data, int queued = 0)
     {
-        if (data == null || GameSettings.Sandbox)
+        if (data == null || GameSettings.Sandbox || DevFreeBuild)
             return 0;
         float cost = Mathf.Max(0, data.buildCost) * BuildPriceScale * GameSettings.CostMultiplier
-            * CountFactor(data, WorldSim.CountOf(data) + queued);
+            * CountFactor(data, WorldSim.CountOf(data) + queued) * PerkSystem.BuildPriceMul;
         return Mathf.Max(0, Mathf.RoundToInt(cost));
     }
 
@@ -80,11 +85,12 @@ public static class Economy
     /// </summary>
     public static int RefundCoins(BuildingData data)
     {
-        if (data == null || GameSettings.Sandbox)
+        if (data == null || GameSettings.Sandbox || DevFreeBuild)
             return 0;
         float mul = Mathf.Min(1f, GameSettings.CostMultiplier);
         float cost = Mathf.Max(0, data.buildCost) * BuildPriceScale * mul * CountFactor(data, WorldSim.CountOf(data) - 1);
-        return Mathf.Max(0, Mathf.RoundToInt(cost * 0.75f));
+        // «Договор о возврате» — 100% вместо 75%. Скидка «Карты клиента» в возврат тоже входит: не больше, чем заплатил.
+        return Mathf.Max(0, Mathf.RoundToInt(cost * PerkSystem.BuildPriceMul * PerkSystem.RefundShare));
     }
 
     /// <summary>Сколько монет снять за ремонт: 3–5% баланса, процент растёт с балансом.</summary>
@@ -93,7 +99,7 @@ public static class Economy
         if (balance <= 0 || GameSettings.Sandbox)
             return 0;
         float t = Mathf.InverseLerp(RepairFeeLowBalance, RepairFeeHighBalance, balance);
-        return Mathf.RoundToInt(balance * Mathf.Lerp(RepairFeeMin, RepairFeeMax, t));
+        return Mathf.RoundToInt(balance * Mathf.Lerp(RepairFeeMin, RepairFeeMax, t) * PerkSystem.RepairFeeMul);
     }
 
     public static void PayRefund(BuildingBase building)

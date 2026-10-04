@@ -68,8 +68,17 @@ public class PlayerAvatar : MonoBehaviour
         ApplyVisibility();
     }
 
+    int perkVersion = -1;
+
     void LateUpdate()
     {
+        // Костюм/шляпа из магазина ([[PerkSystem]]) — пересобрать тело.
+        if (PerkSystem.Version != perkVersion)
+        {
+            perkVersion = PerkSystem.Version;
+            rebuildQueued = true;
+        }
+
         if (rebuildQueued)
         {
             rebuildQueued = false;
@@ -103,9 +112,15 @@ public class PlayerAvatar : MonoBehaviour
         {
             speed01 = riding ? 0f : speed01,
             grounded = riding || controller == null || controller.isGrounded,
-            lookPitch = movement != null ? movement.Pitch : 0f
+            lookPitch = movement != null ? movement.Pitch : 0f,
+            sitting = riding
         };
         animator.Tick(dt, motion);
+        // В вагонетке тело смотрит по ходу ленты, камера крутится свободно.
+        if (riding && BeltRide.Instance.TravelForward.sqrMagnitude > 0.01f)
+            rig.transform.rotation = Quaternion.LookRotation(BeltRide.Instance.TravelForward, Vector3.up);
+        else
+            rig.transform.localRotation = Quaternion.identity;
     }
 
     void ApplyVisibility()

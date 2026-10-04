@@ -174,6 +174,8 @@ public static class KeybindStore
         AddKeyboard(list, "Rotate", UiLocale.T("bind.rotate"));
         AddKeyboard(list, "BuildMode", UiLocale.T("bind.build_mode"));
         AddKeyboard(list, "Research", UiLocale.T("bind.research"));
+        AddKeyboard(list, "ProductionMap", UiLocale.T("bind.production_map"));
+        AddKeyboard(list, "Goals", UiLocale.T("bind.goals"));
         AddKeyboard(list, "SelectMode", UiLocale.T("bind.select"));
         AddComposite(list, "ClearSelection", "button", UiLocale.T("bind.clear"));
         AddKeyboard(list, "Copy", UiLocale.T("bind.copy"));

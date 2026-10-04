@@ -23,6 +23,9 @@ public class BuildGridVisualizer : MonoBehaviour
     [Tooltip("Макс. клеток footprint для отдельных подсветок (например 8×8).")]
     public int maxFootprintCells = 64;
 
+    /// <summary>Консоль (/grid show): сетка вокруг игрока и вне режима стройки.</summary>
+    public static bool DevForceShow;
+
     private GridSystem grid;
     private Transform gridPlane;
     private Material gridMaterial;
@@ -62,7 +65,7 @@ public class BuildGridVisualizer : MonoBehaviour
         int gridMode = GameSettings.BuildGridMode;
         if (!playerBuilder.isBuildMode)
         {
-            if (gridMode != 1)
+            if (gridMode != 1 && !DevForceShow)
             {
                 SetVisible(false);
                 return;

@@ -22,4 +22,5 @@ MonoBehaviour:
   isFuel: 0
   fuelValue: 0
   isFluid: 0
+  extractedBy: extractor
   sellValue: 1

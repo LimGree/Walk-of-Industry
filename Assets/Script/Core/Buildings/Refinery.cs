@@ -19,6 +19,9 @@ public class Refinery : CrafterBuilding
         base.OnPlaced();
     }
 
+    // Рецепт меняет местами трубу и ленту — выбирать его посреди приёма предмета нельзя.
+    protected override bool AutoRecipeFromItem => false;
+
     public override void SetRecipe(RecipeData recipe)
     {
         base.SetRecipe(recipe);

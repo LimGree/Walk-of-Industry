@@ -5,6 +5,8 @@ public static class DecorText
 {
     public static string T(string key)
     {
+        if (UiLocale.ShowKeys)
+            return key ?? "";
         if (key != null && Table.TryGetValue(key, out var pair))
             return UiLocale.IsRu ? pair.ru : pair.en;
         return key ?? "";

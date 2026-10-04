@@ -70,8 +70,23 @@ public class MachineIdleHud : MonoBehaviour
             DropMark(id);
         }
 
+        // Над станком — только «!». Причина простоя — в окне станка и в списке простоя:
+        // подписи в мире шумели и читались зеркально.
         for (int i = 0; i < rows.Count; i++)
             EnsureMark(rows[i].building);
+    }
+
+    /// <summary>Причина простоя одной строкой (станки — подробно, экстрактор — «выход забит»).</summary>
+    public static string ReasonText(IdleRow row)
+    {
+        if (row.building is CrafterBuilding crafter)
+        {
+            string text = crafter.IdleText();
+            if (!string.IsNullOrEmpty(text))
+                return text;
+        }
+
+        return row.reason == "input" ? UiLocale.T("idle.no_input") : UiLocale.T("idle.output_full");
     }
 
     void Note(BuildingBase building, string reason, float now, HashSet<int> seen)
@@ -100,10 +115,8 @@ public class MachineIdleHud : MonoBehaviour
         if (building == null)
             return;
         int id = building.GetInstanceID();
-        if (marks.TryGetValue(id, out Transform existing) && existing != null)
-            return;
-        Transform mark = CreateMark(building);
-        marks[id] = mark;
+        if (!marks.TryGetValue(id, out Transform mark) || mark == null)
+            marks[id] = CreateMark(building);
     }
 
     static Transform CreateMark(BuildingBase building)
@@ -185,7 +198,8 @@ public class MachineIdleHud : MonoBehaviour
             Vector3 toCam = camPos - mark.position;
             if (toCam.sqrMagnitude < 0.01f)
                 continue;
-            mark.rotation = Quaternion.LookRotation(toCam);
+            // TextMesh читается со стороны −Z: смотрим «от камеры», иначе текст зеркальный.
+            mark.rotation = Quaternion.LookRotation(-toCam);
         }
     }
 

@@ -169,6 +169,19 @@ public class InputHintUI : MonoBehaviour
             return hints;
         }
 
+        if (BeltRide.Instance != null && BeltRide.Instance.IsRiding)
+        {
+            Add(hints, "W", UiLocale.T("hint.ride_fast"));
+            Add(hints, "S", UiLocale.T("hint.ride_back"));
+            Add(hints, KeybindStore.Hint("Interact"), UiLocale.T("hint.ride_off"));
+            Add(hints, KeybindStore.Hint("Jump"), UiLocale.T("hint.ride_jump"));
+            if (PerkSystem.Has("cart2"))
+                Add(hints, "A / D", UiLocale.T("hint.ride_switch"));
+            if (PerkSystem.Has("horn"))
+                Add(hints, "G", UiLocale.T("hint.ride_horn"));
+            return hints;
+        }
+
         if (builder == null || !builder.isBuildMode)
         {
             Add(hints, KeybindStore.Hint("BuildMode"), UiLocale.T("hint.build_mode"));

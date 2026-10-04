@@ -47,6 +47,8 @@ public static class DataLocale
 
     static string Pick(Dictionary<string, Row> table, string id, string fallback, bool desc)
     {
+        if (UiLocale.ShowKeys)
+            return (desc ? "desc:" : "") + (id ?? "");
         if (table.TryGetValue(Key(id), out Row row))
         {
             string v = UiLocale.IsRu ? (desc ? row.ruDesc : row.ru) : (desc ? row.enDesc : row.en);
@@ -140,8 +142,8 @@ public static class DataLocale
             ("research_advanced_circuit", "", "Advanced Circuit", "", "Circuit in the constructor."),
             ("research_ai_module", "", "AI Module", "", "The final item."),
             ("research_ai_systems", "", "AI Systems", "", "Endgame: nanowire, quantum core and AI module."),
-            ("research_assembler", "", "Assembler", "", "Unlocks the assembler."),
-            ("research_assembler_2", "", "Assembler II", "Апгрейд сборщика: быстрее крафт.", "Assembler upgrade: faster crafting."),
+            ("research_assembler", "Сборщик", "Assembler", "Открывает сборщик: пластины, стержни, провод.", "Unlocks the assembler: plates, rods, wire."),
+            ("research_assembler_2", "Сборщик Mk2", "Assembler Mk2", "Апгрейд сборщика: быстрее крафт.", "Assembler upgrade: faster crafting."),
             ("research_battery", "", "Battery", "", "Battery at the chemical plant."),
             ("research_cable", "", "Cable", "", "Cable in the constructor."),
             ("research_chemical_plant", "", "Chemical Plant", "", "Fluids and solids in one recipe."),
@@ -149,7 +151,6 @@ public static class DataLocale
             ("research_computer_chip", "", "Computer Chip", "", "Chip in the constructor."),
             ("research_computing", "", "Computing", "", "Chemical plant: fluids and solids in advanced recipes."),
             ("research_constructor", "", "Constructor", "", "A machine with two inputs."),
-            ("research_cooper_ingot", "", "Copper Ingot", "", "Smelting copper ore."),
             ("research_cooper_plate", "", "Copper Plate", "", "Plates from copper ingots."),
             ("research_drone_cargo_1", "", "Cargo 100", "", "Drone crates hold 100 items instead of 50."),
             ("research_drone_cargo_2", "", "Cargo 150", "", "Drone crates hold 150 items."),
@@ -164,7 +165,6 @@ public static class DataLocale
             ("research_fluid_tank", "", "Fluid Tank", "", "Fluid storage."),
             ("research_gear", "", "Gear", "", "Gears from rods."),
             ("research_glass", "", "Glass", "", "Glass from sand in the smelter."),
-            ("research_iron_ingot", "", "Iron Ingot", "", "Smelting iron ore."),
             ("research_iron_plate", "", "Iron Plate", "", "Plates from ingots."),
             ("research_iron_rod", "", "Iron Rod", "", "Rods from an ingot."),
             ("research_mechanical_engineering", "Механика", "Mechanical Engineering", "Открывает базовые детали.", "Unlocks basic components."),
@@ -184,15 +184,14 @@ public static class DataLocale
             ("research_robotic_arm", "", "Robotic Arm", "", "Automatic loading of buildings."),
             ("research_rubber", "", "Rubber", "", "Rubber from oil."),
             ("research_silicon", "", "Silicon", "", "Silicon from sand in the smelter."),
-            ("research_smelter", "", "Smelter", "Открывает печь.", "Unlocks the smelter."),
-            ("research_splitter", "Сплиттер", "Splitter", "", "Splitting belts."),
+            ("research_smelter", "Плавильня", "Smelter", "Плавильня и рецепты железного и медного слитка.", "The smelter plus iron and copper ingot recipes."),
             ("research_steel_beam", "", "Steel Beam", "", "Beam in the assembler."),
             ("research_steel_ingot", "", "Steel Ingot", "", "Steel in the smelter."),
             ("research_steel_rod", "", "Steel Rod", "", "Rod in the constructor."),
             ("research_stone_brick", "", "Stone Brick", "", "Bricks from stone."),
             ("research_storage", "", "Storage", "", "Item storage."),
             ("research_sulfuric_acid", "", "Sulfuric Acid", "", "Acid from sulfur, no water needed."),
-            ("research_underground_conveyor", "", "Underground Belt", "", "Entrance and exit in a line, up to 5 cells apart."),
+            ("research_underground_conveyor", "Логистика", "Logistics", "Подземная лента (до 5 клеток) и сплиттер.", "Underground belt (up to 5 cells) and the splitter."),
             ("research_underground_range_2", "", "Longer Underground", "", "Underground belt gap up to 7 cells."),
             ("research_underground_range_3", "Подземка дальняя", "Long Underground", "", "Underground belt gap up to 9 cells."),
             ("research_water_extractor", "", "Water Pump", "", "Water extraction."),

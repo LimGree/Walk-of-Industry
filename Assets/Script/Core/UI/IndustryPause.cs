@@ -36,6 +36,13 @@ public class IndustryPause
         home.Add(IndustryUi.Btn(UiLocale.T("pause.resume"), () => GameManager.Instance.SetPaused(false), "btn-primary"));
         home.Add(IndustryUi.Btn(UiLocale.T("pause.save"), () =>
         {
+            if (WorldCatalog.Active != null && WorldCatalog.Active.sandbox)
+            {
+                UiAudio.PlayError();
+                UiNotification.Push(UiLocale.T("pause.test_nosave"), UiLocale.T("pause.test_nosave_sub"), UiStatus.Warning);
+                return;
+            }
+
             if (SaveSystem.Instance != null)
                 SaveSystem.Instance.SaveGame();
             UiAudio.PlayConfirm();

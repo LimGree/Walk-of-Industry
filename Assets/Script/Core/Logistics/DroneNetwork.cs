@@ -16,6 +16,9 @@ public static class DroneNetwork
     public const string ResearchSlots3 = "research_drone_slots_3";
     public const string ResearchSlots4 = "research_drone_slots_4";
 
+    /// <summary>Консоль (/drones speed): множитель скорости всех дронов.</summary>
+    public static float DevSpeedMul = 1f;
+
     public const int MaxDrones = 4;
     public const int ReadyCrates = 4;
     public const int UnloadCapacity = 1000;

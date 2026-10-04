@@ -320,7 +320,7 @@ public class MainMenu : MonoBehaviour
     {
         if (SandboxChordHeld())
         {
-            PlayWorld(WorldCatalog.CreateWorld("ТЕСТ", true));
+            PlayWorld(WorldCatalog.CreateTestWorld());
             return;
         }
 

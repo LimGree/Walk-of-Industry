@@ -46,6 +46,19 @@ public static class RecipeCodex
             };
         }
 
+        for (int i = 0; i < items.Length; i++)
+        {
+            BuildingData building = ExtractorOf(items[i]);
+            if (building == null || !BuildingUnlocked(building))
+                continue;
+            string itemId = GameDatabase.Normalize(items[i].id);
+            if (map.TryGetValue(itemId, out Entry e) && !e.extractBuildings.Contains(building))
+            {
+                e.extractBuildings.Add(building);
+                map[itemId] = e;
+            }
+        }
+
         for (int i = 0; i < ExtractTable.Length; i++)
         {
             string itemId = ExtractTable[i][0];
@@ -147,6 +160,23 @@ public static class RecipeCodex
         }
 
         return false;
+    }
+
+    /// <summary>Чем добывается сырьё: <see cref="ItemData.extractedBy"/>, иначе старая таблица.</summary>
+    public static BuildingData ExtractorOf(ItemData item)
+    {
+        if (item == null)
+            return null;
+        if (!string.IsNullOrEmpty(item.extractedBy))
+            return GameDatabase.FindBuilding(item.extractedBy);
+        string id = GameDatabase.Normalize(item.id);
+        for (int i = 0; i < ExtractTable.Length; i++)
+        {
+            if (ExtractTable[i][0] == id)
+                return GameDatabase.FindBuilding(ExtractTable[i][1]);
+        }
+
+        return null;
     }
 
     public static BuildingData BuildingOf(RecipeData recipe)

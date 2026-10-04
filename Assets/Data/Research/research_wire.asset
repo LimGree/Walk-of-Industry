@@ -21,7 +21,6 @@ MonoBehaviour:
     amount: 300
   requiredResearches:
   - {fileID: 11400000, guid: 30b30a210e1b4538afb4eab773d4170e, type: 2}
-  - {fileID: 11400000, guid: d6a29259111e4d4cb5433deec828ab42, type: 2}
   unlockedBuildings: []
   unlockedRecipes:
   - {fileID: 11400000, guid: 987c1eb2a3bb41b4da0c3ccddb9b22c7, type: 2}

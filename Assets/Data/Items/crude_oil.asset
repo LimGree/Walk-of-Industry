@@ -22,4 +22,5 @@ MonoBehaviour:
   isFuel: 1
   fuelValue: 0
   isFluid: 1
+  extractedBy: oil_extractor
   sellValue: 2

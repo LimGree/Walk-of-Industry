@@ -13,8 +13,12 @@ public class LoadingScreen : MonoBehaviour
     float target;
     string statusText;
 
+    /// <summary>Идёт загрузка мира (экран загрузки на месте): пауза и окна недоступны.</summary>
+    public static bool IsLoading { get; private set; }
+
     void Awake()
     {
+        IsLoading = true;
         DontDestroyOnLoad(gameObject);
         Time.timeScale = 1f;
         AudioListener.pause = false;
@@ -24,6 +28,14 @@ public class LoadingScreen : MonoBehaviour
         GameAudio.PlayMusic("music/mus_menu");
         BuildUi();
         StartCoroutine(LoadGame());
+    }
+
+    void OnDestroy()
+    {
+        IsLoading = false;
+        // Пауза могла включиться до фикса или из другого источника — мир стартует без неё.
+        if (GameManager.Instance != null && GameManager.Instance.IsPaused)
+            GameManager.Instance.SetPaused(false);
     }
 
     void Update()

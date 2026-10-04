@@ -135,6 +135,21 @@ public static class ResearchTree
             IndustryUi.AddStacks(need, node.requiredItems);
         detail.Add(need);
 
+        // Из чего делать цену — сразу на Карту производства.
+        if (node.requiredItems != null && status != "DONE")
+        {
+            var how = IndustryUi.El("How", "row", "pm-chips");
+            for (int i = 0; i < node.requiredItems.Count; i++)
+            {
+                ItemData item = node.requiredItems[i] != null ? node.requiredItems[i].item : null;
+                if (item == null)
+                    continue;
+                how.Add(IndustryUi.Btn(UiLocale.T("research.how_make", item.Title), () => ProductionMapUI.Instance?.Open(item), "btn-small", "btn-ghost"));
+            }
+
+            detail.Add(how);
+        }
+
         if (status == "ACTIVE")
         {
             VisualElement bar = IndustryUi.ProgressBar("TreeProgress");
@@ -176,8 +191,27 @@ public static class ResearchTree
             detail.Add(reward);
         }
 
+        string next = NextTitles(node);
+        if (!string.IsNullOrEmpty(next))
+            detail.Add(IndustryUi.Text("Next", UiLocale.T("research.leads_to", next), "caption"));
+
         if (status == "ACTIVE")
             detail.Add(IndustryUi.Text("Auto", UiLocale.T("research.auto"), "caption"));
+    }
+
+    /// <summary>Узлы, которым этот нужен в предках: «Ведёт к: …».</summary>
+    static string NextTitles(ResearchNodeData node)
+    {
+        ResearchNodeData[] all = GameDatabase.AllResearches();
+        var names = new List<string>(4);
+        for (int i = 0; all != null && i < all.Length; i++)
+        {
+            ResearchNodeData other = all[i];
+            if (other != null && other.requiredResearches != null && other.requiredResearches.Contains(node))
+                names.Add(other.Title);
+        }
+
+        return string.Join(", ", names);
     }
 
     public static ResearchNodeData DefaultSelection()

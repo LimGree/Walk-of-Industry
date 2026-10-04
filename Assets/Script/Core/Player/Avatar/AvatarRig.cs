@@ -36,7 +36,10 @@ public class AvatarRig : MonoBehaviour
         go.transform.SetParent(parent, false);
         AvatarRig rig = go.AddComponent<AvatarRig>();
         rig.layer = layer;
-        rig.Assemble(look ?? new AvatarLook());
+        // Купленные костюм и шляпа ([[PerkSystem]]) — только на персонаже в мире, не в экране внешности
+        // и не в сохранённом облике: снял костюм — вернулась своя одежда.
+        rig.perkLook = parent != null && parent.GetComponent<PlayerAvatar>() != null;
+        rig.Assemble(look != null ? look.Clone() : new AvatarLook());
         return rig;
     }
 
@@ -86,6 +89,10 @@ public class AvatarRig : MonoBehaviour
         return new Color32((byte)Mathf.Clamp(c.r * k, 0, 255), (byte)Mathf.Clamp(c.g * k, 0, 255), (byte)Mathf.Clamp(c.b * k, 0, 255), 255);
     }
 
+    bool perkLook;
+    string perkHat;
+    string perkOutfit;
+
     void Assemble(AvatarLook look)
     {
         look.Clamp();
@@ -95,6 +102,8 @@ public class AvatarRig : MonoBehaviour
         Color32 eyeC = AvatarLook.EyeColors[look.eyes];
         Color32 topC = AvatarLook.ClothColors[look.topColor];
         Color32 botC = AvatarLook.ClothColors[look.bottomColor];
+        if (perkLook)
+            ApplyPerkLook(look, ref topC, ref botC);
 
         float torsoW = sturdy ? 0.45f : 0.38f;
         float torsoD = sturdy ? 0.26f : 0.22f;
@@ -181,6 +190,46 @@ public class AvatarRig : MonoBehaviour
 
         BuildHair(look, hairC);
         BuildHat(look, topC);
+        if (perkOutfit == "outfit_night")
+        {
+            // Светоотражающие полосы на корпусе и штанинах.
+            Color32 reflect = new Color32(225, 235, 240, 255);
+            Part("Reflect1", spine, new Vector3(0f, 0.18f, 0f), new Vector3(torsoW + 0.012f, 0.035f, torsoD + 0.012f), 0.01f, reflect, 0.9f, 0.4f);
+            Part("Reflect2", spine, new Vector3(0f, 0.34f, 0f), new Vector3(torsoW + 0.012f, 0.035f, torsoD + 0.012f), 0.01f, reflect, 0.9f, 0.4f);
+            if (thighL != null)
+                Part("ReflectL", thighL, new Vector3(0f, -0.3f, 0f), new Vector3(legW + 0.014f, 0.03f, legW + 0.034f), 0.01f, reflect, 0.9f, 0.4f);
+            if (thighR != null)
+                Part("ReflectR", thighR, new Vector3(0f, -0.3f, 0f), new Vector3(legW + 0.014f, 0.03f, legW + 0.034f), 0.01f, reflect, 0.9f, 0.4f);
+        }
+    }
+
+    /// <summary>Костюм — фасон и цвета; шляпа — своя модель в <see cref="BuildHat"/>.</summary>
+    void ApplyPerkLook(AvatarLook look, ref Color32 topC, ref Color32 botC)
+    {
+        perkOutfit = PerkSystem.Worn("outfit");
+        perkHat = PerkSystem.Worn("hat");
+        switch (perkOutfit)
+        {
+            case "outfit_welder":
+                look.top = 1; look.bottom = 0;
+                topC = new Color32(92, 74, 58, 255); botC = new Color32(52, 48, 45, 255);
+                break;
+            case "outfit_engineer":
+                look.top = 0; look.bottom = 2;
+                topC = new Color32(232, 232, 228, 255); botC = new Color32(38, 86, 168, 255);
+                break;
+            case "outfit_miner":
+                look.top = 1; look.bottom = 2;
+                topC = new Color32(62, 62, 68, 255); botC = new Color32(40, 40, 46, 255);
+                break;
+            case "outfit_night":
+                look.top = 3; look.bottom = 0;
+                topC = new Color32(255, 128, 24, 255); botC = new Color32(28, 34, 52, 255);
+                break;
+        }
+
+        if (!string.IsNullOrEmpty(perkHat))
+            look.hat = 1; // причёска «под каской»
     }
 
     void BuildHair(AvatarLook look, Color32 c)
@@ -231,6 +280,40 @@ public class AvatarRig : MonoBehaviour
 
     void BuildHat(AvatarLook look, Color32 topC)
     {
+        switch (perkHat)
+        {
+            case "hat_hardhat_lamp":
+            {
+                Color32 orange = new Color32(240, 120, 30, 255);
+                Part("HatDome", head, new Vector3(0f, 0.33f, 0f), new Vector3(0.335f, 0.16f, 0.315f), 0.075f, orange, 0.65f);
+                Part("HatBrim", head, new Vector3(0f, 0.268f, 0.015f), new Vector3(0.37f, 0.026f, 0.37f), 0.012f, orange, 0.65f);
+                Part("HatLamp", head, new Vector3(0f, 0.33f, 0.17f), new Vector3(0.09f, 0.07f, 0.05f), 0.02f, new Color32(255, 240, 160, 255), 0.95f, 0.2f);
+                return;
+            }
+            case "hat_miner":
+            {
+                Color32 black = new Color32(30, 30, 34, 255);
+                Part("HatDome", head, new Vector3(0f, 0.33f, 0f), new Vector3(0.34f, 0.17f, 0.32f), 0.08f, black, 0.5f);
+                Part("HatBrim", head, new Vector3(0f, 0.268f, 0.0f), new Vector3(0.36f, 0.024f, 0.36f), 0.012f, black, 0.5f);
+                Part("HatLampRim", head, new Vector3(0f, 0.34f, 0.17f), new Vector3(0.11f, 0.11f, 0.04f), 0.04f, new Color32(190, 150, 70, 255), 0.7f, 0.6f);
+                Part("HatLamp", head, new Vector3(0f, 0.34f, 0.19f), new Vector3(0.07f, 0.07f, 0.02f), 0.03f, new Color32(255, 245, 200, 255), 0.95f);
+                return;
+            }
+            case "hat_crown":
+            {
+                Color32 gold = new Color32(240, 196, 60, 255);
+                Part("CrownBand", head, new Vector3(0f, 0.31f, 0f), new Vector3(0.31f, 0.08f, 0.29f), 0.02f, gold, 0.8f, 0.7f);
+                for (int i = 0; i < 5; i++)
+                {
+                    float a = i / 5f * Mathf.PI * 2f;
+                    Part("CrownSpike", head, new Vector3(Mathf.Sin(a) * 0.13f, 0.39f, Mathf.Cos(a) * 0.12f), new Vector3(0.05f, 0.09f, 0.05f), 0.01f, gold, 0.8f, 0.7f);
+                }
+
+                Part("CrownGem", head, new Vector3(0f, 0.32f, 0.15f), new Vector3(0.04f, 0.04f, 0.02f), 0.01f, new Color32(200, 30, 70, 255), 0.95f);
+                return;
+            }
+        }
+
         switch (look.hat)
         {
             case 1: // строительная каска

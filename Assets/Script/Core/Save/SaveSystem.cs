@@ -19,7 +19,7 @@ public class SaveSystem : MonoBehaviour
 
     void Update()
     {
-        if (!WorldCatalog.HasActive)
+        if (!WorldCatalog.HasActive || WorldCatalog.Active.sandbox)
             return;
         float interval = GameSettings.AutosaveMinutes * 60f;
         if (interval <= 0f)
@@ -55,6 +55,44 @@ public class SaveSystem : MonoBehaviour
             return;
         }
 
+        // тестовый мир временный: каждый вход — новый, ничего не пишем
+        if (WorldCatalog.Active.sandbox)
+            return;
+
+        SaveData data = CaptureData();
+        string path = WorldCatalog.ActiveSavePath;
+        Directory.CreateDirectory(Path.GetDirectoryName(path));
+        File.WriteAllText(path, JsonUtility.ToJson(data, true));
+        if (WorldCatalog.Active != null)
+            WorldCatalog.WritePreviewPng(WorldCatalog.Active, ScreenPreview.CapturePng());
+        WorldCatalog.SetActive(WorldCatalog.Active);
+        Debug.Log($"[Save] v{data.version}  {data.buildings.Count} зданий → {path}");
+    }
+
+    /// <summary>Состояние активного мира в JSON сейва (консоль: /save as, /snapshot, /bugreport).</summary>
+    public string CaptureJson()
+    {
+        return WorldCatalog.HasActive ? JsonUtility.ToJson(CaptureData(), true) : null;
+    }
+
+    /// <summary>Загрузить мир из JSON сейва сразу, без экрана загрузки (консоль: /load name, /restore).</summary>
+    public bool LoadFromJson(string json)
+    {
+        if (!WorldCatalog.HasActive || string.IsNullOrEmpty(json))
+            return false;
+        SaveData data = SaveData.Normalize(JsonUtility.FromJson<SaveData>(json));
+        if (data == null)
+            return false;
+        IEnumerator routine = ApplyRoutine(data, null);
+        while (routine.MoveNext())
+        {
+        }
+
+        return true;
+    }
+
+    SaveData CaptureData()
+    {
         SaveData data = new SaveData
         {
             version = SaveData.CurrentVersion,
@@ -76,6 +114,11 @@ public class SaveSystem : MonoBehaviour
         {
             BuildingBase building = buildings[i];
             if (building == null || building.data == null)
+                continue;
+            // Призраки (здание в руке, протяжка, вставка копии) — тоже BuildingBase, но не поставлены.
+            // Раньше они попадали в сейв и после загрузки становились лишними зданиями,
+            // иногда прямо поверх настоящих — и ломали связи соседей.
+            if (!building.IsPlaced)
                 continue;
             if (string.IsNullOrEmpty(building.data.id))
                 continue;
@@ -118,6 +161,12 @@ public class SaveSystem : MonoBehaviour
             data.worldWeather = (int)Weather.Kind;
         if (TutorialSystem.Instance != null)
             TutorialSystem.Instance.CaptureSave(data);
+        if (GoalSystem.Instance != null)
+            GoalSystem.Instance.CaptureSave(data);
+        if (PerkSystem.Instance != null)
+            PerkSystem.Instance.CaptureSave(data);
+        if (GearHotbar.Instance != null)
+            GearHotbar.Instance.CaptureSave(data);
         if (AchievementSystem.Instance != null)
             AchievementSystem.Instance.CaptureSave(data);
         if (BreakdownSystem.Instance != null)
@@ -131,13 +180,7 @@ public class SaveSystem : MonoBehaviour
             data.hotbarSelectedIndex = inv.selectedIndex;
         }
 
-        string path = WorldCatalog.ActiveSavePath;
-        Directory.CreateDirectory(Path.GetDirectoryName(path));
-        File.WriteAllText(path, JsonUtility.ToJson(data, true));
-        if (WorldCatalog.Active != null)
-            WorldCatalog.WritePreviewPng(WorldCatalog.Active, ScreenPreview.CapturePng());
-        WorldCatalog.SetActive(WorldCatalog.Active);
-        Debug.Log($"[Save] v{data.version}  {data.buildings.Count} зданий → {path}");
+        return data;
     }
 
     public void LoadGame()
@@ -187,6 +230,12 @@ public class SaveSystem : MonoBehaviour
                 Weather.ResetToNewWorld();
             if (BreakdownSystem.Instance != null)
                 BreakdownSystem.Instance.ResetToNewWorld();
+            if (GoalSystem.Instance != null)
+                GoalSystem.Instance.ApplySave(null);
+            if (PerkSystem.Instance != null)
+                PerkSystem.Instance.ApplySave(null);
+            if (GearHotbar.Instance != null)
+                GearHotbar.Instance.ApplySave(null);
             if (TutorialSystem.Instance != null)
                 TutorialSystem.Instance.OnWorldReady(false, null);
             BuildUndo.Load();
@@ -201,6 +250,19 @@ public class SaveSystem : MonoBehaviour
             AchievementSystem.Mute = false;
             Report(1f);
             yield break;
+        }
+
+        IEnumerator apply = ApplyRoutine(data, onProgress);
+        while (apply.MoveNext())
+            yield return apply.Current;
+    }
+
+    /// <summary>Мир из прочитанного сейва: здания, связи и все системы.</summary>
+    IEnumerator ApplyRoutine(SaveData data, System.Action<float> onProgress)
+    {
+        void Report(float t)
+        {
+            onProgress?.Invoke(Mathf.Clamp01(t));
         }
 
         BuildingData[] catalog = GameDatabase.AllBuildings();
@@ -233,11 +295,10 @@ public class SaveSystem : MonoBehaviour
             }
         }
 
-        BuildingLinker.SuppressRelink = false;
         Report(0.82f);
         yield return null;
-        BuildingLinker.RelinkAll();
 
+        // Связи — только когда всё состояние из сейва уже на месте (см. RelinkAll ниже).
         for (int i = 0; i < spawned.Count; i++)
         {
             if (spawned[i] == null)
@@ -249,6 +310,11 @@ public class SaveSystem : MonoBehaviour
         }
 
         UndergroundConveyor.FinishLoad();
+        // Связи считаются после ReadSave и спаривания подземок. Раньше RelinkAll шёл до ReadSave:
+        // выход подземки без пары никого не «кормит», лента за ним получала неверную маску входов
+        // и на слиянии переставала брать предметы с подземки — линия вставала после перезахода.
+        BuildingLinker.SuppressRelink = false;
+        BuildingLinker.RelinkAll();
         Report(0.92f);
         // Декорации до исследований: ApplySave исследований поднимает OnUnlocksChanged, хотбар
         // перечитывает открытое — купленные декорации уже должны считаться открытыми.
@@ -282,6 +348,12 @@ public class SaveSystem : MonoBehaviour
 
         if (TutorialSystem.Instance != null)
             TutorialSystem.Instance.PrepareFromSave(true, data);
+        if (GoalSystem.Instance != null)
+            GoalSystem.Instance.ApplySave(data);
+        if (PerkSystem.Instance != null)
+            PerkSystem.Instance.ApplySave(data);
+        if (GearHotbar.Instance != null)
+            GearHotbar.Instance.ApplySave(data);
         if (AchievementSystem.Instance != null)
             AchievementSystem.Instance.ApplySave(data);
         if (BreakdownSystem.Instance != null)

@@ -25,6 +25,10 @@ public class ItemData : ScriptableObject
     [Tooltip("Жидкость: нефть, вода, кислота. Пока на ленты не влияет.")]
     public bool isFluid;
 
+    [Header("Source")]
+    [Tooltip("id здания, которое добывает предмет из жилы (extractor, oil_extractor…). Пусто — только крафт.")]
+    public string extractedBy;
+
     [Header("Economy")]
     [Tooltip("Монеты за сдачу одного предмета в лабораторию.")]
     public int sellValue;

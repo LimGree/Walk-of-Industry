@@ -2,7 +2,8 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Склад 1x1: один тип предмета, два стека. Вход сзади, выход вперёд. Рецепта нет.
+/// Склад 1x1: один тип предмета, два стека. Рецепта нет. Сокеты — из префаба: вход спереди (+Z), выход сзади;
+/// раскладка в <see cref="EnsureSockets"/> — только запасная, если в префабе сокетов нет.
 /// </summary>
 public class StorageContainer : BuildingBase, IInteractable
 {
@@ -197,6 +198,46 @@ public class StorageContainer : BuildingBase, IInteractable
         }
 
         return false;
+    }
+
+    /// <summary>Консоль: опустошить склад.</summary>
+    public void DevClear()
+    {
+        EnsureSlots();
+        for (int i = 0; i < slots.Count; i++)
+        {
+            slots[i].item = null;
+            slots[i].amount = 0;
+        }
+    }
+
+    /// <summary>Консоль: залить все слоты предметом до полного стека. Чужой предмет в слоте не трогает. Возвращает сколько добавлено.</summary>
+    public int DevFill(ItemData item)
+    {
+        if (!AcceptsCargo(item))
+            return 0;
+        EnsureSlots();
+        int max = MaxStack(item);
+        int added = 0;
+        for (int i = 0; i < slots.Count; i++)
+        {
+            ItemStack stack = slots[i];
+            if (stack.IsEmpty)
+            {
+                stack.item = item;
+                stack.amount = max;
+                added += max;
+            }
+            else if (stack.item == item && stack.amount < max)
+            {
+                added += max - stack.amount;
+                stack.amount = max;
+            }
+        }
+
+        if (added > 0)
+            WorldSim.MarkFlush(this);
+        return added;
     }
 
     public ItemStack GetSlot(int index)

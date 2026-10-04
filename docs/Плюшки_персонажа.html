@@ -1,0 +1,373 @@
+<title>Плюшки для персонажа</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Russo+One&family=Golos+Text:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: каталог-прайс магазина снаряжения — липкое табло фильтра, разделы по типу плюшки, карточка-строка с ценой и сложностью, отчёт в конце */
+:root {
+  --bg: #eef1f2;
+  --panel: #ffffff;
+  --ink: #17252b;
+  --muted: #5c6f77;
+  --line: #d4dcdf;
+  --teal: #1a3d4f;
+  --copper: #b8662d;
+  --ok: #2f8a4c;
+  --no: #c23b2c;
+  --fix: #c98a12;
+  --ok-bg: #e3f3e8;
+  --no-bg: #f8e4e1;
+  --fix-bg: #fbf0d6;
+  --coin: #a87a10;
+  --ruby: #b0284a;
+  --f-display: "Russo One", "Arial Black", system-ui, sans-serif;
+  --f-body: "Golos Text", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "JetBrains Mono", Consolas, ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #10181c; --panel: #172228; --ink: #e4ecee; --muted: #8fa3ab; --line: #2a3a42;
+    --teal: #9fd2e3; --copper: #e08c4f; --ok: #5cc27c; --no: #ec6a5a; --fix: #e8b13f;
+    --ok-bg: #173323; --no-bg: #3a1c19; --fix-bg: #3a2e12; --coin: #e6bd4c; --ruby: #f06a8a; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #10181c; --panel: #172228; --ink: #e4ecee; --muted: #8fa3ab; --line: #2a3a42;
+  --teal: #9fd2e3; --copper: #e08c4f; --ok: #5cc27c; --no: #ec6a5a; --fix: #e8b13f;
+  --ok-bg: #173323; --no-bg: #3a1c19; --fix-bg: #3a2e12; --coin: #e6bd4c; --ruby: #f06a8a; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 1000px; margin: 0 auto; padding-inline: 16px; padding-block: 0 64px; }
+header.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); border-bottom: 1px solid var(--line); padding-block: 14px 12px; }
+.brand { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
+h1 { font-family: var(--f-display); font-weight: 400; font-size: clamp(20px, 3.4vw, 28px); margin: 0; letter-spacing: .5px; color: var(--teal); text-wrap: balance; }
+.stamp { font-family: var(--f-mono); font-size: 12px; color: var(--copper); border: 1px solid var(--copper); padding: 1px 7px; letter-spacing: 1px; text-transform: uppercase; }
+.board { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; align-items: center; }
+.meter { flex: 1 1 240px; height: 10px; background: var(--line); display: flex; overflow: hidden; min-width: 0; }
+.meter i { display: block; height: 100%; transition: width .25s; }
+.m-ok { background: var(--ok); } .m-fix { background: var(--fix); } .m-no { background: var(--no); }
+.counts { display: flex; flex-wrap: wrap; gap: 6px; font-family: var(--f-mono); font-size: 12px; font-variant-numeric: tabular-nums; }
+.chip { border: 1px solid var(--line); background: var(--panel); color: var(--ink); padding: 3px 9px; cursor: pointer; font: inherit; }
+.chip[aria-pressed="true"] { background: var(--teal); color: var(--bg); border-color: var(--teal); }
+.c-ok b { color: var(--ok); } .c-no b { color: var(--no); } .c-fix b { color: var(--fix); }
+.chip[aria-pressed="true"] b { color: inherit; }
+.intro { color: var(--muted); max-width: 70ch; margin: 18px 0 4px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--muted); margin-top: 8px; }
+.legend span { display: inline-flex; gap: 6px; align-items: center; }
+
+section.zone { margin-top: 28px; }
+.zone-head { display: flex; align-items: baseline; gap: 10px; border-bottom: 2px solid var(--teal); padding-bottom: 6px; flex-wrap: wrap; }
+h2 { font-family: var(--f-display); font-weight: 400; font-size: 18px; margin: 0; color: var(--teal); }
+.zone-sum { margin-left: auto; font-family: var(--f-mono); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.zone-note { font-size: 13px; color: var(--muted); margin: 6px 0 0; max-width: 72ch; }
+
+.item { display: grid; grid-template-columns: 1fr auto; gap: 6px 14px; padding: 12px; border-bottom: 1px solid var(--line); background: var(--panel); border-left: 4px solid transparent; }
+.item[data-s="ok"] { border-left-color: var(--ok); background: var(--ok-bg); }
+.item[data-s="no"] { border-left-color: var(--no); opacity: .72; }
+.item[data-s="fix"] { border-left-color: var(--fix); background: var(--fix-bg); }
+.txt { min-width: 0; }
+.name-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.num { font-family: var(--f-mono); font-size: 12px; color: var(--copper); }
+.title { font-weight: 600; font-size: 16px; }
+.tags { display: flex; flex-wrap: wrap; gap: 5px; }
+.tag { font-family: var(--f-mono); font-size: 11px; padding: 0 6px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+.tag.coin { color: var(--coin); border-color: var(--coin); }
+.tag.ruby { color: var(--ruby); border-color: var(--ruby); }
+.tag.d-s { color: var(--ok); border-color: var(--ok); }
+.tag.d-m { color: var(--fix); border-color: var(--fix); }
+.tag.d-l { color: var(--no); border-color: var(--no); }
+.what { margin-top: 4px; }
+.how { font-size: 13.5px; color: var(--muted); margin-top: 3px; }
+.how b { color: var(--ink); font-weight: 500; }
+.seg { display: inline-flex; align-self: start; border: 1px solid var(--line); }
+.seg button { font: 600 12px var(--f-body); padding: 6px 10px; border: 0; background: var(--panel); color: var(--muted); cursor: pointer; white-space: nowrap; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button:hover { color: var(--ink); }
+.seg button[aria-pressed="true"].b-ok { background: var(--ok); color: #fff; }
+.seg button[aria-pressed="true"].b-no { background: var(--no); color: #fff; }
+.seg button[aria-pressed="true"].b-fix { background: var(--fix); color: #1d1503; }
+button:focus-visible, textarea:focus-visible, .chip:focus-visible { outline: 2px solid var(--copper); outline-offset: 2px; }
+.note { grid-column: 1 / -1; }
+.note textarea { width: 100%; min-height: 54px; resize: vertical; font: 14px var(--f-body); color: var(--ink); background: var(--panel); border: 1px solid var(--line); padding: 7px 9px; }
+.note label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 3px; }
+.item.hide { display: none; }
+
+#report { margin-top: 40px; background: var(--panel); border: 2px solid var(--teal); padding: 18px; }
+#report h2 { font-size: 22px; }
+.r-sum { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin: 14px 0; }
+.r-sum div { border: 1px solid var(--line); padding: 10px; }
+.r-sum span { display: block; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+.r-sum strong { font-family: var(--f-display); font-weight: 400; font-size: 26px; font-variant-numeric: tabular-nums; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+.btn { font: 600 14px var(--f-body); padding: 9px 16px; border: 1px solid var(--teal); background: var(--teal); color: var(--bg); cursor: pointer; }
+.btn.ghost { background: transparent; color: var(--teal); }
+.btn.danger { background: transparent; color: var(--no); border-color: var(--no); }
+#out { width: 100%; min-height: 240px; font: 12.5px/1.5 var(--f-mono); color: var(--ink); background: var(--bg); border: 1px solid var(--line); padding: 10px; white-space: pre; overflow: auto; }
+.flash { font-size: 13px; color: var(--ok); min-height: 1.2em; }
+.confirm { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 14px; }
+@media (max-width: 560px) {
+  .item { grid-template-columns: 1fr; }
+  .seg { width: 100%; }
+  .seg button { flex: 1; }
+}
+@media (prefers-reduced-motion: reduce) { .meter i { transition: none; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <h1>Плюшки для персонажа</h1>
+      <span class="stamp">магазин · 42 идеи</span>
+    </div>
+    <div class="board">
+      <div class="meter" aria-hidden="true"><i class="m-ok" id="mOk"></i><i class="m-fix" id="mFix"></i><i class="m-no" id="mNo"></i></div>
+      <div class="counts" role="group" aria-label="Фильтр">
+        <button class="chip" data-f="all" aria-pressed="true">все <b id="nAll">0</b></button>
+        <button class="chip" data-f="todo" aria-pressed="false">не решено <b id="nTodo">0</b></button>
+        <button class="chip c-ok" data-f="ok" aria-pressed="false">беру <b id="nOk">0</b></button>
+        <button class="chip c-fix" data-f="fix" aria-pressed="false">переделать <b id="nFix">0</b></button>
+        <button class="chip c-no" data-f="no" aria-pressed="false">нет <b id="nNo">0</b></button>
+      </div>
+    </div>
+  </header>
+
+  <p class="intro">Сейчас у персонажа: ходьба 5 м/с, бег 8 м/с, прыжок 1.2 м, езда по лентам бесплатная. В магазине — декор за монеты и рубины. Ниже — что можно продавать сверх декора. По каждой идее: <b>Беру</b>, <b>Нет</b> или <b>Переделать</b> (с комментарием, что поменять). Цены — стартовое предложение, крутим потом. Отметки сохраняются в браузере; внизу отчёт — скопируй и пришли.</p>
+  <div class="legend">
+    <span><span class="tag coin">монеты</span> обычная прокачка</span>
+    <span><span class="tag ruby">рубины</span> редкое / престижное</span>
+    <span><span class="tag d-s">С</span> 1 день</span>
+    <span><span class="tag d-m">М</span> 2–4 дня</span>
+    <span><span class="tag d-l">Б</span> неделя+</span>
+  </div>
+
+  <main id="zones"></main>
+
+  <section id="report">
+    <h2>Отчёт</h2>
+    <div class="r-sum" id="rSum"></div>
+    <div class="actions">
+      <button class="btn" id="copy">Скопировать отчёт</button>
+      <button class="btn ghost" id="jumpTodo">К первой нерешённой</button>
+      <button class="btn danger" id="reset">Сбросить отметки</button>
+    </div>
+    <div class="confirm" id="confirm" hidden>
+      Стереть все отметки и комментарии?
+      <button class="btn danger" id="resetYes">Да, сбросить</button>
+      <button class="btn ghost" id="resetNo">Отмена</button>
+    </div>
+    <div class="flash" id="flash" role="status"></div>
+    <textarea id="out" readonly aria-label="Текст отчёта"></textarea>
+  </section>
+</div>
+
+<script>
+// [id, название, что даёт, как работает, цена, сложность С/М/Б]
+const ZONES = [
+  { id: "move", name: "Передвижение", note: "Ходьба, бег, прыжки — прокачка уровнями. Всё работает только вне режима стройки, чтобы не мешать ставить здания.", items: [
+    ["cart", "Вагонетка", "Езда по лентам становится покупкой и лучше нынешней.", "Без вагонетки на ленту не сесть (или сесть, но без W/S). С ней: E по ленте — садишься в вагонетку, W — разгон ×21, S — назад, Пробел — спрыгнуть с подскоком. Видна модель вагонетки под персонажем.", "coin:3 000", "М"],
+    ["cart2", "Вагонетка Mk2 — стрелки", "Выбор пути на развилках сплиттеров.", "Подъезжая к сплиттеру, A/D выбирает поворот: влево, прямо, вправо. Сейчас путь выбирается сплиттером сам.", "coin:8 000", "С"],
+    ["boots", "Ботинки скорости I–III", "Ходьба и бег быстрее.", "+15% за уровень: бег 8 → 9.2 → 10.6 → 12 м/с. Ходьба так же. Цена растёт с уровнем.", "coin:1 500 / 5 000 / 15 000", "С"],
+    ["spring", "Пружинные подошвы I–III", "Прыжок выше.", "Высота прыжка 1.2 → 1.6 → 2.0 → 2.5 м. На III уровне запрыгиваешь на склады и низкие станки.", "coin:1 500 / 5 000 / 15 000", "С"],
+    ["double", "Двойной прыжок", "Второй прыжок в воздухе.", "Пробел в воздухе — ещё один прыжок на 70% высоты. Сбрасывается при касании земли.", "coin:6 000", "С"],
+    ["triple", "Тройной прыжок", "Третий прыжок в воздухе (нужен двойной).", "Ещё один прыжок на 50% высоты. Вместе с пружинами III — почти на крышу НПЗ.", "ruby:30", "С"],
+    ["glider", "Параплан", "Планировать с высоты.", "В воздухе зажать Пробел — раскрывается крыло: падение 1.2 м/с, полёт вперёд 11 м/с, поворот мышью. С горы или после прыжка с пружинами пролетаешь 20–30 клеток. Отпустил — складывается.", "coin:12 000", "М"],
+    ["updraft", "Параплан: восходящий поток", "Резкий взлёт для параплана.", "Q на земле — подброс вверх на 8 м (перезарядка 20 с), сразу раскрывается параплан. Это и есть «взлететь повыше и пропланировать».", "ruby:40", "С"],
+    ["jetpack", "Реактивный ранец", "Короткий полёт вверх и вперёд.", "Зажать Пробел в воздухе — тяга вверх 3 с, шкала топлива у прицела, заправка на земле за 4 с. Ставится вместо параплана или вместе (переключение колесом).", "ruby:80", "М"],
+    ["dash", "Рывок", "Быстрый рывок вперёд.", "Двойное нажатие W (или Shift+пробел) — рывок на 6 клеток за 0.25 с, перезарядка 3 с. Уровень II — 2 заряда.", "coin:4 000", "С"],
+    ["grapple", "Крюк-кошка", "Подтянуться к зданию или скале.", "Средняя кнопка мыши по зданию/горе в пределах 25 клеток — персонаж летит к точке по тросу. Вне режима стройки.", "ruby:60", "М"],
+    ["climb", "Шипованные ботинки", "Ходить по крутым склонам гор.", "Сейчас на крутом склоне персонаж соскальзывает. С ботинками предельный уклон 45° → 70°: можно забраться на вершину с жилой напрямую.", "coin:4 000", "С"],
+    ["bike", "Самокат", "Быстрая езда по земле.", "Клавиша V — достать/убрать. Скорость 18 м/с, разгон 1 с, без прыжка и без стройки на ходу. Медленнее на склонах.", "coin:10 000", "М"],
+    ["boat", "Надувная лодка", "Пересекать озёра.", "Сейчас вода — препятствие. Зашёл в воду — садишься в лодку, 9 м/с. Пригодится с новыми озёрами.", "coin:5 000", "М"],
+    ["zipline", "Тросовая дорога (постройка)", "Быстро между двумя точками.", "Ставишь 2 опоры до 40 клеток друг от друга — между ними трос. E у опоры — едешь по тросу, можно спрыгнуть. Продаётся набор опор.", "coin:2 000 за пару", "М"],
+    ["pad", "Батут-катапульта (постройка)", "Подбрасывает игрока.", "Встал на площадку — подлёт на 12 м. С парапланом — «аэродром» для полётов над заводом.", "coin:1 500", "С"],
+    ["superjump", "Заряженный прыжок", "Прыжок ×3 при зарядке.", "Зажать Пробел на земле 1 с (полоска у прицела) — отпустить: прыжок в 3 раза выше. Без зарядки — обычный.", "coin:7 000", "С"],
+  ]},
+  { id: "travel", name: "Перемещение по миру", note: "Для больших заводов и дальних жил.", items: [
+    ["beacon", "Маяки телепорта", "Быстрый переход между точками.", "Постройка-маяк (до 3, потом +1 за покупку). На карте (M) клик по маяку — телепорт за 2 с с затемнением. Перезарядка 30 с.", "coin:6 000 + 2 000 за маяк", "М"],
+    ["home", "Свисток «домой»", "Вернуться к лаборатории.", "Клавиша Home (или в меню карты) — телепорт к лаборатории. Перезарядка 5 минут.", "coin:3 000", "С"],
+    ["compass", "Компас ресурса", "Всегда видеть, куда идти за ресурсом.", "В Карте производства у сырья кнопка «Вести» — стрелка у края экрана с метрами (как в обучении) до ближайшей жилы, пока не отключишь.", "coin:2 000", "С"],
+    ["scanner", "Геосканер", "Подсветить жилы вокруг.", "Клавиша G — волна по земле, все жилы в радиусе 60 клеток подсвечиваются цветом ресурса на 20 с. Перезарядка 60 с. Открывает туман карты в этом радиусе.", "coin:5 000", "С"],
+    ["scoutdrone", "Дрон-разведчик", "Посмотреть сверху и открыть карту.", "Клавиша U — управляешь дроном с камеры сверху 60 с (WASD, высота колесом), он открывает туман карты. Персонаж стоит на месте.", "ruby:50", "Б"],
+  ]},
+  { id: "work", name: "Работа на заводе", note: "Плюшки, которые ускоряют стройку и обслуживание.", items: [
+    ["reach", "Длинные руки I–II", "Строить и взаимодействовать дальше.", "Дальность постройки и E +40% за уровень. Удобно ставить ленты через речку или на склоне.", "coin:3 000 / 9 000", "С"],
+    ["repairkit", "Ремкомплект", "Быстрый ремонт поломок.", "Ремонт без мини-игры (зарядов: 5, пополнение утром). Уровень II — ремонт с расстояния 15 клеток.", "coin:4 000", "С"],
+    ["lamp", "Фонарь на каске", "Свет вокруг игрока ночью.", "Включается сам с 21:00 до 6:00, радиус 12 м. Ночью проще чинить поломки.", "coin:1 000", "С"],
+    ["sleep", "Спальник", "Пропустить ночь.", "E по спальнику (ставится как декор) — ночь проматывается за 5 с. Поломки за пропущенную ночь считаются как обычно — честно.", "coin:2 500", "С"],
+    ["aura", "Ранец-ускоритель", "Станки рядом с тобой работают быстрее.", "Пока стоишь рядом: станки в радиусе 5 клеток +15% к скорости. Поощряет ходить по заводу.", "ruby:45", "С"],
+    ["pocket", "Грузовой карман", "Переносить предметы руками.", "E по складу — забрать до 100 предметов, E по станку/лаборатории — выгрузить. Быстро закинуть недостающее, пока строится линия.", "coin:6 000", "М"],
+    ["blueprint", "Ящик чертежей", "Больше слотов чертежей.", "+10 мест в библиотеке чертежей (P) за покупку.", "coin:2 000", "С"],
+    ["quickbuild", "Перчатки сборщика", "Ставить быстрее.", "Протяжка лент и вставка копий без задержки, вставка больших групп сразу, без анимации.", "coin:5 000", "С"],
+  ]},
+  { id: "eco", name: "Экономика", note: "Покупаются один раз, работают пассивно.", items: [
+    ["discount", "Карта постоянного клиента", "Скидка на постройки.", "−10% к цене всех построек. Уровень II — −20%.", "coin:20 000 / ruby:60", "С"],
+    ["refund", "Договор о возврате", "Полный возврат при сносе.", "Снос возвращает 100% монет вместо нынешней доли. Перестраивать завод не страшно.", "coin:10 000", "С"],
+    ["insurance", "Страховка от поломок", "Ремонт дешевле.", "Плата за ремонт −50%. Штормовой урон тоже дешевле.", "coin:12 000", "С"],
+    ["salesbag", "Торговая лицензия", "Больше монет с лаборатории.", "+10% монет за предметы, сданные в лабораторию.", "ruby:50", "С"],
+  ]},
+  { id: "style", name: "Внешний вид и фан", note: "Без влияния на баланс — за рубины, для тех, кто любит украшать.", items: [
+    ["outfits", "Костюмы рабочего", "Новые наборы одежды.", "Каска, комбинезон, ботинки в разных цветах: «Сварщик», «Инженер», «Шахтёр», «Ночная смена» (светоотражающие полосы). Выбор в окне персонажа.", "ruby:15–40", "М"],
+    ["hats", "Головные уборы", "Шляпы и каски.", "Строительная каска с фонарём, шахтёрская, кепка, корона «Магната» (за 1 млн монет за игру).", "ruby:10–30", "С"],
+    ["trail", "След за персонажем", "Эффект при беге.", "Искры, пар, листья, конфетти — включается в окне персонажа. На параплане — дымный след.", "ruby:20", "С"],
+    ["cartskin", "Раскраска вагонетки", "Вид вагонетки.", "Медь, золото, ретро-паровоз (дымит из трубы), шахтёрская. Нужна вагонетка.", "ruby:15–35", "С"],
+    ["glidskin", "Расцветка параплана", "Узор крыла.", "Полосы, флаг завода, логотип, градиент заката. Нужен параплан.", "ruby:15", "С"],
+    ["pet", "Дрон-компаньон", "Летает рядом с игроком.", "Маленький дрон за плечом: светит ночью, пищит и показывает стрелкой на ближайший сломанный или простаивающий станок. Чисто помощник, ничего не носит.", "ruby:70", "М"],
+    ["horn", "Гудок вагонетки", "Звук для веселья.", "Клавиша H в вагонетке — гудок (паровозный, клаксон, колокольчик). Дроны рядом мигают в ответ.", "ruby:10", "С"],
+    ["emotes", "Эмоции для фоторежима", "Позы и жесты.", "Помахать, сесть, показать на завод, «станцевать» — в фоторежиме и через колесо эмоций (клавишу подберём свободную).", "ruby:10–25", "М"],
+  ]},
+];
+
+const KEY = "woi-perks-v1";
+let state = {};
+try { state = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { state = {}; }
+function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+
+const ALL = [];
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const zonesEl = document.getElementById("zones");
+let num = 0;
+
+function priceTags(p) {
+  return p.split(" + ").map(part => {
+    const [kind, val] = part.includes(":") ? part.split(/:(.+)/) : ["", part];
+    const cls = kind === "ruby" ? "ruby" : kind === "coin" ? "coin" : "";
+    const label = kind === "ruby" ? val + " руб." : kind === "coin" ? val + " мон." : part;
+    return `<span class="tag ${cls}">${esc(label)}</span>`;
+  }).join("");
+}
+function priceText(p) {
+  return p.replace(/ruby:([^+/]+)/g, "$1 руб.").replace(/coin:([^+]+)/g, "$1 мон.").replace(/\s+/g, " ").trim();
+}
+
+ZONES.forEach(z => {
+  const sec = document.createElement("section");
+  sec.className = "zone";
+  sec.innerHTML = `<div class="zone-head"><h2>${esc(z.name)}</h2><span class="zone-sum" id="zs-${z.id}"></span></div><p class="zone-note">${esc(z.note)}</p>`;
+  z.items.forEach(it => {
+    num++;
+    const [id, title, what, how, price, diff] = it;
+    const rec = { id, n: num, zone: z, title, what, how, price, diff };
+    ALL.push(rec);
+    const dcls = diff === "С" ? "d-s" : diff === "М" ? "d-m" : "d-l";
+    const row = document.createElement("div");
+    row.className = "item";
+    row.id = "i-" + id;
+    row.innerHTML = `
+      <div class="txt">
+        <div class="name-row"><span class="num">${String(num).padStart(2, "0")}</span><span class="title">${esc(title)}</span>
+          <span class="tags">${priceTags(price)}<span class="tag ${dcls}">${diff}</span></span></div>
+        <div class="what">${esc(what)}</div>
+        <div class="how"><b>Как работает:</b> ${esc(how)}</div>
+      </div>
+      <div class="seg" role="group" aria-label="Решение">
+        <button type="button" class="b-ok" data-v="ok" aria-pressed="false">Беру</button>
+        <button type="button" class="b-no" data-v="no" aria-pressed="false">Нет</button>
+        <button type="button" class="b-fix" data-v="fix" aria-pressed="false">Переделать</button>
+      </div>
+      <div class="note" hidden><label for="n-${id}">Комментарий: что поменять / цена / как должно работать</label><textarea id="n-${id}" placeholder="Например: дешевле; параплан только после исследования; вагонетку оставить бесплатной"></textarea></div>`;
+    rec.row = row;
+    row.querySelectorAll(".seg button").forEach(b => b.addEventListener("click", () => {
+      const cur = state[id] && state[id].s;
+      const v = cur === b.dataset.v ? undefined : b.dataset.v;
+      state[id] = Object.assign({}, state[id], { s: v });
+      if (!v && !state[id].n) delete state[id];
+      save(); paint(rec); refresh();
+      if (v === "fix") row.querySelector("textarea").focus();
+    }));
+    const ta = row.querySelector("textarea");
+    ta.value = (state[id] && state[id].n) || "";
+    ta.addEventListener("input", () => { state[id] = Object.assign({}, state[id], { n: ta.value }); save(); refresh(); });
+    paint(rec);
+    sec.appendChild(row);
+  });
+  zonesEl.appendChild(sec);
+});
+
+function paint(rec) {
+  const s = state[rec.id] && state[rec.id].s;
+  rec.row.dataset.s = s || "";
+  rec.row.querySelectorAll(".seg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === s)));
+  const note = rec.row.querySelector(".note");
+  note.hidden = !s && !(state[rec.id] && state[rec.id].n);
+}
+
+let filter = "all";
+document.querySelectorAll(".chip").forEach(c => c.addEventListener("click", () => {
+  filter = c.dataset.f;
+  document.querySelectorAll(".chip").forEach(x => x.setAttribute("aria-pressed", String(x === c)));
+  applyFilter();
+}));
+function applyFilter() {
+  ALL.forEach(r => {
+    const s = (state[r.id] && state[r.id].s) || "todo";
+    r.row.classList.toggle("hide", !(filter === "all" || filter === s));
+  });
+}
+function stat(list) {
+  const c = { ok: 0, no: 0, fix: 0, todo: 0 };
+  list.forEach(r => c[(state[r.id] && state[r.id].s) || "todo"]++);
+  return c;
+}
+function refresh() {
+  const c = stat(ALL), n = ALL.length;
+  document.getElementById("nAll").textContent = n;
+  document.getElementById("nTodo").textContent = c.todo;
+  document.getElementById("nOk").textContent = c.ok;
+  document.getElementById("nFix").textContent = c.fix;
+  document.getElementById("nNo").textContent = c.no;
+  document.getElementById("mOk").style.width = (c.ok / n * 100) + "%";
+  document.getElementById("mFix").style.width = (c.fix / n * 100) + "%";
+  document.getElementById("mNo").style.width = (c.no / n * 100) + "%";
+  ZONES.forEach(z => {
+    const zc = stat(ALL.filter(r => r.zone === z));
+    const total = zc.ok + zc.no + zc.fix + zc.todo;
+    document.getElementById("zs-" + z.id).textContent = `беру ${zc.ok} · переделать ${zc.fix} · нет ${zc.no} · из ${total}`;
+  });
+  document.getElementById("rSum").innerHTML =
+    [["Идей", n], ["Беру", c.ok], ["Переделать", c.fix], ["Нет", c.no], ["Не решено", c.todo]]
+      .map(([k, v]) => `<div><span>${k}</span><strong>${v}</strong></div>`).join("");
+  document.getElementById("out").value = report(c, n);
+  if (filter !== "all") applyFilter();
+}
+function report(c, n) {
+  const lines = ["# Плюшки для персонажа — выбор", "", `Идей ${n} · беру ${c.ok} · переделать ${c.fix} · нет ${c.no} · не решено ${c.todo}`];
+  const sect = (title, key, withHow) => {
+    const list = ALL.filter(r => ((state[r.id] && state[r.id].s) || "todo") === key);
+    if (!list.length) return;
+    lines.push("", `## ${title} (${list.length})`);
+    list.forEach(r => {
+      lines.push(`- ${String(r.n).padStart(2, "0")} ${r.title} [${r.id}] — ${priceText(r.price)}, ${r.diff}`);
+      const note = ((state[r.id] && state[r.id].n) || "").trim();
+      if (note) lines.push("  > " + note.replace(/\n+/g, "\n  > "));
+    });
+  };
+  sect("Беру", "ok");
+  sect("Переделать", "fix");
+  sect("Нет", "no");
+  sect("Не решено", "todo");
+  return lines.join("\n");
+}
+const flash = msg => { const f = document.getElementById("flash"); f.textContent = msg; setTimeout(() => { if (f.textContent === msg) f.textContent = ""; }, 3000); };
+document.getElementById("copy").addEventListener("click", () => {
+  const out = document.getElementById("out");
+  const fallback = () => { out.focus(); out.select(); flash("Текст выделен — нажми Ctrl+C"); };
+  try { navigator.clipboard.writeText(out.value).then(() => flash("Отчёт скопирован — вставь его в чат"), fallback); }
+  catch (e) { fallback(); }
+});
+document.getElementById("jumpTodo").addEventListener("click", () => {
+  const r = ALL.find(x => !(state[x.id] && state[x.id].s));
+  if (!r) { flash("Все идеи разобраны"); return; }
+  r.row.scrollIntoView({ behavior: "smooth", block: "center" });
+  r.row.querySelector(".seg button").focus({ preventScroll: true });
+});
+document.getElementById("reset").addEventListener("click", () => { document.getElementById("confirm").hidden = false; });
+document.getElementById("resetNo").addEventListener("click", () => { document.getElementById("confirm").hidden = true; });
+document.getElementById("resetYes").addEventListener("click", () => {
+  state = {}; save();
+  ALL.forEach(r => { r.row.querySelector("textarea").value = ""; paint(r); });
+  document.getElementById("confirm").hidden = true;
+  refresh(); flash("Отметки сброшены");
+});
+refresh();
+</script>

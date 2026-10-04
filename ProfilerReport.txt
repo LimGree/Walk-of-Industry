@@ -1,0 +1,246 @@
+﻿Файл: C:/Users/step2/Desktop/1 конструктор.data
+Кадров: 300
+Кадр, мс: среднее 88.3 (≈11 fps) · медиана 61.6 · 95% 75.5 · 99% 86.0 · макс 7398.2
+
+== Счётчики (среднее / макс)
+Batches Count                                   685            685
+Draw Calls Count                                707            707
+Dynamic Batches Count                             1              1
+Game Object Count                           197,055        197,055
+GC Allocated In Frame                       153,081        254,320
+GC Allocation In Frame Count                  2,739          2,788
+GC Used Memory                          770,608,360    797,364,224
+Gfx Used Memory                         327,960,641    328,486,900
+Instanced Batched Draw Calls Count            4,055          4,055
+Instanced Batches Count                          99             99
+Object Count                                777,872        777,915
+SetPass Calls Count                             187            187
+Shadow Casters Count                            521            521
+Static Batches Count                              0              0
+System Used Memory                    3,945,793,004  4,108,566,528
+Total Used Memory                     3,452,962,386  3,702,342,369
+Triangles Count                             323,217        323,223
+Vertices Count                              351,497        351,503
+Visible Skinned Meshes Count                      0              0
+
+== Главный поток — по собственному времени (мс за кадр)
+   мс/кадр   выз/кадр    ГК КБ/кадр  имя
+   44.025        1.0        134.7  Assembly-CSharp.dll!::WorldSim.Update() [Invoke]
+   31.788        4.0          0.0  EditorLoop
+    1.363        1.0          0.0  Assembly-CSharp.dll!::DayNightCycle.LateUpdate() [Invoke]
+    0.892        2.0          0.0  RenderForward.RenderLoopJob
+    0.567      135.0          0.0  Assembly-CSharp.dll!::BuildingFx.Update() [Invoke]
+    0.544        1.0          0.0  Profiler.FlushMemoryCounters
+    0.477       97.0          0.0  Batch.DrawInstanced
+    0.461        1.0          0.0  ParticleSystem.Update
+    0.444        1.0          2.9  Assembly-CSharp.dll!::WorldSim.LateUpdate() [Invoke]
+    0.355        1.0          0.2  Assembly-CSharp.dll!::WorldMapUI.LateUpdate() [Invoke]
+    0.313        1.0          0.0  DepthPass.Job
+    0.277     2738.6        149.3  GC.Alloc
+    0.272        9.0          0.0  UIR.DrawChain
+    0.272        2.2          0.0  ExecuteRenderQueueJob
+    0.235        1.0        134.8  BehaviourUpdate
+    0.220       15.0          0.0  RenderChain.Process
+    0.220        1.0          0.0  RenderForwardOpaque.Prepare
+    0.209        1.0          0.0  Unity.Postprocessing.Runtime.dll!UnityEngine.Rendering.PostProcessing::PostProcessLayer.OnPreCull() [Invoke]
+    0.179        1.0          0.0  Assembly-CSharp.dll!::PhotoMode.Update() [Invoke]
+    0.171       32.0          5.8  UnityEngine.IMGUIModule.dll!UnityEngine::GUIUtility.BeginGUI() [Invoke]
+    0.161        3.0          0.0  Idle
+    0.156        8.6          0.0  WaitForJobGroupID
+    0.153        1.0          0.0  UpdateDepthTexture
+    0.147        1.0          5.2  Assembly-CSharp.dll!::MapExploration.LateUpdate() [Invoke]
+    0.146        1.0          0.0  Assembly-CSharp.dll!::GameAudio.LateUpdate() [Invoke]
+    0.131        1.0          0.0  Camera.Render
+    0.119        1.0          0.0  UnityEngine.UIElementsModule.dll!UnityEngine.UIElements::UIElementsRuntimeUtilityNative.UpdatePanels() [Invoke]
+    0.119        4.0          0.0  ParticleSystem.EndUpdateAll
+    0.115        1.0          0.4  Assembly-CSharp.dll!::MapMarkerSystem.LateUpdate() [Invoke]
+    0.109      173.0          0.0  BatchRenderer.Flush
+    0.107       66.0          0.0  AssetDatabase.GetGUIDFromAssetPathV2
+    0.102        1.0          0.0  UnityEngine.UIModule.dll!UnityEngine::Canvas.EndRenderExtraOverlays() [Invoke]
+    0.099       15.0          0.0  UIR.ConvertEntriesToCommands
+    0.099       15.0          0.0  RenderChain.UpdateVisuals
+    0.095        1.0          0.0  Assembly-CSharp.dll!::WorldResourceScatterer.LateUpdate() [Invoke]
+    0.087        1.0          0.0  Assembly-CSharp.dll!::BuildGridVisualizer.LateUpdate() [Invoke]
+    0.083        1.0          0.0  Shadows.RenderJobDir
+    0.079       10.0          0.0  RenderLoop.CleanupNodeQueue
+    0.078      564.0          0.0  Render.Mesh
+    0.073        1.0          5.8  GUI.Repaint
+    0.071        1.0          0.0  Render.Prepare
+    0.070        1.0          0.0  UnityEngine.UI.dll!UnityEngine.EventSystems::EventSystem.Update() [Invoke]
+    0.066       15.0          0.0  Update Runtime Bindings
+    0.065        1.0        143.5  UpdateScene
+    0.061        1.0          8.7  LateBehaviourUpdate
+
+== Главный поток — по полному времени (мс за кадр)
+   мс/кадр   выз/кадр    ГК КБ/кадр  имя
+   55.905        3.0        149.3  PlayerLoop
+   50.747        1.0        143.5  UpdateScene
+   45.541        1.0        134.8  Update.ScriptRunBehaviourUpdate
+   45.540        1.0        134.8  BehaviourUpdate
+   44.293        1.0        134.7  Assembly-CSharp.dll!::WorldSim.Update() [Invoke]
+   31.788        4.0          0.0  EditorLoop
+    5.157        1.0          5.8  RenderPlayModeViewCameras
+    4.139        1.0          0.0  Camera.Render
+    2.912        1.0          8.7  PreLateUpdate.ScriptRunBehaviourLateUpdate
+    2.910        1.0          8.7  LateBehaviourUpdate
+    2.196        1.0          0.0  Drawing
+    1.965        1.0          0.0  Render.OpaqueGeometry
+    1.532        1.0          0.0  RenderForwardOpaque.Render
+    1.368        1.0          0.0  Assembly-CSharp.dll!::DayNightCycle.LateUpdate() [Invoke]
+    0.900        1.0          0.0  UpdateDepthTexture
+    0.882        1.0          0.0  PostLateUpdate.UIElementsRepaintPanels
+    0.880        1.0          0.0  UnityEngine.UIElementsModule.dll!UnityEngine.UIElements::UIElementsRuntimeUtilityNative.RepaintPanels() [Invoke]
+    0.820       15.0          0.0  UIElementsRuntimeUtility.DoDispatch(Repaint Event)
+    0.657        1.0          0.0  DepthPass.Job
+    0.578        1.0          0.0  Profiler.FlushCounters
+    0.567      135.0          0.0  Assembly-CSharp.dll!::BuildingFx.Update() [Invoke]
+    0.544        1.0          0.0  Profiler.FlushMemoryCounters
+    0.500        1.0          0.0  UI.RenderOverlays
+    0.496        1.0          0.0  UnityEngine.UIModule.dll!UnityEngine::Canvas.EndRenderExtraOverlays() [Invoke]
+    0.478        1.0          0.0  PreLateUpdate.ParticleSystemBeginUpdateAll
+    0.478        1.0          0.0  ParticleSystem.Update
+    0.467        1.0          5.8  GUI.Repaint
+    0.446        1.0          2.9  Assembly-CSharp.dll!::WorldSim.LateUpdate() [Invoke]
+    0.418        1.0          0.0  Culling
+    0.356        1.0          0.2  Assembly-CSharp.dll!::WorldMapUI.LateUpdate() [Invoke]
+
+== Главный поток — мусор памяти (КБ за кадр)
+   мс/кадр   выз/кадр    ГК КБ/кадр  имя
+  149.273        3.0        149.3  PlayerLoop
+  149.273     2738.6        149.3  GC.Alloc
+  143.523        1.0        143.5  UpdateScene
+  134.789        1.0        134.8  Update.ScriptRunBehaviourUpdate
+  134.789        1.0        134.8  BehaviourUpdate
+  134.742        1.0        134.7  Assembly-CSharp.dll!::WorldSim.Update() [Invoke]
+    8.733        1.0          8.7  PreLateUpdate.ScriptRunBehaviourLateUpdate
+    8.733        1.0          8.7  LateBehaviourUpdate
+    5.750        1.0          5.8  RenderPlayModeViewCameras
+    5.750        1.0          5.8  GUI.Repaint
+    5.750       32.0          5.8  UnityEngine.IMGUIModule.dll!UnityEngine::GUIUtility.BeginGUI() [Invoke]
+    5.161        1.0          5.2  Assembly-CSharp.dll!::MapExploration.LateUpdate() [Invoke]
+    2.922        1.0          2.9  Assembly-CSharp.dll!::WorldSim.LateUpdate() [Invoke]
+    0.406        1.0          0.4  Assembly-CSharp.dll!::MapMarkerSystem.LateUpdate() [Invoke]
+    0.224        1.0          0.2  Assembly-CSharp.dll!::WorldMapUI.LateUpdate() [Invoke]
+    0.033        1.0          0.0  Assembly-CSharp.dll!::SettingsRuntime.Update() [Invoke]
+    0.020        1.0          0.0  Assembly-CSharp.dll!::DayNightCycle.LateUpdate() [Invoke]
+    0.010        1.0          0.0  Assembly-CSharp.dll!::PhotoMode.Update() [Invoke]
+    0.004        1.0          0.0  Assembly-CSharp.dll!::DecorSystem.Update() [Invoke]
+    0.000        4.0          0.0  EditorLoop
+
+== Render Thread — по собственному времени (мс за кадр)
+   мс/кадр   выз/кадр    ГК КБ/кадр  имя
+   39.239       53.0          0.0  Semaphore.WaitForSignal
+   32.371       27.7          0.0  RenderLoop
+   13.670        1.0          0.0  GPUProfiler.EndQueries
+    0.922        2.0          0.0  RenderForward.RenderLoopJob
+    0.638        1.0          0.0  DepthPass.Job
+    0.341        1.0          0.0  GPUProfiler.BeginQueries
+    0.236        1.0          0.0  UI.RenderOverlays
+    0.172       20.7          0.0  WaitForJobGroupID
+    0.095        1.0          0.0  Shadows.RenderJobDir
+    0.077        1.0          0.0  Camera.Render
+    0.067        9.0          0.0  UIR.DrawChain
+    0.065        1.0          0.0  Shadows.RenderShadowMap
+    0.058        7.0          0.0  Batch.FillInstanceProperties
+    0.053        1.0          0.0  UpdateDepthTexture
+    0.043       74.0          0.0  Gfx.SetRenderTarget
+    0.041        1.0          0.0  Drawing
+    0.025       16.0          0.0  UIR.DrawRanges
+    0.023        1.0          0.0  Shadows.CollectShadows
+    0.022        1.0          0.0  RenderForwardOpaque.Render
+    0.018       53.0          0.0  Gfx.WaitForGfxCommandsFromMainThread
+    0.017        1.0          0.0  Camera.RenderSkybox
+    0.017        2.0          0.0  Graphics.Blit
+    0.013        1.0          0.0  BuiltinStack
+    0.011        1.0          0.0  Post-processing
+    0.010        2.5          0.0  Gfx.UpdateBufferRanges
+
+== Самые медленные кадры
+-- кадр 184: 7398.2 мс
+    7341.27 мс self       4 выз.  EditorLoop
+      44.13 мс self       1 выз.  Assembly-CSharp.dll!::WorldSim.Update() [Invoke]
+       2.39 мс self     135 выз.  Assembly-CSharp.dll!::BuildingFx.Update() [Invoke]
+       0.85 мс self       2 выз.  RenderForward.RenderLoopJob
+       0.63 мс self       1 выз.  Assembly-CSharp.dll!::WorldMapUI.LateUpdate() [Invoke]
+       0.57 мс self       1 выз.  Profiler.FlushMemoryCounters
+       0.43 мс self      97 выз.  Batch.DrawInstanced
+       0.42 мс self       1 выз.  Assembly-CSharp.dll!::WorldSim.LateUpdate() [Invoke]
+       0.41 мс self       1 выз.  ParticleSystem.Update
+       0.35 мс self       1 выз.  Assembly-CSharp.dll!::WorldResourceScatterer.LateUpdate() [Invoke]
+-- кадр 56: 114.8 мс
+      60.20 мс self       3 выз.  EditorLoop
+      45.09 мс self       1 выз.  Assembly-CSharp.dll!::WorldSim.Update() [Invoke]
+       0.90 мс self       2 выз.  RenderForward.RenderLoopJob
+       0.57 мс self       1 выз.  Profiler.FlushMemoryCounters
+       0.44 мс self      97 выз.  Batch.DrawInstanced
+       0.43 мс self       1 выз.  ParticleSystem.Update
+       0.43 мс self       1 выз.  Assembly-CSharp.dll!::WorldSim.LateUpdate() [Invoke]
+       0.34 мс self       3 выз.  ExecuteRenderQueueJob
+       0.29 мс self    2731 выз.  GC.Alloc
+       0.27 мс self       1 выз.  DepthPass.Job
+-- кадр 28: 102.1 мс
+      45.97 мс self       1 выз.  Assembly-CSharp.dll!::WorldSim.Update() [Invoke]
+      41.78 мс self       4 выз.  EditorLoop
+       3.50 мс self       1 выз.  Assembly-CSharp.dll!::DayNightCycle.LateUpdate() [Invoke]
+       0.86 мс self       2 выз.  RenderForward.RenderLoopJob
+       0.79 мс self       1 выз.  Profiler.FlushMemoryCounters
+       0.50 мс self       1 выз.  Assembly-CSharp.dll!::WorldSim.LateUpdate() [Invoke]
+       0.44 мс self      97 выз.  Batch.DrawInstanced
+       0.44 мс self       1 выз.  ParticleSystem.Update
+       0.36 мс self       9 выз.  UIR.DrawChain
+       0.30 мс self       1 выз.  Assembly-CSharp.dll!::WorldMapUI.LateUpdate() [Invoke]
+-- кадр 185: 86.0 мс
+      45.47 мс self       1 выз.  Assembly-CSharp.dll!::WorldSim.Update() [Invoke]
+      15.50 мс self       4 выз.  EditorLoop
+       4.90 мс self       1 выз.  Assembly-CSharp.dll!::PhotoMode.Update() [Invoke]
+       2.87 мс self       1 выз.  Assembly-CSharp.dll!::MapExploration.LateUpdate() [Invoke]
+       2.71 мс self       1 выз.  Assembly-CSharp.dll!::DayNightCycle.LateUpdate() [Invoke]
+       2.39 мс self     135 выз.  Assembly-CSharp.dll!::BuildingFx.Update() [Invoke]
+       0.86 мс self       2 выз.  RenderForward.RenderLoopJob
+       0.62 мс self       1 выз.  Profiler.FlushMemoryCounters
+       0.62 мс self       1 выз.  Assembly-CSharp.dll!::WorldMapUI.LateUpdate() [Invoke]
+       0.51 мс self       4 выз.  Idle
+-- кадр 22: 83.1 мс
+      43.73 мс self       1 выз.  Assembly-CSharp.dll!::WorldSim.Update() [Invoke]
+      23.49 мс self       4 выз.  EditorLoop
+       2.66 мс self       1 выз.  Assembly-CSharp.dll!::DayNightCycle.LateUpdate() [Invoke]
+       2.37 мс self     135 выз.  Assembly-CSharp.dll!::BuildingFx.Update() [Invoke]
+       0.86 мс self       2 выз.  RenderForward.RenderLoopJob
+       0.50 мс self       1 выз.  Profiler.FlushMemoryCounters
+       0.46 мс self      97 выз.  Batch.DrawInstanced
+       0.42 мс self       1 выз.  Assembly-CSharp.dll!::WorldSim.LateUpdate() [Invoke]
+       0.41 мс self       1 выз.  ParticleSystem.Update
+       0.31 мс self       1 выз.  DepthPass.Job
+-- кадр 14: 82.7 мс
+      43.28 мс self       1 выз.  Assembly-CSharp.dll!::WorldSim.Update() [Invoke]
+      23.61 мс self       4 выз.  EditorLoop
+       2.72 мс self       1 выз.  Assembly-CSharp.dll!::DayNightCycle.LateUpdate() [Invoke]
+       2.38 мс self     135 выз.  Assembly-CSharp.dll!::BuildingFx.Update() [Invoke]
+       0.84 мс self       2 выз.  RenderForward.RenderLoopJob
+       0.49 мс self       1 выз.  Profiler.FlushMemoryCounters
+       0.43 мс self       1 выз.  Assembly-CSharp.dll!::WorldSim.LateUpdate() [Invoke]
+       0.40 мс self      97 выз.  Batch.DrawInstanced
+       0.39 мс self       3 выз.  Idle
+       0.39 мс self       1 выз.  ParticleSystem.Update
+-- кадр 6: 82.0 мс
+      43.48 мс self       1 выз.  Assembly-CSharp.dll!::WorldSim.Update() [Invoke]
+      21.30 мс self       4 выз.  EditorLoop
+       2.66 мс self       1 выз.  Assembly-CSharp.dll!::DayNightCycle.LateUpdate() [Invoke]
+       2.43 мс self     135 выз.  Assembly-CSharp.dll!::BuildingFx.Update() [Invoke]
+       0.93 мс self       2 выз.  RenderForward.RenderLoopJob
+       0.61 мс self       1 выз.  Assembly-CSharp.dll!::WorldMapUI.LateUpdate() [Invoke]
+       0.49 мс self       1 выз.  Profiler.FlushMemoryCounters
+       0.48 мс self      97 выз.  Batch.DrawInstanced
+       0.43 мс self       1 выз.  Assembly-CSharp.dll!::WorldSim.LateUpdate() [Invoke]
+       0.40 мс self       1 выз.  ParticleSystem.Update
+-- кадр 216: 78.6 мс
+      45.03 мс self       1 выз.  Assembly-CSharp.dll!::WorldSim.Update() [Invoke]
+      16.21 мс self       4 выз.  EditorLoop
+       4.93 мс self       1 выз.  Assembly-CSharp.dll!::PhotoMode.Update() [Invoke]
+       2.38 мс self     135 выз.  Assembly-CSharp.dll!::BuildingFx.Update() [Invoke]
+       0.86 мс self       2 выз.  RenderForward.RenderLoopJob
+       0.66 мс self       1 выз.  ParticleSystem.Update
+       0.52 мс self       1 выз.  Profiler.FlushMemoryCounters
+       0.47 мс self       1 выз.  Assembly-CSharp.dll!::WorldSim.LateUpdate() [Invoke]
+       0.41 мс self      97 выз.  Batch.DrawInstanced
+       0.30 мс self       1 выз.  BehaviourUpdate

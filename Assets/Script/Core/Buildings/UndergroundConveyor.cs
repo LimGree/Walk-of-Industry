@@ -218,6 +218,10 @@ public class UndergroundConveyor : BuildingBase
         exit.paired = entrance;
         WorldSim.MarkFlush(entrance);
         WorldSim.MarkFlush(exit);
+        // Выход «кормит» соседа только спаренным — пересчитать ленты вокруг (Undo сноса пары).
+        // При загрузке мира подавлено (SuppressRelink): после FinishLoad идёт общий RelinkAll.
+        BuildingLinker.RelinkAround(entrance);
+        BuildingLinker.RelinkAround(exit);
     }
 
     public static void FinishLoad()
